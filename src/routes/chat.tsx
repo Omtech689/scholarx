@@ -205,11 +205,14 @@ function ChatPage() {
       });
 
       // call AI
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
       const result = await askHomework({
         data: {
           messages: nextMessages.map((m) => ({ role: m.role, content: m.content })),
           subject,
         },
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
 
       if (result.error || !result.content) {
