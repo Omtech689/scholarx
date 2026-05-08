@@ -227,8 +227,8 @@ function ChatPage() {
     navigate({ to: "/" });
   }
 
-  async function send() {
-    const text = input.trim();
+  async function send(overrideText?: string) {
+    const text = (overrideText ?? input).trim();
     if (!text || loading) return;
 
     const { data: u } = await supabase.auth.getUser();
@@ -242,7 +242,6 @@ function ChatPage() {
 
     let convoId = activeId;
     try {
-      // create conversation if needed
       if (!convoId) {
         const title = text.slice(0, 60);
         const { data, error } = await supabase
@@ -259,7 +258,6 @@ function ChatPage() {
       const nextMessages = [...messages, userMsg];
       setMessages(nextMessages);
 
-      // persist user message
       await supabase.from("messages").insert({
         conversation_id: convoId,
         user_id: u.user.id,
@@ -267,7 +265,6 @@ function ChatPage() {
         content: text,
       });
 
-      // call AI
       const { data: sess } = await supabase.auth.getSession();
       const token = sess.session?.access_token;
       const result = await askHomework({
@@ -299,12 +296,36 @@ function ChatPage() {
         .eq("id", convoId);
 
       await loadConversations();
+
+      // In conversation mode: auto-speak reply, then re-listen
+      if (convoModeRef.current) {
+        speakAssistant(result.content, () => {
+          if (convoModeRef.current) startListening(true);
+        });
+      }
     } catch (err) {
       console.error(err);
       toast.error(err instanceof Error ? err.message : "Failed to send");
     } finally {
       setLoading(false);
     }
+  }
+
+  useEffect(() => {
+    sendRef.current = send;
+  });
+
+  function stripForSpeech(s: string) {
+    return s
+      .replace(/```[\s\S]*?```/g, " ")
+      .replace(/\$\$([\s\S]+?)\$\$/g, " $1 ")
+      .replace(/\$([^$\n]+?)\$/g, " $1 ")
+      .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, "$1 over $2")
+      .replace(/\\sqrt\{([^}]+)\}/g, "square root of $1")
+      .replace(/\\[a-zA-Z]+/g, " ")
+      .replace(/[`*_#>~{}\\^]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
   }
 
   return (
