@@ -473,7 +473,7 @@ function ChatPage() {
                 </Button>
               )}
               <Button
-                onClick={send}
+                onClick={() => send()}
                 disabled={loading || !input.trim()}
                 size="icon"
                 className="h-10 w-10 shrink-0 rounded-xl glow"
