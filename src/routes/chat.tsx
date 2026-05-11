@@ -27,6 +27,7 @@ import {
   Headphones,
   PhoneOff,
   ListTodo,
+  User,
 } from "lucide-react";
 
 type Subject = "math" | "science" | "english" | "history" | "general";
@@ -478,21 +479,23 @@ function ChatPage() {
             )}
             {conversations.map((c) => (
               <li key={c.id}>
-                <button
-                  onClick={() => selectConversation(c.id)}
-                  className={`group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                    activeId === c.id
-                      ? "bg-primary/15 text-foreground"
-                      : "hover:bg-secondary text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <MessageSquare className="h-3.5 w-3.5 shrink-0" />
-                  <span className="flex-1 truncate">{c.title}</span>
-                  <Trash2
-                    onClick={(e) => deleteConversation(c.id, e)}
-                    className="h-3.5 w-3.5 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-                  />
-                </button>
+                <div className="relative">
+                  <button
+                    onClick={() => selectConversation(c.id)}
+                    className={`group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                      activeId === c.id
+                        ? "bg-primary/15 text-foreground"
+                        : "hover:bg-secondary text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+                    <span className="flex-1 truncate pr-8">{c.title}</span>
+                    <Trash2
+                      onClick={(e) => deleteConversation(c.id, e)}
+                      className="absolute right-3 top-2 h-3.5 w-3.5 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                    />
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -504,6 +507,13 @@ function ChatPage() {
           >
             <ListTodo className="h-4 w-4" />
             Study planner
+          </Link>
+          <Link
+            to="/profile"
+            className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+          >
+            <User className="h-4 w-4" />
+            Profile
           </Link>
           <div className="flex items-center justify-between gap-2 px-2 text-sm">
             <span className="truncate text-muted-foreground">{displayName}</span>
