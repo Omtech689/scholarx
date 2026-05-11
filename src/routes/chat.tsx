@@ -486,7 +486,7 @@ function ChatPage() {
                     <span className="flex-1 truncate">{c.title}</span>
                     <Trash2
                       onClick={(e) => deleteConversation(c.id, e)}
-                      className="h-3.5 w-3.5 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                      className="h-3.5 w-3.5 text-muted-foreground md:opacity-0 md:transition-opacity hover:text-destructive md:group-hover:opacity-100"
                     />
                   </button>
                 </li>
@@ -494,6 +494,17 @@ function ChatPage() {
             </ul>
           </ScrollArea>
           <div className="border-t border-border px-3 py-3 space-y-2">
+            {conversations.length > 0 && (
+              <Button
+                onClick={() => { deleteAllConversations(); setMobileMenuOpen(false); }}
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete all conversations
+              </Button>
+            )}
             <Link
               to="/planner"
               onClick={() => setMobileMenuOpen(false)}
@@ -501,6 +512,14 @@ function ChatPage() {
             >
               <ListTodo className="h-4 w-4" />
               Study planner
+            </Link>
+            <Link
+              to="/profile"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+            >
+              <User className="h-4 w-4" />
+              Profile
             </Link>
             <div className="flex items-center justify-between gap-2 px-2 text-sm">
               <span className="truncate text-muted-foreground">{displayName}</span>
@@ -566,7 +585,7 @@ function ChatPage() {
                     variant="ghost"
                     size="icon"
                     onClick={(e) => deleteConversation(c.id, e)}
-                    className="h-8 w-8 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                    className="h-8 w-8 md:opacity-0 md:transition-opacity hover:text-destructive md:group-hover:opacity-100"
                     title="Delete conversation"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
