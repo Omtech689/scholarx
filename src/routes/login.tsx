@@ -45,8 +45,8 @@ function LoginPage() {
           },
         });
         if (error) throw error;
-        toast.success("Account created! You can start chatting.");
-        navigate({ to: "/chat" });
+        toast.success("Account created! Please check your email to verify your account.");
+        // Don't immediately navigate - let user verify email first
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
