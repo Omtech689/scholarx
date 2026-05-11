@@ -60,6 +60,28 @@ function LoginPage() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!email) {
+      toast.error("Please enter your email address first");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      
+      if (error) throw error;
+      toast.success("Password reset email sent! Check your inbox.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Something went wrong";
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <main className="relative flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
@@ -122,6 +144,19 @@ function LoginPage() {
             </Button>
           </form>
 
+          {!isSignup && (
+            <div className="mt-4 text-center">
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={loading}
+                className="text-sm text-primary hover:underline disabled:opacity-50"
+              >
+                Forgot your password?
+              </button>
+            </div>
+          )}
+          
           <p className="mt-5 text-center text-sm text-muted-foreground">
             {isSignup ? "Already have an account? " : "New here? "}
             <button

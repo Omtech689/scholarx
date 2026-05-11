@@ -479,10 +479,10 @@ function ChatPage() {
             )}
             {conversations.map((c) => (
               <li key={c.id}>
-                <div className="relative group/item">
+                <div className="flex items-center gap-1 group">
                   <button
                     onClick={() => selectConversation(c.id)}
-                    className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors pr-10 ${
+                    className={`flex-1 flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
                       activeId === c.id
                         ? "bg-primary/15 text-foreground"
                         : "hover:bg-secondary text-muted-foreground hover:text-foreground"
@@ -491,10 +491,15 @@ function ChatPage() {
                     <MessageSquare className="h-3.5 w-3.5 shrink-0" />
                     <span className="flex-1 truncate">{c.title}</span>
                   </button>
-                  <Trash2
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={(e) => deleteConversation(c.id, e)}
-                    className="absolute right-3 top-2.5 h-3.5 w-3.5 text-muted-foreground opacity-0 transition-all hover:text-destructive group-hover/item:opacity-100 cursor-pointer z-10"
-                  />
+                    className="h-8 w-8 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                    title="Delete conversation"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
               </li>
             ))}
