@@ -19,14 +19,22 @@ function ResetPasswordPage() {
   const [hasValidToken, setHasValidToken] = useState(false);
 
   useEffect(() => {
-    // Extract the token from URL hash (Supabase sends tokens in hash)
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    // Extract token from URL hash (Supabase sends tokens in hash)
+    const hash = window.location.hash;
+    console.log("Full URL hash:", hash);
+    
+    const hashParams = new URLSearchParams(hash.substring(1));
     const accessToken = hashParams.get("access_token");
+    const refreshToken = hashParams.get("refresh_token");
     const type = hashParams.get("type");
+    
+    console.log("Extracted params:", { accessToken, refreshToken, type });
     
     // Check if this is a valid password reset link
     if (accessToken && type === "recovery") {
       setHasValidToken(true);
+      // Store tokens for use in submit
+      (window as any).resetTokens = { accessToken, refreshToken };
     } else {
       toast.error("Invalid reset link. Please request a new password reset.");
       setTimeout(() => {
@@ -65,14 +73,18 @@ function ResetPasswordPage() {
 
     setLoading(true);
     try {
-      // First exchange the reset token for a session
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const accessToken = hashParams.get("access_token");
-      const refreshToken = hashParams.get("refresh_token");
+      // Use stored tokens from the initial extraction
+      const storedTokens = (window as any).resetTokens;
+      console.log("Using stored tokens:", storedTokens);
+      
+      if (!storedTokens?.accessToken || !storedTokens?.refreshToken) {
+        toast.error("Reset tokens not found. Please try the reset link again.");
+        return;
+      }
       
       const { error: sessionError } = await supabase.auth.setSession({
-        access_token: accessToken!,
-        refresh_token: refreshToken!,
+        access_token: storedTokens.accessToken,
+        refresh_token: storedTokens.refreshToken,
       });
 
       if (sessionError) {
