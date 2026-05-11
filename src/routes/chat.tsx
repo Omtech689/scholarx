@@ -33,6 +33,19 @@ type Subject = "math" | "science" | "english" | "history" | "general";
 type Msg = { id?: string; role: "user" | "assistant"; content: string };
 type Convo = { id: string; title: string; subject: string | null; updated_at: string };
 
+function stripForSpeech(s: string) {
+  return s
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/\$\$([\s\S]+?)\$\$/g, " $1 ")
+    .replace(/\$([^$\n]+?)\$/g, " $1 ")
+    .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, "$1 over $2")
+    .replace(/\\sqrt\{([^}]+)\}/g, "square root of $1")
+    .replace(/\\[a-zA-Z]+/g, " ")
+    .replace(/[`*_#>~{}\\^]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 const SUBJECTS: { id: Subject; label: string; icon: typeof Calculator; color: string }[] = [
   { id: "math", label: "Math", icon: Calculator, color: "var(--math)" },
   { id: "science", label: "Science", icon: FlaskConical, color: "var(--science)" },
@@ -372,19 +385,6 @@ function ChatPage() {
     sendRef.current = send;
   });
 
-  function stripForSpeech(s: string) {
-    return s
-      .replace(/```[\s\S]*?```/g, " ")
-      .replace(/\$\$([\s\S]+?)\$\$/g, " $1 ")
-      .replace(/\$([^$\n]+?)\$/g, " $1 ")
-      .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, "$1 over $2")
-      .replace(/\\sqrt\{([^}]+)\}/g, "square root of $1")
-      .replace(/\\[a-zA-Z]+/g, " ")
-      .replace(/[`*_#>~{}\\^]/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-
   return (
     <div className="flex h-screen w-full overflow-hidden">
       {/* Sidebar */}
@@ -493,7 +493,7 @@ function ChatPage() {
           <div className="mx-auto max-w-3xl space-y-4">
             {messages.length === 0 && <EmptyState subject={subject} onPick={setInput} />}
             {messages.map((m, i) => (
-              <Bubble key={m.id ?? i} role={m.role} content={m.content} />
+              <Bubble key={m.id ?? i} role={m.role} content={m.content} ttsSupported={ttsSupported} />
             ))}
             {loading && (
               <div className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground">
@@ -568,10 +568,9 @@ function ChatPage() {
   );
 }
 
-function Bubble({ role, content }: { role: "user" | "assistant"; content: string }) {
+function Bubble({ role, content, ttsSupported }: { role: "user" | "assistant"; content: string; ttsSupported: boolean }) {
   const isUser = role === "user";
   const [speaking, setSpeaking] = useState(false);
-  const ttsSupported = typeof window !== "undefined" && "speechSynthesis" in window;
 
   function toggleSpeak() {
     if (!ttsSupported) return;
@@ -580,11 +579,7 @@ function Bubble({ role, content }: { role: "user" | "assistant"; content: string
       setSpeaking(false);
       return;
     }
-    const clean = content
-      .replace(/```[\s\S]*?```/g, " ")
-      .replace(/[`*_#>~]/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
+    const clean = stripForSpeech(content);
     const u = new SpeechSynthesisUtterance(clean);
     u.onend = () => setSpeaking(false);
     u.onerror = () => setSpeaking(false);
