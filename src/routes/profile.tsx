@@ -119,8 +119,18 @@ function ProfilePage() {
       return;
     }
 
-    if (newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters");
+    if (newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+
+    // Validate password complexity
+    const hasUpperCase = /[A-Z]/.test(newPassword);
+    const hasLowerCase = /[a-z]/.test(newPassword);
+    const hasNumbers = /\d/.test(newPassword);
+
+    if (!hasUpperCase || !hasLowerCase || !hasNumbers) {
+      toast.error("Password must contain uppercase letters, lowercase letters, and numbers");
       return;
     }
 
@@ -308,7 +318,7 @@ function ProfilePage() {
                   <Button
                     onClick={updateDisplayName}
                     disabled={loading}
-                    className="w-full"
+                    className="w-full mt-6"
                   >
                     {loading ? (
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -371,7 +381,7 @@ function ProfilePage() {
                   <Button
                     onClick={changePassword}
                     disabled={passwordLoading}
-                    className="w-full"
+                    className="w-full mt-6"
                   >
                     {passwordLoading ? (
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -418,7 +428,7 @@ function ProfilePage() {
                   <Button
                     onClick={changeEmail}
                     disabled={emailLoading}
-                    className="w-full"
+                    className="w-full mt-6"
                   >
                     {emailLoading ? (
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
