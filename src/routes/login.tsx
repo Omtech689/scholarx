@@ -164,7 +164,7 @@ function LoginPage() {
               onClick={() => setIsSignup((v) => !v)}
               className="font-medium text-primary hover:underline"
             >
-              {isSignup ? "Sign in" : "Create one"}
+              {isSignup ? "Sign in" : "Create Account"}
             </button>
           </p>
         </div>
