@@ -601,7 +601,7 @@ function ChatPage() {
       </aside>
 
       {/* Main */}
-      <main className="flex flex-1 flex-col">
+      <main className="flex min-w-0 flex-1 flex-col">
         {/* Top: subject buttons */}
         <header className="flex items-center gap-2 border-b border-border px-4 py-3 md:px-6">
           <button
@@ -889,7 +889,7 @@ function EmptyState({ subject, onPick }: { subject: Subject; onPick: (s: string)
       <p className="mt-2 text-sm text-muted-foreground">
         Pick a subject above and ask anything. I'll explain step by step.
       </p>
-      <div className="mx-auto mt-8 grid max-w-2xl gap-2 sm:grid-cols-2">
+      <div className="mx-auto mt-8 grid w-full max-w-2xl gap-2 sm:grid-cols-2">
         {prompts[subject].map((p) => (
           <button
             key={p}
