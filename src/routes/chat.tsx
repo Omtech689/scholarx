@@ -5,6 +5,7 @@ import { askHomework } from "@/api/chat.functions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import katex from "katex";
 import {
@@ -28,6 +29,7 @@ import {
   PhoneOff,
   ListTodo,
   User,
+  Menu,
 } from "lucide-react";
 
 type Subject = "math" | "science" | "english" | "history" | "general";
@@ -82,6 +84,7 @@ function ChatPage() {
   const [speechSupported, setSpeechSupported] = useState(false);
   const [ttsSupported, setTtsSupported] = useState(false);
 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
@@ -441,7 +444,75 @@ function ChatPage() {
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
-      {/* Sidebar */}
+      {/* Mobile drawer — same content as desktop sidebar */}
+      <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+        <SheetContent side="left" className="w-72 p-0 flex flex-col">
+          <div className="flex items-center gap-2 px-5 py-5 font-display text-lg font-semibold">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent glow">
+              <Sparkles className="h-4 w-4 text-primary-foreground" />
+            </span>
+            Synaptic
+          </div>
+          <div className="px-3">
+            <Button
+              onClick={() => { newChat(); setMobileMenuOpen(false); }}
+              className="w-full justify-start gap-2"
+              variant="secondary"
+            >
+              <Plus className="h-4 w-4" /> New chat
+            </Button>
+          </div>
+          <div className="mt-4 px-5 text-xs uppercase tracking-wider text-muted-foreground">
+            History
+          </div>
+          <ScrollArea className="mt-2 flex-1 px-2">
+            <ul className="space-y-1 pb-4">
+              {conversations.length === 0 && (
+                <li className="px-3 py-6 text-center text-sm text-muted-foreground">
+                  No chats yet. Ask your first question!
+                </li>
+              )}
+              {conversations.map((c) => (
+                <li key={c.id}>
+                  <button
+                    onClick={() => { selectConversation(c.id); setMobileMenuOpen(false); }}
+                    className={`group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                      activeId === c.id
+                        ? "bg-primary/15 text-foreground"
+                        : "hover:bg-secondary text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+                    <span className="flex-1 truncate">{c.title}</span>
+                    <Trash2
+                      onClick={(e) => deleteConversation(c.id, e)}
+                      className="h-3.5 w-3.5 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                    />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </ScrollArea>
+          <div className="border-t border-border px-3 py-3 space-y-2">
+            <Link
+              to="/planner"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+            >
+              <ListTodo className="h-4 w-4" />
+              Study planner
+            </Link>
+            <div className="flex items-center justify-between gap-2 px-2 text-sm">
+              <span className="truncate text-muted-foreground">{displayName}</span>
+              <Button variant="ghost" size="icon" onClick={logout} title="Sign out">
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Sidebar — desktop only */}
       <aside className="hidden w-72 shrink-0 flex-col border-r border-border bg-card/40 backdrop-blur md:flex">
         <div className="flex items-center gap-2 px-5 py-5 font-display text-lg font-semibold">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent glow">
@@ -532,40 +603,44 @@ function ChatPage() {
       {/* Main */}
       <main className="flex flex-1 flex-col">
         {/* Top: subject buttons */}
-        <header className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3 md:px-6">
-          <span className="mr-2 text-sm text-muted-foreground">Subject:</span>
+        <header className="flex items-center gap-2 border-b border-border px-4 py-3 md:px-6">
           <button
-            onClick={() => setSubject("general")}
-            className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-              subject === "general"
-                ? "bg-primary text-primary-foreground glow"
-                : "bg-secondary text-secondary-foreground hover:bg-secondary/70"
-            }`}
+            className="md:hidden shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-secondary"
+            onClick={() => setMobileMenuOpen(true)}
+            aria-label="Open menu"
           >
-            General
+            <Menu className="h-5 w-5" />
           </button>
-          {SUBJECTS.map((s) => {
-            const active = subject === s.id;
-            return (
-              <button
-                key={s.id}
-                onClick={() => setSubject(s.id)}
-                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                  active
-                    ? "text-background"
-                    : "bg-secondary text-secondary-foreground hover:bg-secondary/70"
-                }`}
-                style={active ? { background: s.color, boxShadow: `0 0 24px ${s.color}55` } : {}}
-              >
-                <s.icon className="h-3.5 w-3.5" style={!active ? { color: s.color } : {}} />
-                {s.label}
-              </button>
-            );
-          })}
-          <div className="md:hidden ml-auto">
-            <Button variant="ghost" size="icon" onClick={logout}>
-              <LogOut className="h-4 w-4" />
-            </Button>
+          <div className="flex flex-1 items-center gap-2 overflow-x-auto min-w-0">
+            <span className="shrink-0 text-sm text-muted-foreground">Subject:</span>
+            <button
+              onClick={() => setSubject("general")}
+              className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                subject === "general"
+                  ? "bg-primary text-primary-foreground glow"
+                  : "bg-secondary text-secondary-foreground hover:bg-secondary/70"
+              }`}
+            >
+              General
+            </button>
+            {SUBJECTS.map((s) => {
+              const active = subject === s.id;
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => setSubject(s.id)}
+                  className={`shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                    active
+                      ? "text-background"
+                      : "bg-secondary text-secondary-foreground hover:bg-secondary/70"
+                  }`}
+                  style={active ? { background: s.color, boxShadow: `0 0 24px ${s.color}55` } : {}}
+                >
+                  <s.icon className="h-3.5 w-3.5" style={!active ? { color: s.color } : {}} />
+                  {s.label}
+                </button>
+              );
+            })}
           </div>
         </header>
 
