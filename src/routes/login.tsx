@@ -67,7 +67,7 @@ function LoginPage() {
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent glow">
             <Sparkles className="h-4 w-4 text-primary-foreground" />
           </span>
-          Synaptic
+          ScholarX
         </Link>
 
         <div className="glass rounded-2xl p-8 shadow-[var(--shadow-card)]">

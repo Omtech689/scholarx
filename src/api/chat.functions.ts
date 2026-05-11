@@ -32,7 +32,7 @@ export const askHomework = createServerFn({ method: "POST" })
       return { content: "", error: "AI is not configured. Please contact support." };
     }
 
-    const systemPrompt = `You are Synaptic, a friendly AI homework tutor for students.
+    const systemPrompt = `You are ScholarX, a friendly AI homework tutor for students.
 
 Your mission: help students LEARN, not cheat. You always:
 - Break problems into clear, numbered steps so the student understands the reasoning.

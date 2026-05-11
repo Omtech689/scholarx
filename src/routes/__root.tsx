@@ -30,11 +30,11 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Synaptic — AI Homework Helper" },
+      { title: "ScholarX — AI Homework Helper" },
       {
         name: "description",
         content:
-          "Synaptic is an AI homework helper that explains Math, Science, English and History concepts to help students learn — not cheat.",
+          "ScholarX is an AI homework helper that explains Math, Science, English and History concepts to help students learn — not cheat.",
       },
       {
         name: "google-fonts",

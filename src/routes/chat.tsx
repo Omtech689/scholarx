@@ -393,7 +393,7 @@ function ChatPage() {
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent glow">
             <Sparkles className="h-4 w-4 text-primary-foreground" />
           </span>
-          Synaptic
+          ScholarX
         </div>
         <div className="px-3">
           <Button onClick={newChat} className="w-full justify-start gap-2" variant="secondary">
@@ -558,7 +558,7 @@ function ChatPage() {
             </div>
             <div className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
               <ShieldAlert className="h-3 w-3" />
-              Synaptic helps you <strong className="font-semibold">learn</strong> — don't submit AI
+              ScholarX helps you <strong className="font-semibold">learn</strong> — don't submit AI
               answers as your own work.
             </div>
           </div>

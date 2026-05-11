@@ -42,7 +42,7 @@ const PRIORITIES: { id: Priority; label: string; color: string }[] = [
 export const Route = createFileRoute("/planner")({
   head: () => ({
     meta: [
-      { title: "Study Planner — Synaptic" },
+      { title: "Study Planner — ScholarX" },
       { name: "description", content: "Track assignments, deadlines and priorities. Your personal study planner." },
     ],
   }),
@@ -463,7 +463,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
         Nothing here yet
       </h3>
       <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
-        Add your first assignment, project or study session — Synaptic will keep you on track.
+        Add your first assignment, project or study session — ScholarX will keep you on track.
       </p>
       <Button onClick={onAdd} className="mt-4 gap-2">
         <Plus className="h-4 w-4" />
