@@ -40,7 +40,7 @@ function LoginPage() {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            emailRedirectTo: `https://scholarx.space/login?mode=signin`,
             data: { display_name: name || email.split("@")[0] },
           },
         });
@@ -69,7 +69,7 @@ function LoginPage() {
     setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `https://scholarx.space/reset-password`,
       });
       
       if (error) throw error;
