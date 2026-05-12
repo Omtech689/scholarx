@@ -465,21 +465,32 @@ function ChatPage() {
               )}
               {conversations.map((c) => (
                 <li key={c.id}>
-                  <button
-                    onClick={() => { selectConversation(c.id); setMobileMenuOpen(false); }}
-                    className={`group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                      activeId === c.id
-                        ? "bg-primary/15 text-foreground"
-                        : "hover:bg-secondary text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <MessageSquare className="h-3.5 w-3.5 shrink-0" />
-                    <span className="flex-1 truncate">{c.title}</span>
-                    <Trash2
-                      onClick={(e) => deleteConversation(c.id, e)}
-                      className="h-3.5 w-3.5 text-muted-foreground md:opacity-0 md:transition-opacity hover:text-destructive md:group-hover:opacity-100"
-                    />
-                  </button>
+                  <div className="group flex items-center gap-1">
+                    <button
+                      onClick={() => { selectConversation(c.id); setMobileMenuOpen(false); }}
+                      className={`flex-1 flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                        activeId === c.id
+                          ? "bg-primary/15 text-foreground"
+                          : "hover:bg-secondary text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+                      <span className="flex-1 truncate">{c.title}</span>
+                    </button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        const convo = conversations.find((cv) => cv.id === c.id);
+                        setTimeout(() => setDeleteConfirm({ id: c.id, title: convo?.title || "this chat" }), 300);
+                      }}
+                      className="h-8 w-8 shrink-0 hover:text-destructive"
+                      title="Delete conversation"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </li>
               ))}
             </ul>
