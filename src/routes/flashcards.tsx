@@ -277,7 +277,7 @@ function FlashcardsPage() {
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Subject</label>
                 <select value={deckSubject} onChange={(e) => setDeckSubject(e.target.value)}
-                  className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm">
+                  className="w-full h-9 rounded-md border border-input bg-background text-foreground px-3 text-sm">
                   {SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
