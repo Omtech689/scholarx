@@ -36,7 +36,7 @@ function ResetPasswordPage() {
     async function initRecovery() {
       const { accessToken, refreshToken, type } = readHashParams();
       const typeNorm = type?.toLowerCase() ?? "";
-      const hasTokenPair = Boolean(accessToken && refreshToken);
+      const hasTokenPair = Boolean(accessToken);
       // Supabase recovery links use type=recovery; some clients omit type while still sending the pair.
       const recoveryLikely =
         typeNorm === "recovery" ||
@@ -134,7 +134,7 @@ function ResetPasswordPage() {
       if (!session?.user) {
         const stored = (window as Window & { resetTokens?: { accessToken: string; refreshToken: string } })
           .resetTokens;
-        if (stored?.accessToken && stored?.refreshToken) {
+        if (stored?.accessToken) {
           const { error: sessionError } = await supabase.auth.setSession({
             access_token: stored.accessToken,
             refresh_token: stored.refreshToken,

@@ -1,9 +1,11 @@
-import { createFileRoute, redirect, Link } from "@tanstack/react-router";
+import { createFileRoute, redirect, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import {
   Sparkles,
@@ -18,6 +20,10 @@ import {
   ListTodo,
   Flag,
   Layers,
+  Menu,
+  MessageSquare,
+  User,
+  LogOut,
 } from "lucide-react";
 
 type Priority = "low" | "medium" | "high";
@@ -56,6 +62,7 @@ export const Route = createFileRoute("/planner")({
 });
 
 function PlannerPage() {
+  const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
@@ -69,9 +76,25 @@ function PlannerPage() {
   const [priority, setPriority] = useState<Priority>("medium");
   const [saving, setSaving] = useState(false);
 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [displayName, setDisplayName] = useState<string>("");
+
   useEffect(() => {
     void load();
+    void loadUserProfile();
   }, []);
+
+  async function loadUserProfile() {
+    const { data: u } = await supabase.auth.getUser();
+    if (u.user) {
+      const { data: p } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("id", u.user.id)
+        .maybeSingle();
+      setDisplayName(p?.display_name ?? u.user.email?.split("@")[0] ?? "Student");
+    }
+  }
 
   async function load() {
     setLoading(true);
@@ -87,6 +110,11 @@ function PlannerPage() {
       setTasks((data ?? []) as Task[]);
     }
     setLoading(false);
+  }
+
+  async function logout() {
+    await supabase.auth.signOut();
+    navigate({ to: "/" });
   }
 
   async function addTask(e: React.FormEvent) {
@@ -187,167 +215,237 @@ function PlannerPage() {
   }, [tasks, filter]);
 
   return (
-    <div className="min-h-screen relative">
-      {/* ambient glow */}
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 -z-10"
-        style={{ backgroundImage: "var(--gradient-aurora)" }}
-      />
-
-      {/* Header */}
-      <header className="sticky top-0 z-30 backdrop-blur-md border-b border-border bg-background/60">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+    <div className="flex h-screen w-full overflow-hidden">
+      {/* Mobile drawer */}
+      <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+        <SheetContent side="left" className="w-80 p-0 flex flex-col">
+          <div className="flex items-center gap-2 px-5 py-5 font-display text-lg font-semibold">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent glow">
+              <Sparkles className="h-4 w-4 text-primary-foreground" />
+            </span>
+            ScholarX
+          </div>
+          <div className="border-t border-border px-3 py-3 space-y-2">
             <Link
               to="/chat"
-              className="inline-flex items-center justify-center h-9 w-9 rounded-md hover:bg-accent hover:text-accent-foreground transition"
-              aria-label="Back to chat"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
             >
-              <ArrowLeft className="h-4 w-4" />
+              <MessageSquare className="h-4 w-4" />
+              Chat
             </Link>
-            <div className="flex items-center gap-2">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-primary-foreground"
-                    style={{ background: "var(--gradient-primary)", boxShadow: "var(--shadow-glow)" }}>
-                <ListTodo className="h-4 w-4" />
-              </span>
-              <div>
-                <h1 className="text-base font-semibold leading-none" style={{ fontFamily: "var(--font-display)" }}>
-                  Study Planner
-                </h1>
-                <p className="text-xs text-muted-foreground mt-0.5">Plan it. Crush it.</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-3">
-            <Button onClick={() => setShowNew((v) => !v)} className="gap-2">
-              <Plus className="h-4 w-4" />
-              New task
-            </Button>
             <Link
               to="/flashcards"
-              className="hidden sm:inline-flex text-sm font-medium text-muted-foreground hover:text-foreground transition items-center gap-1.5 px-2"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
             >
               <Layers className="h-4 w-4" />
               Flashcards
             </Link>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-        {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <StatCard icon={<CalendarDays className="h-4 w-4" />} label="Today" value={counts.today} tint="var(--primary)" />
-          <StatCard icon={<Clock className="h-4 w-4" />} label="Upcoming" value={counts.upcoming} tint="var(--math)" />
-          <StatCard icon={<Flame className="h-4 w-4" />} label="Overdue" value={counts.overdue} tint="var(--history)" />
-          <StatCard icon={<CheckCircle2 className="h-4 w-4" />} label="Done" value={counts.done} tint="var(--science)" />
-        </div>
-
-        {/* New task form */}
-        {showNew && (
-          <form
-            onSubmit={addTask}
-            className="rounded-xl border border-border bg-card/70 backdrop-blur-md p-4 sm:p-5 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200"
-          >
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <h2 className="font-semibold" style={{ fontFamily: "var(--font-display)" }}>Add a task</h2>
-            </div>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Finish chapter 4 problem set"
-              required
-              autoFocus
-            />
-            <Textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Optional notes…"
-              rows={2}
-            />
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Subject</label>
-                <select
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-                >
-                  {SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Due date</label>
-                <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Priority</label>
-                <div className="flex gap-1">
-                  {PRIORITIES.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => setPriority(p.id)}
-                      className={`flex-1 h-9 rounded-md text-sm border transition ${
-                        priority === p.id
-                          ? "border-transparent text-primary-foreground"
-                          : "border-border bg-transparent hover:bg-accent"
-                      }`}
-                      style={priority === p.id ? { background: p.color, color: "var(--background)" } : undefined}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 pt-1">
-              <Button type="button" variant="ghost" onClick={() => setShowNew(false)}>Cancel</Button>
-              <Button type="submit" disabled={saving || !title.trim()}>
-                {saving ? "Saving…" : "Add task"}
+            <Link
+              to="/profile"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+            >
+              <User className="h-4 w-4" />
+              Profile
+            </Link>
+            <div className="flex items-center justify-between gap-2 px-2 text-sm">
+              <span className="truncate text-muted-foreground">{displayName}</span>
+              <Button variant="ghost" size="icon" onClick={logout} title="Sign out">
+                <LogOut className="h-4 w-4" />
               </Button>
             </div>
-          </form>
-        )}
+          </div>
+        </SheetContent>
+      </Sheet>
 
-        {/* Filters */}
-        <div className="flex gap-1 overflow-x-auto pb-1">
-          {[
-            { id: "all", label: `All · ${counts.all - counts.done}` },
-            { id: "today", label: `Today · ${counts.today}` },
-            { id: "upcoming", label: `Upcoming · ${counts.upcoming}` },
-            { id: "overdue", label: `Overdue · ${counts.overdue}` },
-            { id: "done", label: `Done · ${counts.done}` },
-          ].map((f) => (
-            <button
-              key={f.id}
-              onClick={() => setFilter(f.id as typeof filter)}
-              className={`px-3 h-8 rounded-full text-xs font-medium whitespace-nowrap border transition ${
-                filter === f.id
-                  ? "bg-primary text-primary-foreground border-transparent"
-                  : "border-border text-muted-foreground hover:text-foreground hover:bg-accent"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
+      {/* Desktop sidebar */}
+      <aside className="hidden w-80 shrink-0 flex-col border-r border-border bg-card/40 backdrop-blur md:flex">
+        <div className="flex items-center gap-2 px-5 py-5 font-display text-lg font-semibold">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent glow">
+            <Sparkles className="h-4 w-4 text-primary-foreground" />
+          </span>
+          ScholarX
         </div>
+        <div className="border-t border-border px-3 py-3 space-y-2">
+          <Link
+            to="/chat"
+            className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+          >
+            <MessageSquare className="h-4 w-4" />
+            Chat
+          </Link>
+          <Link
+            to="/flashcards"
+            className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+          >
+            <Layers className="h-4 w-4" />
+            Flashcards
+          </Link>
+          <Link
+            to="/profile"
+            className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+          >
+            <User className="h-4 w-4" />
+            Profile
+          </Link>
+          <div className="flex items-center justify-between gap-2 px-2 text-sm">
+            <span className="truncate text-muted-foreground">{displayName}</span>
+            <Button variant="ghost" size="icon" onClick={logout} title="Sign out">
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </aside>
 
-        {/* Task list */}
-        {loading ? (
-          <div className="text-center py-12 text-muted-foreground text-sm">Loading…</div>
-        ) : filtered.length === 0 ? (
-          <EmptyState onAdd={() => setShowNew(true)} />
-        ) : (
-          <ul className="space-y-2">
-            {filtered.map((t) => (
-              <TaskRow key={t.id} task={t} onToggle={() => toggleDone(t)} onDelete={() => removeTask(t)} today={today} />
-            ))}
-          </ul>
-        )}
+      {/* Main */}
+      <main className="flex min-w-0 flex-1 flex-col">
+        {/* Header with mobile menu button */}
+        <header className="flex items-center gap-2 border-b border-border px-4 py-3 md:px-6">
+          <button
+            className="md:hidden shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-secondary"
+            onClick={() => setMobileMenuOpen(true)}
+            aria-label="Open menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <div className="flex items-center gap-2 min-w-0">
+            <span
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-primary-foreground shrink-0"
+              style={{ background: "var(--gradient-primary)", boxShadow: "var(--shadow-glow)" }}
+            >
+              <ListTodo className="h-4 w-4" />
+            </span>
+            <div className="min-w-0">
+              <h1 className="text-base font-semibold leading-none truncate" style={{ fontFamily: "var(--font-display)" }}>
+                Study Planner
+              </h1>
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">Plan it. Crush it.</p>
+            </div>
+          </div>
+          <Button onClick={() => setShowNew((v) => !v)} className="gap-2 ml-auto">
+            <Plus className="h-4 w-4" />
+            New task
+          </Button>
+        </header>
+
+        {/* Content area */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-4xl mx-auto px-4 py-6 md:px-6 space-y-6">
+            {/* Stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <StatCard icon={<CalendarDays className="h-4 w-4" />} label="Today" value={counts.today} tint="var(--primary)" />
+              <StatCard icon={<Clock className="h-4 w-4" />} label="Upcoming" value={counts.upcoming} tint="var(--math)" />
+              <StatCard icon={<Flame className="h-4 w-4" />} label="Overdue" value={counts.overdue} tint="var(--history)" />
+              <StatCard icon={<CheckCircle2 className="h-4 w-4" />} label="Done" value={counts.done} tint="var(--science)" />
+            </div>
+
+            {/* New task form */}
+            {showNew && (
+              <form
+                onSubmit={addTask}
+                className="rounded-xl border border-border bg-card/70 backdrop-blur-md p-4 sm:p-5 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200"
+              >
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <h2 className="font-semibold" style={{ fontFamily: "var(--font-display)" }}>Add a task</h2>
+                </div>
+                <Input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Finish chapter 4 problem set"
+                  required
+                  autoFocus
+                />
+                <Textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Optional notes…"
+                  rows={2}
+                />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Subject</label>
+                    <select
+                      value={subject}
+                      onChange={(e) => setSubject(e.target.value)}
+                      className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+                    >
+                      {SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Due date</label>
+                    <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Priority</label>
+                    <div className="flex gap-1">
+                      {PRIORITIES.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => setPriority(p.id)}
+                          className={`flex-1 h-9 rounded-md text-sm border transition ${
+                            priority === p.id
+                              ? "border-transparent text-primary-foreground"
+                              : "border-border bg-transparent hover:bg-accent"
+                          }`}
+                          style={priority === p.id ? { background: p.color, color: "var(--background)" } : undefined}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 pt-1">
+                  <Button type="button" variant="ghost" onClick={() => setShowNew(false)}>Cancel</Button>
+                  <Button type="submit" disabled={saving || !title.trim()}>
+                    {saving ? "Saving…" : "Add task"}
+                  </Button>
+                </div>
+              </form>
+            )}
+
+            {/* Filters */}
+            <div className="flex gap-1 overflow-x-auto pb-1">
+              {[
+                { id: "all", label: `All · ${counts.all - counts.done}` },
+                { id: "today", label: `Today · ${counts.today}` },
+                { id: "upcoming", label: `Upcoming · ${counts.upcoming}` },
+                { id: "overdue", label: `Overdue · ${counts.overdue}` },
+                { id: "done", label: `Done · ${counts.done}` },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setFilter(f.id as typeof filter)}
+                  className={`px-3 h-8 rounded-full text-xs font-medium whitespace-nowrap border transition ${
+                    filter === f.id
+                      ? "bg-primary text-primary-foreground border-transparent"
+                      : "border-border text-muted-foreground hover:text-foreground hover:bg-accent"
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Task list */}
+            {loading ? (
+              <div className="text-center py-12 text-muted-foreground text-sm">Loading…</div>
+            ) : filtered.length === 0 ? (
+              <EmptyState onAdd={() => setShowNew(true)} />
+            ) : (
+              <ul className="space-y-2">
+                {filtered.map((t) => (
+                  <TaskRow key={t.id} task={t} onToggle={() => toggleDone(t)} onDelete={() => removeTask(t)} today={today} />
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
       </main>
     </div>
   );
