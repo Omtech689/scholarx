@@ -19,6 +19,7 @@ import {
   ArrowLeft,
   ListTodo,
   Flag,
+  BookOpen,
   Layers,
   Menu,
   MessageSquare,
@@ -233,6 +234,14 @@ function PlannerPage() {
             >
               <MessageSquare className="h-4 w-4" />
               Chat
+            </Link>
+            <Link
+              to="/tests"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+            >
+              <BookOpen className="h-4 w-4" />
+              Test creator
             </Link>
             <Link
               to="/flashcards"

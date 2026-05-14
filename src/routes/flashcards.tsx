@@ -9,6 +9,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import {
   ArrowLeft,
+  BookOpen,
   Layers,
   Loader2,
   Send,
@@ -308,6 +309,14 @@ function FlashcardsPage() {
                 Study planner
               </Link>
               <Link
+                to="/tests"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+              >
+                <BookOpen className="h-4 w-4" />
+                Test creator
+              </Link>
+              <Link
                 to="/chat"
                 onClick={() => setMobileMenuOpen(false)}
                 className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
@@ -398,6 +407,13 @@ function FlashcardsPage() {
             >
               <ListTodo className="h-4 w-4" />
               Study planner
+            </Link>
+            <Link
+              to="/tests"
+              className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+            >
+              <BookOpen className="h-4 w-4" />
+              Test creator
             </Link>
             <Link
               to="/chat"
