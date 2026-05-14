@@ -19,7 +19,6 @@ import {
   MessageSquare,
   User,
   Flag,
-  Layers,
 } from "lucide-react";
 
 type Priority = "low" | "medium" | "high";
@@ -52,7 +51,7 @@ export const Route = createFileRoute("/planner")({
   beforeLoad: async () => {
     if (typeof window === "undefined") return;
     const { data } = await supabase.auth.getSession();
-    if (!data.session) throw redirect({ to: "/login", search: { mode: "signin" } });
+    if (!data.session) throw redirect({ to: "/login" });
   },
   component: PlannerPage,
 });

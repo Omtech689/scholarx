@@ -69,7 +69,7 @@ function LoginPage() {
     setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `https://scholarx.space/reset-password`,
       });
       
       if (error) throw error;

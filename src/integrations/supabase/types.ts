@@ -100,65 +100,6 @@ export type Database = {
         }
         Relationships: []
       }
-      flashcard_sets: {
-        Row: {
-          created_at: string
-          id: string
-          topic: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          topic: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          topic?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      flashcards: {
-        Row: {
-          answer: string
-          created_at: string
-          id: string
-          question: string
-          set_id: string
-          sort_order: number
-        }
-        Insert: {
-          answer: string
-          created_at?: string
-          id?: string
-          question: string
-          set_id: string
-          sort_order?: number
-        }
-        Update: {
-          answer?: string
-          created_at?: string
-          id?: string
-          question?: string
-          set_id?: string
-          sort_order?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "flashcards_set_id_fkey"
-            columns: ["set_id"]
-            isOneToOne: false
-            referencedRelation: "flashcard_sets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       study_tasks: {
         Row: {
           completed: boolean
