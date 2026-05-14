@@ -31,6 +31,7 @@ import {
   Layers,
   User,
   Menu,
+  GripVertical,
 } from "lucide-react";
 
 type Subject = "math" | "science" | "english" | "history" | "general";
@@ -529,7 +530,7 @@ function ChatPage() {
                     <span className="flex-1 truncate">{c.title}</span>
                     <Trash2
                       onClick={(e) => deleteConversation(c.id, e)}
-                      className="h-3.5 w-3.5 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                      className="h-3.5 w-3.5 cursor-pointer text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
                     />
                   </button>
                 </li>
@@ -568,7 +569,7 @@ function ChatPage() {
         className="hidden shrink-0 flex-col border-r border-border bg-card/40 backdrop-blur md:flex min-w-[240px] max-w-[520px] relative"
         style={{ width: `${sidebarWidth}px` }}
       >
-        <div className="absolute inset-y-0 right-0 flex w-3 cursor-col-resize items-center justify-center hover:bg-border/20"
+        <div className="absolute inset-y-0 right-0 flex w-8 cursor-col-resize items-center justify-center hover:bg-border/20"
           onMouseDown={(e) => {
             e.preventDefault();
             sidebarDraggingRef.current = true;
@@ -578,7 +579,9 @@ function ChatPage() {
             document.body.style.userSelect = "none";
           }}
           aria-label="Resize sidebar"
-        />
+        >
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </div>
         <div className="flex items-center gap-2 px-5 py-5 font-display text-lg font-semibold">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent glow">
             <Sparkles className="h-4 w-4 text-primary-foreground" />
