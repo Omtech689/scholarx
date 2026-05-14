@@ -437,7 +437,7 @@ function ChatPage() {
     <div className="flex h-screen w-full overflow-hidden">
       {/* Mobile drawer — same content as desktop sidebar */}
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-        <SheetContent side="left" className="w-72 p-0 flex flex-col">
+        <SheetContent side="left" className="w-80 p-0 flex flex-col">
           <div className="flex items-center gap-2 px-5 py-5 font-display text-lg font-semibold">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent glow">
               <Sparkles className="h-4 w-4 text-primary-foreground" />
@@ -542,7 +542,7 @@ function ChatPage() {
       </Sheet>
 
       {/* Sidebar — desktop only */}
-      <aside className="hidden w-72 shrink-0 flex-col border-r border-border bg-card/40 backdrop-blur md:flex">
+      <aside className="hidden w-80 shrink-0 flex-col border-r border-border bg-card/40 backdrop-blur md:flex">
         <div className="flex items-center gap-2 px-5 py-5 font-display text-lg font-semibold">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent glow">
             <Sparkles className="h-4 w-4 text-primary-foreground" />

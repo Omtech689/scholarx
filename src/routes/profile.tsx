@@ -21,7 +21,7 @@ export const Route = createFileRoute("/profile")({
   beforeLoad: async () => {
     if (typeof window === "undefined") return;
     const { data } = await supabase.auth.getSession();
-    if (!data.session) throw redirect({ to: "/login" });
+    if (!data.session) throw redirect({ to: "/login", search: { mode: "signin" } });
   },
   component: ProfilePage,
 });
@@ -144,21 +144,10 @@ function ProfilePage() {
         return;
       }
 
-      // Verify current password by attempting to sign in
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: userData.user.email,
-        password: currentPassword,
-      });
-
-      if (signInError) {
-        toast.error("Current password is incorrect");
-        console.error("Password verification error:", signInError);
-        return;
-      }
-
-      // If current password is valid, update to new password
+      // Supabase enforces current password server-side when enabled in Auth settings.
       const { error } = await supabase.auth.updateUser({
         password: newPassword,
+        current_password: currentPassword,
       });
 
       if (error) {
