@@ -1,7 +1,7 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { generateTest } from "@/api/tests.functions";
+import { generateTest, evaluateTest } from "@/api/tests.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,12 +23,30 @@ import {
 } from "lucide-react";
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
+type TestMode = (typeof TEST_MODES)[number]["value"];
 type TestQuestion = {
   id: string;
   type: "mcq" | "essay";
   question: string;
   answer: string;
   choices?: string[];
+};
+
+type EvaluationResult = {
+  questionId: string;
+  type: "mcq" | "essay";
+  correct: boolean;
+  feedback: string;
+};
+
+type SavedTest = {
+  id: string;
+  topic: string;
+  mode: TestMode;
+  createdAt: string;
+  questions: TestQuestion[];
+  answers: Record<string, string>;
+  evaluation?: EvaluationResult[];
 };
 
 const TEST_MODES = [
@@ -62,6 +80,11 @@ function TestCreatorPage() {
   const [preview, setPreview] = useState<TestQuestion[] | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
+  const [savedTests, setSavedTests] = useState<SavedTest[]>([]);
+  const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
+  const [evaluation, setEvaluation] = useState<EvaluationResult[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [displayName, setDisplayName] = useState<string>("");
 
@@ -69,6 +92,7 @@ function TestCreatorPage() {
     (async () => {
       const { data: u } = await supabase.auth.getUser();
       if (u.user) {
+        setUserId(u.user.id);
         const { data: p } = await supabase
           .from("profiles")
           .select("display_name")
@@ -78,6 +102,80 @@ function TestCreatorPage() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    if (!userId) return;
+    void loadSavedTests();
+  }, [userId]);
+
+  async function loadSavedTests() {
+    if (!userId) return;
+    const { data, error } = await supabase
+      .from("tests")
+      .select("id, topic, mode, questions, answers, evaluation, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Failed to load saved tests", error);
+      return;
+    }
+
+    setSavedTests(
+      (data ?? []).map((row) => ({
+        id: row.id,
+        topic: row.topic,
+        mode: row.mode as TestMode,
+        createdAt: row.created_at,
+        questions: row.questions as TestQuestion[],
+        answers: (row.answers as Record<string, string>) ?? {},
+        evaluation: (row.evaluation as EvaluationResult[]) ?? [],
+      })),
+    );
+  }
+
+  async function selectSavedTest(id: string) {
+    const saved = savedTests.find((test) => test.id === id);
+    if (!saved) return;
+    setSelectedTestId(id);
+    setPreview(saved.questions);
+    setAnswers(saved.answers);
+    setEvaluation(saved.evaluation ?? []);
+    setTopicSeed(saved.topic);
+    setTestMode(saved.mode);
+  }
+
+  async function updateSavedTest(update: Partial<SavedTest>) {
+    if (!selectedTestId || !userId) return;
+    const nextTests = savedTests.map((test) =>
+      test.id === selectedTestId
+        ? {
+            ...test,
+            ...update,
+          }
+        : test,
+    );
+    setSavedTests(nextTests);
+
+    const saved = nextTests.find((test) => test.id === selectedTestId);
+    if (!saved) return;
+
+    const { error } = await supabase
+      .from("tests")
+      .update({
+        topic: saved.topic,
+        mode: saved.mode,
+        questions: saved.questions,
+        answers: saved.answers,
+        evaluation: saved.evaluation ?? [],
+      })
+      .eq("id", selectedTestId)
+      .eq("user_id", userId);
+
+    if (error) {
+      console.error("Failed to update saved test", error);
+    }
+  }
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -121,6 +219,46 @@ function TestCreatorPage() {
         ...item,
       }));
 
+      let savedTestId = `test-${Date.now()}`;
+      let createdAt = new Date().toISOString();
+
+      if (userId) {
+        const { data: inserted, error: insertError } = await supabase
+          .from("tests")
+          .insert([
+            {
+              user_id: userId,
+              topic,
+              mode: testMode,
+              questions,
+              answers: {},
+              evaluation: [],
+            },
+          ])
+          .select("id, created_at")
+          .single();
+
+        if (!insertError && inserted) {
+          savedTestId = inserted.id;
+          createdAt = inserted.created_at;
+        } else if (insertError) {
+          console.error("Failed to create saved test", insertError);
+          toast.error("Could not save the test. It will still work locally.");
+        }
+      }
+
+      const savedTest: SavedTest = {
+        id: savedTestId,
+        topic,
+        mode: testMode,
+        createdAt,
+        questions,
+        answers: {},
+        evaluation: [],
+      };
+
+      setSelectedTestId(savedTest.id);
+      setSavedTests((prev) => [savedTest, ...prev].slice(0, 20));
       setPreview(questions);
       setMessages((prev) => [
         ...prev,
@@ -139,7 +277,11 @@ function TestCreatorPage() {
   }
 
   function setAnswer(questionId: string, value: string) {
-    setAnswers((prev) => ({ ...prev, [questionId]: value }));
+    setAnswers((prev) => {
+      const next = { ...prev, [questionId]: value };
+      updateSavedTest({ answers: next });
+      return next;
+    });
   }
 
   function revealAnswer(questionId: string) {
@@ -155,12 +297,70 @@ function TestCreatorPage() {
     setRevealed(next);
   }
 
+  async function submitTest() {
+    if (!preview || submitting) return;
+    setSubmitting(true);
+
+    try {
+      const topic = topicSeed.trim() || preview[0]?.question.slice(0, 400) || "Practice test";
+      const answerPayload = preview.map((item) => ({
+        questionId: item.id,
+        answer: answers[item.id] ?? "",
+      }));
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+
+      const result = await evaluateTest({
+        data: {
+          topic,
+          questions: preview,
+          answers: answerPayload,
+        },
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+
+      const essayEvaluation = result.evaluations ?? [];
+      const mcqEvaluation = preview
+        .filter((item) => item.type === "mcq")
+        .map((item) => ({
+          questionId: item.id,
+          type: "mcq" as const,
+          correct: answers[item.id] === item.answer,
+          feedback:
+            answers[item.id] === item.answer
+              ? "Correct answer."
+              : `Correct answer: ${item.answer}`,
+        }));
+
+      const allEvaluation = [...mcqEvaluation, ...essayEvaluation];
+      setEvaluation(allEvaluation);
+      updateSavedTest({ answers, evaluation: allEvaluation });
+
+      const score = mcqEvaluation.reduce((count, item) => (item.correct ? count + 1 : count), 0);
+      toast.success(
+        `Test submitted. ${score}/${mcqEvaluation.length} MCQ correct and ${essayEvaluation.length} essay answers evaluated by AI.`,
+      );
+    } catch (err) {
+      console.error(err);
+      toast.error("Unable to evaluate the test. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   function resetTest() {
     setPreview(null);
     setAnswers({});
     setRevealed({});
+    setEvaluation([]);
     setMessages([]);
     setDraft("");
+    setSelectedTestId(null);
   }
 
   const mcqScore = preview?.reduce((count, item) => {
@@ -169,6 +369,10 @@ function TestCreatorPage() {
     }
     return count;
   }, 0);
+
+  const evaluationById = Object.fromEntries(
+    evaluation.map((item) => [item.questionId, item]),
+  ) as Record<string, EvaluationResult | undefined>;
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
@@ -422,6 +626,9 @@ function TestCreatorPage() {
                     <Button variant="secondary" size="sm" onClick={resetTest}>
                       Reset test
                     </Button>
+                    <Button variant="primary" size="sm" onClick={submitTest} disabled={submitting}>
+                      {submitting ? "Submitting…" : "Submit test"}
+                    </Button>
                   </div>
                 </div>
                 <div className="rounded-2xl border border-border bg-muted/50 p-3 text-sm text-muted-foreground">
@@ -477,6 +684,20 @@ function TestCreatorPage() {
                               </span>
                             )}
                           </div>
+                          {evaluationById[item.id] && (
+                            <div
+                              className={`mt-3 rounded-2xl border px-3 py-2 text-sm ${
+                                evaluationById[item.id].correct
+                                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                  : "border-rose-200 bg-rose-50 text-rose-700"
+                              }`}
+                            >
+                              <p className="font-semibold">
+                                {evaluationById[item.id].correct ? "Correct" : "Needs improvement"}
+                              </p>
+                              <p className="mt-1 whitespace-pre-wrap">{evaluationById[item.id].feedback}</p>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="mt-4 space-y-3">
@@ -502,6 +723,20 @@ function TestCreatorPage() {
                               <p className="mt-2 whitespace-pre-wrap">{item.answer}</p>
                             </div>
                           )}
+                          {evaluationById[item.id] && (
+                            <div
+                              className={`rounded-2xl border px-3 py-2 text-sm ${
+                                evaluationById[item.id].correct
+                                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                  : "border-rose-200 bg-rose-50 text-rose-700"
+                              }`}
+                            >
+                              <p className="font-semibold">
+                                {evaluationById[item.id].correct ? "AI evaluation: correct" : "AI evaluation: incorrect"}
+                              </p>
+                              <p className="mt-1 whitespace-pre-wrap">{evaluationById[item.id].feedback}</p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -511,6 +746,47 @@ function TestCreatorPage() {
           ) : (
             <div className="rounded-xl border border-border bg-card/70 backdrop-blur-md p-6 text-center text-sm text-muted-foreground">
               Generate a test to see interactive questions here.
+            </div>
+          )}
+
+          {savedTests.length > 0 && (
+            <div className="rounded-xl border border-border bg-card/70 backdrop-blur-md p-4 sm:p-5 space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="font-semibold" style={{ fontFamily: "var(--font-display)" }}>
+                  Saved tests
+                </h2>
+                <span className="text-xs text-muted-foreground">{savedTests.length} saved</span>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {savedTests.map((test) => (
+                  <button
+                    key={test.id}
+                    type="button"
+                    onClick={() => selectSavedTest(test.id)}
+                    className={`rounded-3xl border px-4 py-4 text-left transition ${
+                      selectedTestId === test.id ? "border-primary bg-primary/5" : "border-border bg-background/80 hover:border-border/90"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-sm text-foreground truncate">{test.topic}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {test.mode.replace("all_", "").replace("mixed", "mixed")} • {new Date(test.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <span className="text-xs font-medium text-muted-foreground">Load</span>
+                    </div>
+                    {test.evaluation?.length ? (
+                      <p className="mt-3 text-sm text-muted-foreground">
+                        {test.evaluation.filter((item) => item.type === "mcq" && item.correct).length}/
+                        {test.questions.filter((item) => item.type === "mcq").length} MCQ correct • {test.evaluation.filter((item) => item.type === "essay").length} essay evaluated
+                      </p>
+                    ) : (
+                      <p className="mt-3 text-sm text-muted-foreground">Not submitted yet</p>
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>

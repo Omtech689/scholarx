@@ -159,8 +159,43 @@ export type Database = {
           },
         ]
       }
-      study_tasks: {
+      tests: {
         Row: {
+          answers: Json
+          created_at: string
+          evaluation: Json | null
+          id: string
+          mode: string
+          questions: Json
+          topic: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answers?: Json
+          created_at?: string
+          evaluation?: Json | null
+          id?: string
+          mode: string
+          questions: Json
+          topic: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          created_at?: string
+          evaluation?: Json | null
+          id?: string
+          mode?: string
+          questions?: Json
+          topic?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      study_tasks: {
           completed: boolean
           completed_at: string | null
           created_at: string

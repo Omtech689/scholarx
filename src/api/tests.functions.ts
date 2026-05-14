@@ -140,3 +140,120 @@ Rules:
       return { questions: [], error: "Network error talking to the AI." };
     }
   });
+
+const answerSchema = z.object({
+  questionId: z.string().min(1),
+  answer: z.string().max(4000),
+});
+
+const evaluateTestInputSchema = z.object({
+  topic: z.string().min(1).max(400),
+  questions: questionsSchema,
+  answers: z.array(answerSchema).min(1),
+});
+
+const evaluationSchema = z.object({
+  questionId: z.string(),
+  type: z.literal("essay"),
+  correct: z.boolean(),
+  feedback: z.string().min(1).max(2000),
+});
+
+const evaluationResponseSchema = z.array(evaluationSchema);
+
+export const evaluateTest = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => evaluateTestInputSchema.parse(input))
+  .handler(async ({ data }) => {
+    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+    if (!GEMINI_API_KEY) {
+      return {
+        evaluations: [] as unknown[],
+        error: "AI is not configured. Please contact support.",
+      };
+    }
+
+    const essayQuestions = data.questions.filter((item) => item.type === "essay");
+    if (essayQuestions.length === 0) {
+      return { evaluations: [] as unknown[], error: null as string | null };
+    }
+
+    const answerLookup = Object.fromEntries(data.answers.map((answer) => [answer.questionId, answer.answer]));
+
+    const systemPrompt = `You are ScholarX test grader. Evaluate each student essay answer against the model answer. Output ONLY a JSON array with this exact shape:
+[
+  {"questionId":"...","type":"essay","correct":true|false,"feedback":"short feedback"}
+]
+Rules:
+- Do not include markdown fences or any extra text.
+- Return feedback that explains whether the answer is correct and how it could be improved.
+- Compare student responses to the model answer and judge correctness, not grammar.
+`;
+
+    const questionPayload = essayQuestions
+      .map(
+        (item, index) =>
+          `Question ${index + 1}:
+${item.question}
+Model answer: ${item.answer}
+Student answer: ${answerLookup[item.id] ?? ""}
+`,
+      )
+      .join("\n");
+
+    const userPrompt = `Topic: ${data.topic}
+
+Evaluate the following essay responses:
+
+${questionPayload}`;
+
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${GEMINI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gemini-3.1-flash-lite",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          temperature: 0.1,
+        }),
+      });
+
+      if (res.status === 429) {
+        return { evaluations: [], error: "Too many requests right now. Please try again in a moment." };
+      }
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("Gemini test evaluation error", res.status, text);
+        return { evaluations: [], error: "The AI could not evaluate the test. Please try again." };
+      }
+
+      const json = await res.json();
+      const content: string = json?.choices?.[0]?.message?.content ?? "";
+      if (!content) {
+        return { evaluations: [], error: "Empty AI response." };
+      }
+
+      let parsed: unknown;
+      try {
+        parsed = extractJsonArray(content);
+      } catch {
+        return { evaluations: [], error: "Could not parse the evaluation output. Please try again." };
+      }
+
+      const parsedEvaluation = evaluationResponseSchema.safeParse(parsed);
+      if (!parsedEvaluation.success) {
+        return { evaluations: [], error: "The evaluation format was invalid. Please try again." };
+      }
+
+      return { evaluations: parsedEvaluation.data, error: null as string | null };
+    } catch (e) {
+      console.error("evaluateTest error", e);
+      return { evaluations: [], error: "Network error talking to the AI." };
+    }
+  });
