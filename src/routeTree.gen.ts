@@ -11,7 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ProfileRouteImport } from './routes/profile'
-import { Route as FlashcardsRouteImport } from './routes/flashcards'
 import { Route as PlannerRouteImport } from './routes/planner'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as FlashcardsRouteImport } from './routes/flashcards'
@@ -27,11 +26,6 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FlashcardsRoute = FlashcardsRouteImport.update({
-  id: '/flashcards',
-  path: '/flashcards',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlannerRoute = PlannerRouteImport.update({
@@ -71,7 +65,6 @@ export interface FileRoutesByFullPath {
   '/flashcards': typeof FlashcardsRoute
   '/login': typeof LoginRoute
   '/planner': typeof PlannerRoute
-  '/flashcards': typeof FlashcardsRoute
   '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -82,7 +75,6 @@ export interface FileRoutesByTo {
   '/flashcards': typeof FlashcardsRoute
   '/login': typeof LoginRoute
   '/planner': typeof PlannerRoute
-  '/flashcards': typeof FlashcardsRoute
   '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -94,17 +86,41 @@ export interface FileRoutesById {
   '/flashcards': typeof FlashcardsRoute
   '/login': typeof LoginRoute
   '/planner': typeof PlannerRoute
-  '/flashcards': typeof FlashcardsRoute
   '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
   '/auth/callback': typeof AuthCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/chat' | '/login' | '/planner' | '/flashcards' | '/profile' | '/reset-password' | '/auth/callback'
+  fullPaths:
+    | '/'
+    | '/chat'
+    | '/flashcards'
+    | '/login'
+    | '/planner'
+    | '/profile'
+    | '/reset-password'
+    | '/auth/callback'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/chat' | '/login' | '/planner' | '/flashcards' | '/profile' | '/reset-password' | '/auth/callback'
-  id: '__root__' | '/' | '/chat' | '/login' | '/planner' | '/flashcards' | '/profile' | '/reset-password' | '/auth/callback'
+  to:
+    | '/'
+    | '/chat'
+    | '/flashcards'
+    | '/login'
+    | '/planner'
+    | '/profile'
+    | '/reset-password'
+    | '/auth/callback'
+  id:
+    | '__root__'
+    | '/'
+    | '/chat'
+    | '/flashcards'
+    | '/login'
+    | '/planner'
+    | '/profile'
+    | '/reset-password'
+    | '/auth/callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -113,7 +129,6 @@ export interface RootRouteChildren {
   FlashcardsRoute: typeof FlashcardsRoute
   LoginRoute: typeof LoginRoute
   PlannerRoute: typeof PlannerRoute
-  FlashcardsRoute: typeof FlashcardsRoute
   ProfileRoute: typeof ProfileRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
@@ -140,27 +155,6 @@ declare module '@tanstack/react-router' {
       path: '/planner'
       fullPath: '/planner'
       preLoaderRoute: typeof PlannerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/flashcards': {
-      id: '/flashcards'
-      path: '/flashcards'
-      fullPath: '/flashcards'
-      preLoaderRoute: typeof FlashcardsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/profile': {
-      id: '/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof ProfileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -207,7 +201,6 @@ const rootRouteChildren: RootRouteChildren = {
   FlashcardsRoute: FlashcardsRoute,
   LoginRoute: LoginRoute,
   PlannerRoute: PlannerRoute,
-  FlashcardsRoute: FlashcardsRoute,
   ProfileRoute: ProfileRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   AuthCallbackRoute: AuthCallbackRoute,

@@ -1,570 +1,461 @@
-import { createFileRoute, redirect, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { generateFlashcards } from "@/api/flashcards.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import {
+  ArrowLeft,
   Layers,
-  Plus,
+  Loader2,
+  Send,
+  Sparkles,
   Trash2,
+  BookmarkPlus,
   ChevronLeft,
   ChevronRight,
-  RotateCcw,
-  Check,
-  X,
-  Sparkles,
-  BookOpen,
-  ListTodo,
-  MessageSquare,
-  User,
-  Loader2,
+  RotateCw,
 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 
-type Deck = { id: string; title: string; subject: string | null; card_count: number; created_at: string };
-type Card = { id: string; front: string; back: string };
-type View = "decks" | "deck" | "study";
-
-const SUBJECTS = ["Math", "Science", "English", "History", "General", "Other"];
+type ChatMsg = { role: "user" | "assistant"; content: string };
+type Card = { q: string; a: string };
+type DeckRow = { id: string; topic: string; created_at: string };
+type DbCard = { id: string; question: string; answer: string; sort_order: number };
 
 export const Route = createFileRoute("/flashcards")({
   head: () => ({
     meta: [
       { title: "Flashcards — ScholarX" },
-      { name: "description", content: "Create and study flashcard decks for any subject." },
+      { name: "description", content: "Generate AI flashcards from any topic and save them to your library." },
     ],
   }),
   beforeLoad: async () => {
     if (typeof window === "undefined") return;
     const { data } = await supabase.auth.getSession();
-    if (!data.session) throw redirect({ to: "/login" });
+    if (!data.session) throw redirect({ to: "/login", search: { mode: "signin" } });
   },
   component: FlashcardsPage,
 });
 
 function FlashcardsPage() {
-  const [view, setView] = useState<View>("decks");
-  const [decks, setDecks] = useState<Deck[]>([]);
-  const [activeDeck, setActiveDeck] = useState<Deck | null>(null);
-  const [cards, setCards] = useState<Card[]>([]);
-  const [loadingDecks, setLoadingDecks] = useState(true);
-  const [loadingCards, setLoadingCards] = useState(false);
+  const [topicSeed, setTopicSeed] = useState("");
+  const [messages, setMessages] = useState<ChatMsg[]>([]);
+  const [draft, setDraft] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [preview, setPreview] = useState<Card[] | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  // Deck form
-  const [showNewDeck, setShowNewDeck] = useState(false);
-  const [deckTitle, setDeckTitle] = useState("");
-  const [deckSubject, setDeckSubject] = useState("General");
-  const [savingDeck, setSavingDeck] = useState(false);
+  const [decks, setDecks] = useState<DeckRow[]>([]);
+  const [decksLoading, setDecksLoading] = useState(true);
+  const [selectedDeckId, setSelectedDeckId] = useState<string | null>(null);
+  const [studyCards, setStudyCards] = useState<DbCard[]>([]);
+  const [studyIdx, setStudyIdx] = useState(0);
+  const [showAnswer, setShowAnswer] = useState(false);
 
-  // Card form
-  const [showNewCard, setShowNewCard] = useState(false);
-  const [cardFront, setCardFront] = useState("");
-  const [cardBack, setCardBack] = useState("");
-  const [savingCard, setSavingCard] = useState(false);
-
-  // Delete confirmations
-  const [deleteDeckConfirm, setDeleteDeckConfirm] = useState<Deck | null>(null);
-  const [deleteCardConfirm, setDeleteCardConfirm] = useState<Card | null>(null);
-
-  // Study mode
-  const [studyIndex, setStudyIndex] = useState(0);
-  const [flipped, setFlipped] = useState(false);
-  const [known, setKnown] = useState<Set<string>>(new Set());
-  const [unknown, setUnknown] = useState<Set<string>>(new Set());
+  const loadDecks = useCallback(async () => {
+    setDecksLoading(true);
+    const { data, error } = await supabase
+      .from("flashcard_sets")
+      .select("id, topic, created_at")
+      .order("created_at", { ascending: false });
+    if (error) {
+      toast.error("Could not load your decks");
+      setDecks([]);
+    } else {
+      setDecks((data ?? []) as DeckRow[]);
+    }
+    setDecksLoading(false);
+  }, []);
 
   useEffect(() => {
     void loadDecks();
-  }, []);
+  }, [loadDecks]);
 
-  async function loadDecks() {
-    setLoadingDecks(true);
-    const { data, error } = await supabase
-      .from("flashcard_decks")
-      .select("id, title, subject, created_at")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      toast.error("Couldn't load decks");
-      setLoadingDecks(false);
-      return;
-    }
-
-    // Fetch card counts
-    const decksWithCounts = await Promise.all(
-      (data ?? []).map(async (d) => {
-        const { count } = await supabase
-          .from("flashcards")
-          .select("id", { count: "exact", head: true })
-          .eq("deck_id", d.id);
-        return { ...d, card_count: count ?? 0 };
-      }),
-    );
-    setDecks(decksWithCounts);
-    setLoadingDecks(false);
-  }
-
-  async function loadCards(deckId: string) {
-    setLoadingCards(true);
+  const loadStudyCards = useCallback(async (setId: string) => {
     const { data, error } = await supabase
       .from("flashcards")
-      .select("id, front, back")
-      .eq("deck_id", deckId)
-      .order("created_at", { ascending: true });
+      .select("id, question, answer, sort_order")
+      .eq("set_id", setId)
+      .order("sort_order", { ascending: true });
     if (error) {
-      toast.error("Couldn't load cards");
-    } else {
-      setCards(data ?? []);
+      toast.error("Could not load cards");
+      setStudyCards([]);
+      return;
     }
-    setLoadingCards(false);
-  }
+    setStudyCards((data ?? []) as DbCard[]);
+    setStudyIdx(0);
+    setShowAnswer(false);
+  }, []);
 
-  async function createDeck(e: React.FormEvent) {
+  useEffect(() => {
+    if (selectedDeckId) void loadStudyCards(selectedDeckId);
+    else {
+      setStudyCards([]);
+      setStudyIdx(0);
+      setShowAnswer(false);
+    }
+  }, [selectedDeckId, loadStudyCards]);
+
+  async function handleSend(e: React.FormEvent) {
     e.preventDefault();
-    if (!deckTitle.trim()) return;
-    setSavingDeck(true);
-    const { data: u } = await supabase.auth.getUser();
-    if (!u.user) { toast.error("Sign in required"); setSavingDeck(false); return; }
-    const { error } = await supabase.from("flashcard_decks").insert({
-      user_id: u.user.id,
-      title: deckTitle.trim(),
-      subject: deckSubject,
-    });
-    setSavingDeck(false);
-    if (error) { toast.error("Couldn't create deck"); return; }
-    toast.success("Deck created");
-    setDeckTitle("");
-    setShowNewDeck(false);
-    void loadDecks();
+    const text = draft.trim();
+    if (!text || loading) return;
+
+    const nextMessages: ChatMsg[] = [...messages, { role: "user", content: text }];
+    setMessages(nextMessages);
+    setDraft("");
+    setLoading(true);
+    setPreview(null);
+
+    try {
+      const topic =
+        topicSeed.trim() ||
+        nextMessages.find((m) => m.role === "user")?.content.slice(0, 400) ||
+        "Study topic";
+
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      const result = await generateFlashcards({
+        data: {
+          topic,
+          messages: nextMessages,
+        },
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+
+      if (result.error || !result.cards?.length) {
+        toast.error(result.error ?? "No flashcards generated");
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: result.error ?? "Something went wrong. Try rephrasing your topic." },
+        ]);
+        return;
+      }
+
+      setPreview(result.cards);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: `Here are ${result.cards.length} flashcards for “${topic.slice(0, 120)}${topic.length > 120 ? "…" : ""}”. Review them below, then use Save to library to keep them.`,
+        },
+      ]);
+    } catch (err) {
+      console.error(err);
+      toast.error("Request failed");
+      setMessages((prev) => [...prev, { role: "assistant", content: "Request failed. Please try again." }]);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  async function confirmDeleteDeck() {
-    if (!deleteDeckConfirm) return;
-    const { error } = await supabase.from("flashcard_decks").delete().eq("id", deleteDeckConfirm.id);
-    setDeleteDeckConfirm(null);
-    if (error) { toast.error("Couldn't delete deck"); return; }
+  async function saveDeck() {
+    if (!preview?.length) return;
+    setSaving(true);
+    try {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) {
+        toast.error("Sign in required");
+        return;
+      }
+      const topic = topicSeed.trim() || messages.find((m) => m.role === "user")?.content.slice(0, 200) || "Deck";
+      const { data: setRow, error: e1 } = await supabase
+        .from("flashcard_sets")
+        .insert({ user_id: u.user.id, topic: topic.slice(0, 500) })
+        .select("id")
+        .single();
+      if (e1 || !setRow) {
+        toast.error("Could not save deck");
+        console.error(e1);
+        return;
+      }
+      const rows = preview.map((c, i) => ({
+        set_id: setRow.id,
+        question: c.q,
+        answer: c.a,
+        sort_order: i,
+      }));
+      const { error: e2 } = await supabase.from("flashcards").insert(rows);
+      if (e2) {
+        toast.error("Could not save cards");
+        console.error(e2);
+        await supabase.from("flashcard_sets").delete().eq("id", setRow.id);
+        return;
+      }
+      toast.success("Deck saved");
+      setPreview(null);
+      setSelectedDeckId(setRow.id);
+      void loadDecks();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteDeck(id: string) {
+    if (!confirm("Delete this deck and all its cards?")) return;
+    const { error } = await supabase.from("flashcard_sets").delete().eq("id", id);
+    if (error) {
+      toast.error("Delete failed");
+      return;
+    }
+    if (selectedDeckId === id) setSelectedDeckId(null);
     toast.success("Deck deleted");
-    if (activeDeck?.id === deleteDeckConfirm.id) {
-      setActiveDeck(null);
-      setCards([]);
-      setView("decks");
-    }
     void loadDecks();
   }
 
-  async function addCard(e: React.FormEvent) {
-    e.preventDefault();
-    if (!cardFront.trim() || !cardBack.trim() || !activeDeck) return;
-    setSavingCard(true);
-    const { data: u } = await supabase.auth.getUser();
-    if (!u.user) { toast.error("Sign in required"); setSavingCard(false); return; }
-    const { error } = await supabase.from("flashcards").insert({
-      deck_id: activeDeck.id,
-      user_id: u.user.id,
-      front: cardFront.trim(),
-      back: cardBack.trim(),
-    });
-    setSavingCard(false);
-    if (error) { toast.error("Couldn't add card"); return; }
-    toast.success("Card added");
-    setCardFront("");
-    setCardBack("");
-    setShowNewCard(false);
-    void loadCards(activeDeck.id);
-    // Update card count in decks list
-    void loadDecks();
-  }
+  const currentStudy = studyCards[studyIdx];
 
-  async function confirmDeleteCard() {
-    if (!deleteCardConfirm || !activeDeck) return;
-    const { error } = await supabase.from("flashcards").delete().eq("id", deleteCardConfirm.id);
-    setDeleteCardConfirm(null);
-    if (error) { toast.error("Couldn't delete card"); return; }
-    toast.success("Card deleted");
-    void loadCards(activeDeck.id);
-    void loadDecks();
-  }
+  return (
+    <div className="min-h-screen relative">
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-10"
+        style={{ backgroundImage: "var(--gradient-aurora)" }}
+      />
 
-  function openDeck(deck: Deck) {
-    setActiveDeck(deck);
-    setView("deck");
-    void loadCards(deck.id);
-  }
-
-  function startStudy() {
-    if (cards.length === 0) { toast.error("Add some cards first"); return; }
-    setStudyIndex(0);
-    setFlipped(false);
-    setKnown(new Set());
-    setUnknown(new Set());
-    setView("study");
-  }
-
-  function studyNext(markKnown: boolean) {
-    if (!cards[studyIndex]) return;
-    const id = cards[studyIndex].id;
-    if (markKnown) {
-      setKnown((s) => new Set([...s, id]));
-    } else {
-      setUnknown((s) => new Set([...s, id]));
-    }
-    if (studyIndex < cards.length - 1) {
-      setStudyIndex((i) => i + 1);
-      setFlipped(false);
-    } else {
-      // Session complete
-      setView("study-done" as View);
-    }
-  }
-
-  const subjectColor: Record<string, string> = {
-    Math: "var(--math)", Science: "var(--science)",
-    English: "var(--english)", History: "var(--history)",
-  };
-
-  // ── Deck list view ───────────────────────────────────────────────
-  if (view === "decks") {
-    return (
-      <div className="min-h-screen relative">
-        <div aria-hidden className="pointer-events-none fixed inset-0 -z-10"
-          style={{ backgroundImage: "var(--gradient-aurora)" }} />
-
-        <header className="sticky top-0 z-30 backdrop-blur-md border-b border-border bg-background/60">
-          <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-1 overflow-x-auto">
-              <Link to="/chat" className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-accent hover:text-accent-foreground">
-                <MessageSquare className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Chat</span>
-              </Link>
-              <Link to="/planner" className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-accent hover:text-accent-foreground">
-                <ListTodo className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Planner</span>
-              </Link>
-              <Link to="/flashcards" className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition bg-primary text-primary-foreground">
-                <Layers className="h-3.5 w-3.5" />
-                <span>Flashcards</span>
-              </Link>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Button onClick={() => setShowNewDeck((v) => !v)} className="gap-2">
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">New deck</span>
-                <span className="sm:hidden">New</span>
-              </Button>
-              <Link to="/profile" className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition" title="Profile">
-                <User className="h-4 w-4" />
-              </Link>
-            </div>
-          </div>
-        </header>
-
-        <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-          {showNewDeck && (
-            <form onSubmit={createDeck} className="rounded-xl border border-border bg-card/70 backdrop-blur-md p-4 sm:p-5 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-              <div className="flex items-center gap-2">
-                <Layers className="h-4 w-4 text-primary" />
-                <h2 className="font-semibold" style={{ fontFamily: "var(--font-display)" }}>New deck</h2>
-              </div>
-              <Input value={deckTitle} onChange={(e) => setDeckTitle(e.target.value)} placeholder="e.g. Chapter 5 — Cell Biology" required autoFocus />
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Subject</label>
-                <select value={deckSubject} onChange={(e) => setDeckSubject(e.target.value)}
-                  className="w-full h-9 rounded-md border border-input bg-background text-foreground px-3 text-sm">
-                  {SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-              <div className="flex justify-end gap-2 pt-1">
-                <Button type="button" variant="ghost" onClick={() => setShowNewDeck(false)}>Cancel</Button>
-                <Button type="submit" disabled={savingDeck || !deckTitle.trim()}>
-                  {savingDeck ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create deck"}
-                </Button>
-              </div>
-            </form>
-          )}
-
-          {loadingDecks ? (
-            <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-          ) : decks.length === 0 ? (
-            <div className="text-center py-16 space-y-3">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent glow">
-                <Layers className="h-6 w-6 text-primary-foreground" />
-              </div>
-              <h2 className="text-xl font-bold">No decks yet</h2>
-              <p className="text-sm text-muted-foreground">Create a deck and start adding cards to study.</p>
-              <Button onClick={() => setShowNewDeck(true)} className="gap-2 mt-2">
-                <Plus className="h-4 w-4" /> Create your first deck
-              </Button>
-            </div>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {decks.map((deck) => (
-                <div key={deck.id} className="group glass rounded-xl p-5 flex flex-col gap-3 hover:-translate-y-0.5 transition cursor-pointer"
-                  onClick={() => openDeck(deck)}>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-semibold truncate">{deck.title}</p>
-                      {deck.subject && (
-                        <span className="inline-block mt-1 rounded-full px-2 py-0.5 text-[10px] font-medium text-primary-foreground"
-                          style={{ background: subjectColor[deck.subject] ?? "var(--primary)" }}>
-                          {deck.subject}
-                        </span>
-                      )}
-                    </div>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setDeleteDeckConfirm(deck); }}
-                      className="shrink-0 rounded-md p-1 text-muted-foreground opacity-0 group-hover:opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:text-destructive transition"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <BookOpen className="h-3.5 w-3.5" />
-                    {deck.card_count} card{deck.card_count !== 1 ? "s" : ""}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </main>
-
-        <Dialog open={!!deleteDeckConfirm} onOpenChange={(open) => !open && setDeleteDeckConfirm(null)}>
-          <DialogContent className="max-w-sm">
-            <DialogHeader>
-              <DialogTitle>Delete deck?</DialogTitle>
-              <DialogDescription>"{deleteDeckConfirm?.title}" and all its cards will be permanently deleted.</DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="gap-2">
-              <Button variant="ghost" onClick={() => setDeleteDeckConfirm(null)}>Cancel</Button>
-              <Button variant="destructive" onClick={confirmDeleteDeck}>Delete</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-    );
-  }
-
-  // ── Deck detail / card management view ───────────────────────────────────────────
-  if (view === "deck" && activeDeck) {
-    return (
-      <div className="min-h-screen relative">
-        <div aria-hidden className="pointer-events-none fixed inset-0 -z-10"
-          style={{ backgroundImage: "var(--gradient-aurora)" }} />
-
-        <header className="sticky top-0 z-30 backdrop-blur-md border-b border-border bg-background/60">
-          <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+      <header className="sticky top-0 z-30 backdrop-blur-md border-b border-border bg-background/60">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <Link
+              to="/chat"
+              className="inline-flex items-center justify-center h-9 w-9 rounded-md hover:bg-accent hover:text-accent-foreground transition shrink-0"
+              aria-label="Back to chat"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
             <div className="flex items-center gap-2 min-w-0">
-              <button onClick={() => setView("decks")}
-                className="inline-flex shrink-0 items-center justify-center h-9 w-9 rounded-md hover:bg-accent transition text-muted-foreground">
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <div className="min-w-0">
-                <p className="font-semibold truncate leading-none">{activeDeck.title}</p>
-                {activeDeck.subject && (
-                  <span className="text-xs text-muted-foreground">{activeDeck.subject}</span>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              {cards.length > 0 && (
-                <Button onClick={startStudy} variant="secondary" className="gap-2">
-                  <Sparkles className="h-4 w-4" />
-                  <span className="hidden sm:inline">Study</span>
-                </Button>
-              )}
-              <Button onClick={() => setShowNewCard((v) => !v)} className="gap-2">
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Add card</span>
-                <span className="sm:hidden">Add</span>
-              </Button>
-            </div>
-          </div>
-        </header>
-
-        <main className="max-w-5xl mx-auto px-4 py-6 space-y-4">
-          {showNewCard && (
-            <form onSubmit={addCard} className="rounded-xl border border-border bg-card/70 backdrop-blur-md p-4 sm:p-5 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-primary" />
-                <h2 className="font-semibold" style={{ fontFamily: "var(--font-display)" }}>New card</h2>
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Front (question / term)</label>
-                <Textarea value={cardFront} onChange={(e) => setCardFront(e.target.value)} placeholder="e.g. What is mitosis?" rows={2} required autoFocus />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Back (answer / definition)</label>
-                <Textarea value={cardBack} onChange={(e) => setCardBack(e.target.value)} placeholder="e.g. Cell division that produces two identical daughter cells." rows={2} required />
-              </div>
-              <div className="flex justify-end gap-2 pt-1">
-                <Button type="button" variant="ghost" onClick={() => setShowNewCard(false)}>Cancel</Button>
-                <Button type="submit" disabled={savingCard || !cardFront.trim() || !cardBack.trim()}>
-                  {savingCard ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add card"}
-                </Button>
-              </div>
-            </form>
-          )}
-
-          {loadingCards ? (
-            <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-          ) : cards.length === 0 ? (
-            <div className="text-center py-16 space-y-3">
-              <BookOpen className="mx-auto h-10 w-10 text-muted-foreground/40" />
-              <h2 className="text-lg font-semibold">No cards yet</h2>
-              <p className="text-sm text-muted-foreground">Add your first card to start studying.</p>
-              <Button onClick={() => setShowNewCard(true)} className="gap-2 mt-2"><Plus className="h-4 w-4" /> Add card</Button>
-            </div>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {cards.map((card) => (
-                <div key={card.id} className="group glass rounded-xl p-4 space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Front</p>
-                    <button onClick={() => setDeleteCardConfirm(card)}
-                      className="shrink-0 rounded-md p-1 text-muted-foreground opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:text-destructive transition">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                  <p className="text-sm font-medium">{card.front}</p>
-                  <hr className="border-border" />
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Back</p>
-                  <p className="text-sm text-muted-foreground">{card.back}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </main>
-
-        <Dialog open={!!deleteCardConfirm} onOpenChange={(open) => !open && setDeleteCardConfirm(null)}>
-          <DialogContent className="max-w-sm">
-            <DialogHeader>
-              <DialogTitle>Delete card?</DialogTitle>
-              <DialogDescription>This card will be permanently removed from the deck.</DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="gap-2">
-              <Button variant="ghost" onClick={() => setDeleteCardConfirm(null)}>Cancel</Button>
-              <Button variant="destructive" onClick={confirmDeleteCard}>Delete</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-    );
-  }
-
-  // ── Study mode ─────────────────────────────────────────────────────────────
-  if (view === "study" || (view as string) === "study-done") {
-    const isDone = (view as string) === "study-done";
-    const current = cards[studyIndex];
-    const progress = isDone ? cards.length : studyIndex;
-
-    return (
-      <div className="min-h-screen relative flex flex-col">
-        <div aria-hidden className="pointer-events-none fixed inset-0 -z-10"
-          style={{ backgroundImage: "var(--gradient-aurora)" }} />
-
-        <header className="sticky top-0 z-30 backdrop-blur-md border-b border-border bg-background/60">
-          <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-            <button onClick={() => { setView("deck"); setFlipped(false); }}
-              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition">
-              <ChevronLeft className="h-4 w-4" />
-              Back to deck
-            </button>
-            <span className="text-sm text-muted-foreground">{progress} / {cards.length}</span>
-          </div>
-          {/* Progress bar */}
-          <div className="h-1 bg-muted">
-            <div className="h-full bg-primary transition-all duration-300"
-              style={{ width: `${(progress / cards.length) * 100}%` }} />
-          </div>
-        </header>
-
-        <main className="flex flex-1 flex-col items-center justify-center px-4 py-8">
-          {isDone ? (
-            <div className="w-full max-w-md text-center space-y-6">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent glow">
-                <Sparkles className="h-7 w-7 text-primary-foreground" />
-              </div>
-              <h2 className="text-2xl font-bold">Session complete!</h2>
-              <div className="flex justify-center gap-6 text-sm">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-green-500">{known.size}</p>
-                  <p className="text-muted-foreground">Knew it</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-red-500">{unknown.size}</p>
-                  <p className="text-muted-foreground">Still learning</p>
-                </div>
-              </div>
-              <div className="flex gap-3 justify-center">
-                <Button variant="secondary" onClick={startStudy} className="gap-2">
-                  <RotateCcw className="h-4 w-4" /> Study again
-                </Button>
-                <Button onClick={() => setView("deck")} className="gap-2">
-                  <ChevronLeft className="h-4 w-4" /> Back to deck
-                </Button>
-              </div>
-            </div>
-          ) : current ? (
-            <div className="w-full max-w-lg space-y-6">
-              {/* Card flip */}
-              <div
-                onClick={() => setFlipped((v) => !v)}
-                className="glass rounded-2xl p-8 min-h-52 flex flex-col items-center justify-center text-center cursor-pointer select-none hover:-translate-y-0.5 transition"
+              <span
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-primary-foreground shrink-0"
+                style={{ background: "var(--gradient-primary)", boxShadow: "var(--shadow-glow)" }}
               >
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 mb-4">
-                  {flipped ? "Back" : "Front — tap to reveal"}
-                </p>
-                <p className="text-lg font-medium leading-relaxed">
-                  {flipped ? current.back : current.front}
-                </p>
+                <Layers className="h-4 w-4" />
+              </span>
+              <div className="min-w-0">
+                <h1 className="text-base font-semibold leading-none truncate" style={{ fontFamily: "var(--font-display)" }}>
+                  Flashcards
+                </h1>
+                <p className="text-xs text-muted-foreground mt-0.5 truncate">AI Q&amp;A → your library</p>
               </div>
-
-              {flipped ? (
-                <div className="flex gap-3">
-                  <Button
-                    variant="outline"
-                    className="flex-1 gap-2 border-red-400/40 text-red-500 hover:bg-red-500/10 hover:text-red-500"
-                    onClick={() => studyNext(false)}
-                  >
-                    <X className="h-4 w-4" /> Still learning
-                  </Button>
-                  <Button
-                    className="flex-1 gap-2 bg-green-600 hover:bg-green-700 text-white"
-                    onClick={() => studyNext(true)}
-                  >
-                    <Check className="h-4 w-4" /> Knew it
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex gap-3">
-                  <Button variant="secondary" className="flex-1" onClick={() => setFlipped(true)}>
-                    Reveal answer
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => { setStudyIndex((i) => Math.max(0, i - 1)); setFlipped(false); }} disabled={studyIndex === 0}>
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => { setStudyIndex((i) => Math.min(cards.length - 1, i + 1)); setFlipped(false); }} disabled={studyIndex === cards.length - 1}>
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-
-              <p className="text-center text-xs text-muted-foreground">
-                Card {studyIndex + 1} of {cards.length}
-              </p>
             </div>
-          ) : null}
-        </main>
-      </div>
-    );
-  }
+          </div>
+          <Link
+            to="/planner"
+            className="text-xs font-medium text-muted-foreground hover:text-foreground transition shrink-0"
+          >
+            Study planner
+          </Link>
+        </div>
+      </header>
 
-  return null;
+      <main className="max-w-6xl mx-auto px-4 py-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
+        {/* Generator + chat */}
+        <div className="space-y-4">
+          <div className="rounded-xl border border-border bg-card/70 backdrop-blur-md p-4 sm:p-5 space-y-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <h2 className="font-semibold" style={{ fontFamily: "var(--font-display)" }}>
+                Generate from a topic
+              </h2>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Set a topic label (used as the deck title), chat with the AI to narrow or extend what you want, then send
+              to generate cards.
+            </p>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Deck topic / title</label>
+              <Input
+                value={topicSeed}
+                onChange={(e) => setTopicSeed(e.target.value)}
+                placeholder="e.g. Photosynthesis, AP World — Unit 4, quadratic equations"
+                className="bg-background/50"
+              />
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card/70 backdrop-blur-md flex flex-col min-h-[420px] max-h-[min(70vh,560px)]">
+            <div className="border-b border-border px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Chat with the tutor
+            </div>
+            <ScrollArea className="flex-1 px-3">
+              <ul className="space-y-3 py-4 pr-2">
+                {messages.length === 0 && (
+                  <li className="text-sm text-muted-foreground text-center py-8">
+                    Describe what you want to study. Example: “Cellular respiration — focus on Krebs vs electron
+                    transport.”
+                  </li>
+                )}
+                {messages.map((m, i) => (
+                  <li
+                    key={i}
+                    className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className={`max-w-[92%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
+                        m.role === "user"
+                          ? "bg-primary text-primary-foreground rounded-br-md"
+                          : "bg-muted/80 text-foreground rounded-bl-md border border-border/60"
+                      }`}
+                    >
+                      <span className="whitespace-pre-wrap">{m.content}</span>
+                    </div>
+                  </li>
+                ))}
+                {loading && (
+                  <li className="flex justify-start">
+                    <div className="rounded-2xl rounded-bl-md border border-border/60 bg-muted/50 px-3 py-2 text-sm flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Generating flashcards…
+                    </div>
+                  </li>
+                )}
+              </ul>
+            </ScrollArea>
+            <form onSubmit={handleSend} className="border-t border-border p-3 flex gap-2">
+              <Input
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="Message the AI about your topic…"
+                className="bg-background/50"
+                disabled={loading}
+              />
+              <Button type="submit" disabled={loading || !draft.trim()} className="shrink-0 gap-1">
+                <Send className="h-4 w-4" />
+                Send
+              </Button>
+            </form>
+          </div>
+
+          {preview && preview.length > 0 && (
+            <div className="rounded-xl border border-border bg-card/70 backdrop-blur-md p-4 sm:p-5 space-y-4 animate-in fade-in duration-200">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="font-semibold flex items-center gap-2" style={{ fontFamily: "var(--font-display)" }}>
+                  <Layers className="h-4 w-4 text-primary" />
+                  Preview ({preview.length} cards)
+                </h3>
+                <Button onClick={saveDeck} disabled={saving} className="gap-2">
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookmarkPlus className="h-4 w-4" />}
+                  Save to library
+                </Button>
+              </div>
+              <ScrollArea className="h-[min(40vh,320px)] pr-2">
+                <ol className="space-y-3 list-decimal list-inside text-sm">
+                  {preview.map((c, i) => (
+                    <li key={i} className="rounded-lg border border-border/80 bg-background/40 p-3">
+                      <p className="font-medium text-foreground mb-1">{c.q}</p>
+                      <p className="text-muted-foreground pl-0">{c.a}</p>
+                    </li>
+                  ))}
+                </ol>
+              </ScrollArea>
+            </div>
+          )}
+        </div>
+
+        {/* Sidebar: decks + study */}
+        <div className="space-y-4 lg:sticky lg:top-20 self-start">
+          <div className="rounded-xl border border-border bg-card/70 backdrop-blur-md p-4">
+            <h3 className="text-sm font-semibold mb-3" style={{ fontFamily: "var(--font-display)" }}>
+              My decks
+            </h3>
+            {decksLoading ? (
+              <p className="text-sm text-muted-foreground flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading…
+              </p>
+            ) : decks.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No saved decks yet.</p>
+            ) : (
+              <ul className="space-y-1 max-h-[220px] overflow-y-auto pr-1">
+                {decks.map((d) => (
+                  <li key={d.id} className="flex items-center gap-1 group">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDeckId(d.id)}
+                      className={`flex-1 text-left text-sm rounded-md px-2 py-2 transition truncate ${
+                        selectedDeckId === d.id ? "bg-primary/15 text-foreground" : "hover:bg-secondary text-muted-foreground"
+                      }`}
+                    >
+                      {d.topic}
+                    </button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0 opacity-70 hover:opacity-100 hover:text-destructive"
+                      onClick={() => void deleteDeck(d.id)}
+                      title="Delete deck"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {selectedDeckId && studyCards.length > 0 && currentStudy && (
+            <div className="rounded-xl border border-border bg-card/70 backdrop-blur-md p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold" style={{ fontFamily: "var(--font-display)" }}>
+                  Study
+                </h3>
+                <span className="text-xs text-muted-foreground">
+                  {studyIdx + 1} / {studyCards.length}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAnswer((v) => !v)}
+                className="w-full min-h-[140px] rounded-lg border border-border bg-background/50 p-4 text-left text-sm transition hover:bg-background/80"
+              >
+                {!showAnswer ? (
+                  <p className="font-medium text-foreground">{currentStudy.question}</p>
+                ) : (
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Answer</p>
+                    <p className="text-foreground whitespace-pre-wrap">{currentStudy.answer}</p>
+                  </div>
+                )}
+              </button>
+              <p className="text-xs text-muted-foreground text-center">
+                {showAnswer ? "Tap card to see question" : "Tap card to reveal answer"}
+              </p>
+              <div className="flex items-center justify-between gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={studyIdx === 0}
+                  onClick={() => {
+                    setStudyIdx((i) => Math.max(0, i - 1));
+                    setShowAnswer(false);
+                  }}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => setShowAnswer((v) => !v)} className="gap-1">
+                  <RotateCw className="h-3.5 w-3.5" />
+                  Flip
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={studyIdx >= studyCards.length - 1}
+                  onClick={() => {
+                    setStudyIdx((i) => Math.min(studyCards.length - 1, i + 1));
+                    setShowAnswer(false);
+                  }}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
 }

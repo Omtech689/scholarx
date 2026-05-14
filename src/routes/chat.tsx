@@ -6,14 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import katex from "katex";
 import {
@@ -94,8 +86,6 @@ function ChatPage() {
   const [ttsSupported, setTtsSupported] = useState(false);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string } | null>(null);
-  const [deleteAllConfirm, setDeleteAllConfirm] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
@@ -299,44 +289,64 @@ function ChatPage() {
     setInput("");
   }
 
-  function deleteConversation(id: string, e: React.MouseEvent) {
+  async function deleteConversation(id: string, e: React.MouseEvent) {
     e.stopPropagation();
-    const convo = conversations.find((c) => c.id === id);
-    setDeleteConfirm({ id, title: convo?.title || "this chat" });
-  }
-
-  async function confirmDeleteConversation() {
-    if (!deleteConfirm) return;
-    const { id } = deleteConfirm;
-    setDeleteConfirm(null);
+    
+    // Find conversation title for better confirmation message
+    const convo = conversations.find(c => c.id === id);
+    const title = convo?.title || "this chat";
+    
+    if (!confirm(`Delete "${title}"? This will permanently remove all messages in this conversation.`)) return;
+    
     try {
       const { error } = await supabase.from("conversations").delete().eq("id", id);
-      if (error) { toast.error("Failed to delete conversation"); return; }
+      if (error) {
+        toast.error("Failed to delete conversation");
+        console.error("Delete error:", error);
+        return;
+      }
+      
       toast.success("Conversation deleted");
       if (activeId === id) newChat();
       await loadConversations();
-    } catch {
+    } catch (err) {
       toast.error("Something went wrong");
+      console.error("Delete error:", err);
     }
   }
 
-  function deleteAllConversations() {
-    if (conversations.length === 0) return;
-    setDeleteAllConfirm(true);
-  }
-
-  async function confirmDeleteAllConversations() {
-    setDeleteAllConfirm(false);
+  async function deleteAllConversations() {
+    if (conversations.length === 0) {
+      toast.error("No conversations to delete");
+      return;
+    }
+    
+    if (!confirm(`Delete all ${conversations.length} conversations? This will permanently remove all your chat history and cannot be undone.`)) return;
+    
     try {
       const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) { toast.error("Please sign in again"); return; }
-      const { error } = await supabase.from("conversations").delete().eq("user_id", userData.user.id);
-      if (error) { toast.error("Failed to delete conversations"); return; }
+      if (!userData.user) {
+        toast.error("Please sign in again");
+        return;
+      }
+      
+      const { error } = await supabase
+        .from("conversations")
+        .delete()
+        .eq("user_id", userData.user.id);
+        
+      if (error) {
+        toast.error("Failed to delete conversations");
+        console.error("Delete all error:", error);
+        return;
+      }
+      
       toast.success(`Deleted ${conversations.length} conversations`);
       newChat();
       await loadConversations();
-    } catch {
+    } catch (err) {
       toast.error("Something went wrong");
+      console.error("Delete all error:", err);
     }
   }
 
@@ -465,45 +475,33 @@ function ChatPage() {
               )}
               {conversations.map((c) => (
                 <li key={c.id}>
-                  <div className="group flex items-center gap-1">
-                    <button
-                      onClick={() => { selectConversation(c.id); setMobileMenuOpen(false); }}
-                      className={`flex-1 flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                        activeId === c.id
-                          ? "bg-primary/15 text-foreground"
-                          : "hover:bg-secondary text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      <MessageSquare className="h-3.5 w-3.5 shrink-0" />
-                      <span className="flex-1 truncate">{c.title}</span>
-                    </button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        setMobileMenuOpen(false);
-                        const convo = conversations.find((cv) => cv.id === c.id);
-                        setTimeout(() => setDeleteConfirm({ id: c.id, title: convo?.title || "this chat" }), 300);
-                      }}
-                      className="h-8 w-8 shrink-0 hover:text-destructive"
-                      title="Delete conversation"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
+                  <button
+                    onClick={() => { selectConversation(c.id); setMobileMenuOpen(false); }}
+                    className={`group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                      activeId === c.id
+                        ? "bg-primary/15 text-foreground"
+                        : "hover:bg-secondary text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+                    <span className="flex-1 truncate">{c.title}</span>
+                    <Trash2
+                      onClick={(e) => deleteConversation(c.id, e)}
+                      className="h-3.5 w-3.5 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                    />
+                  </button>
                 </li>
               ))}
             </ul>
           </ScrollArea>
-          <div className="border-t border-border px-3 py-3 space-y-1">
-            <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Tools</p>
+          <div className="border-t border-border px-3 py-3 space-y-2">
             <Link
               to="/planner"
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
             >
               <ListTodo className="h-4 w-4" />
-              Study Planner
+              Study planner
             </Link>
             <Link
               to="/flashcards"
@@ -513,27 +511,9 @@ function ChatPage() {
               <Layers className="h-4 w-4" />
               Flashcards
             </Link>
-            {conversations.length > 0 && (
-              <Button
-                onClick={() => { deleteAllConversations(); setMobileMenuOpen(false); }}
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Delete all chats
-              </Button>
-            )}
-            <div className="mt-1 flex items-center justify-between gap-2 rounded-md border-t border-border px-2 pt-2 text-sm">
-              <Link
-                to="/profile"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex min-w-0 items-center gap-2 text-muted-foreground hover:text-foreground transition truncate"
-              >
-                <User className="h-4 w-4 shrink-0" />
-                <span className="truncate">{displayName}</span>
-              </Link>
-              <Button variant="ghost" size="icon" onClick={logout} title="Sign out" className="shrink-0">
+            <div className="flex items-center justify-between gap-2 px-2 text-sm">
+              <span className="truncate text-muted-foreground">{displayName}</span>
+              <Button variant="ghost" size="icon" onClick={logout} title="Sign out">
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
@@ -595,7 +575,7 @@ function ChatPage() {
                     variant="ghost"
                     size="icon"
                     onClick={(e) => deleteConversation(c.id, e)}
-                    className="h-8 w-8 md:opacity-0 md:transition-opacity hover:text-destructive md:group-hover:opacity-100"
+                    className="h-8 w-8 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
                     title="Delete conversation"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -605,14 +585,13 @@ function ChatPage() {
             ))}
           </ul>
         </ScrollArea>
-        <div className="border-t border-border px-3 py-3 space-y-1">
-          <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Tools</p>
+        <div className="border-t border-border px-3 py-3 space-y-2">
           <Link
             to="/planner"
             className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
           >
             <ListTodo className="h-4 w-4" />
-            Study Planner
+            Study planner
           </Link>
           <Link
             to="/flashcards"
@@ -621,15 +600,16 @@ function ChatPage() {
             <Layers className="h-4 w-4" />
             Flashcards
           </Link>
-          <div className="mt-1 flex items-center justify-between gap-2 rounded-md border-t border-border px-2 pt-2 text-sm">
-            <Link
-              to="/profile"
-              className="flex min-w-0 items-center gap-2 text-muted-foreground hover:text-foreground transition truncate"
-            >
-              <User className="h-4 w-4 shrink-0" />
-              <span className="truncate">{displayName}</span>
-            </Link>
-            <Button variant="ghost" size="icon" onClick={logout} title="Sign out" className="shrink-0">
+          <Link
+            to="/profile"
+            className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+          >
+            <User className="h-4 w-4" />
+            Profile
+          </Link>
+          <div className="flex items-center justify-between gap-2 px-2 text-sm">
+            <span className="truncate text-muted-foreground">{displayName}</span>
+            <Button variant="ghost" size="icon" onClick={logout} title="Sign out">
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
@@ -756,38 +736,6 @@ function ChatPage() {
           </div>
         </div>
       </main>
-
-      {/* Delete single conversation dialog */}
-      <Dialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Delete conversation?</DialogTitle>
-            <DialogDescription>
-              "{deleteConfirm?.title}" will be permanently deleted.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2">
-            <Button variant="ghost" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={confirmDeleteConversation}>Delete</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete all conversations dialog */}
-      <Dialog open={deleteAllConfirm} onOpenChange={setDeleteAllConfirm}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Delete all conversations?</DialogTitle>
-            <DialogDescription>
-              All {conversations.length} conversation{conversations.length !== 1 ? "s" : ""} will be permanently deleted. This cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2">
-            <Button variant="ghost" onClick={() => setDeleteAllConfirm(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={confirmDeleteAllConversations}>Delete all</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
