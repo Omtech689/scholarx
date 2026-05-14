@@ -1,11 +1,9 @@
-import { createFileRoute, redirect, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import {
   Sparkles,
@@ -20,10 +18,6 @@ import {
   ListTodo,
   Flag,
   Layers,
-  LogOut,
-  User,
-  MessageSquare,
-  Menu,
 } from "lucide-react";
 
 type Priority = "low" | "medium" | "high";
@@ -62,13 +56,10 @@ export const Route = createFileRoute("/planner")({
 });
 
 function PlannerPage() {
-  const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
   const [filter, setFilter] = useState<"all" | "today" | "upcoming" | "overdue" | "done">("all");
-  const [displayName, setDisplayName] = useState<string>("");
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // form state
   const [title, setTitle] = useState("");
@@ -79,17 +70,6 @@ function PlannerPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      const { data: u } = await supabase.auth.getUser();
-      if (u.user) {
-        const { data: p } = await supabase
-          .from("profiles")
-          .select("display_name")
-          .eq("id", u.user.id)
-          .maybeSingle();
-        setDisplayName(p?.display_name ?? u.user.email?.split("@")[0] ?? "Student");
-      }
-    })();
     void load();
   }, []);
 
@@ -158,11 +138,6 @@ function PlannerPage() {
     }
   }
 
-  async function logout() {
-    await supabase.auth.signOut();
-    navigate({ to: "/" });
-  }
-
   async function removeTask(t: Task) {
     setTasks((cur) => cur.filter((x) => x.id !== t.id));
     const { error } = await supabase.from("study_tasks").delete().eq("id", t.id);
@@ -212,148 +187,40 @@ function PlannerPage() {
   }, [tasks, filter]);
 
   return (
-    <div className="flex h-screen w-full overflow-hidden">
-      <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-        <SheetContent side="left" className="w-80 p-0 flex flex-col">
-          <div className="flex items-center gap-2 px-5 py-5 font-display text-lg font-semibold">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent glow">
-              <Sparkles className="h-4 w-4 text-primary-foreground" />
-            </span>
-            ScholarX
-          </div>
-          <div className="px-3">
-            <Button onClick={() => setMobileMenuOpen(false)} className="w-full justify-start gap-2" variant="secondary">
-              <ArrowLeft className="h-4 w-4" /> Back
-            </Button>
-          </div>
-          <div className="mt-4 px-5 text-xs uppercase tracking-wider text-muted-foreground">Navigation</div>
-          <ScrollArea className="mt-2 flex-1 px-2">
-            <div className="space-y-1 pb-4">
-              <Link
-                to="/chat"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition"
-              >
-                <MessageSquare className="h-4 w-4" />
-                Chat
-              </Link>
-              <Link
-                to="/flashcards"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition"
-              >
-                <Layers className="h-4 w-4" />
-                Flashcards
-              </Link>
-              <Link
-                to="/planner"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground bg-primary/10"
-              >
-                <ListTodo className="h-4 w-4" />
-                Study planner
-              </Link>
-            </div>
-          </ScrollArea>
-          <div className="border-t border-border px-3 py-3 space-y-2">
-            <Link
-              to="/profile"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-            >
-              <User className="h-4 w-4" />
-              Profile
-            </Link>
-            <div className="flex items-center justify-between gap-2 px-2 text-sm">
-              <span className="truncate text-muted-foreground">{displayName}</span>
-              <Button variant="ghost" size="icon" onClick={logout} title="Sign out">
-                <LogOut className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
+    <div className="min-h-screen relative">
+      {/* ambient glow */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-10"
+        style={{ backgroundImage: "var(--gradient-aurora)" }}
+      />
 
-      <aside className="hidden w-80 shrink-0 flex-col border-r border-border bg-card/40 backdrop-blur md:flex">
-        <div className="flex items-center gap-2 px-5 py-5 font-display text-lg font-semibold">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent glow">
-            <Sparkles className="h-4 w-4 text-primary-foreground" />
-          </span>
-          ScholarX
-        </div>
-        <div className="px-3">
-          <Button onClick={() => navigate('/chat')} className="w-full justify-start gap-2" variant="secondary">
-            <Plus className="h-4 w-4" /> New chat
-          </Button>
-        </div>
-        <div className="mt-4 px-5 text-xs uppercase tracking-wider text-muted-foreground">Navigation</div>
-        <ScrollArea className="mt-2 flex-1 px-2">
-          <div className="space-y-1 pb-4">
+      {/* Header */}
+      <header className="sticky top-0 z-30 backdrop-blur-md border-b border-border bg-background/60">
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
             <Link
               to="/chat"
-              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition"
+              className="inline-flex items-center justify-center h-9 w-9 rounded-md hover:bg-accent hover:text-accent-foreground transition"
+              aria-label="Back to chat"
             >
-              <MessageSquare className="h-4 w-4" />
-              Chat
+              <ArrowLeft className="h-4 w-4" />
             </Link>
-            <Link
-              to="/flashcards"
-              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition"
-            >
-              <Layers className="h-4 w-4" />
-              Flashcards
-            </Link>
-            <Link
-              to="/planner"
-              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground bg-primary/10"
-            >
-              <ListTodo className="h-4 w-4" />
-              Study planner
-            </Link>
-          </div>
-        </ScrollArea>
-        <div className="border-t border-border px-3 py-3 space-y-2">
-          <Link
-            to="/profile"
-            className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-          >
-            <User className="h-4 w-4" />
-            Profile
-          </Link>
-          <div className="flex items-center justify-between gap-2 px-2 text-sm">
-            <span className="truncate text-muted-foreground">{displayName}</span>
-            <Button variant="ghost" size="icon" onClick={logout} title="Sign out">
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </aside>
-
-      <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,_rgba(132,110,255,0.12),_transparent_20%),radial-gradient(circle_at_bottom_right,_rgba(45,190,255,0.09),_transparent_16%)]" />
-        <header className="flex items-center gap-2 border-b border-border bg-background/60 px-4 py-3 backdrop-blur md:px-6">
-          <button
-            className="md:hidden shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-secondary"
-            onClick={() => setMobileMenuOpen(true)}
-            aria-label="Open menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-          <div className="flex items-center gap-2 min-w-0">
-            <span
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-primary-foreground shrink-0"
-              style={{ background: "var(--gradient-primary)", boxShadow: "var(--shadow-glow)" }}
-            >
-              <ListTodo className="h-4 w-4" />
-            </span>
-            <div className="min-w-0">
-              <h1 className="text-base font-semibold leading-none truncate" style={{ fontFamily: "var(--font-display)" }}>
-                Study Planner
-              </h1>
-              <p className="text-xs text-muted-foreground mt-0.5">Plan it. Crush it.</p>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-primary-foreground"
+                    style={{ background: "var(--gradient-primary)", boxShadow: "var(--shadow-glow)" }}>
+                <ListTodo className="h-4 w-4" />
+              </span>
+              <div>
+                <h1 className="text-base font-semibold leading-none" style={{ fontFamily: "var(--font-display)" }}>
+                  Study Planner
+                </h1>
+                <p className="text-xs text-muted-foreground mt-0.5">Plan it. Crush it.</p>
+              </div>
             </div>
           </div>
-          <div className="ml-auto flex items-center gap-2 sm:gap-3">
+
+          <div className="flex items-center gap-2 sm:gap-3">
             <Button onClick={() => setShowNew((v) => !v)} className="gap-2">
               <Plus className="h-4 w-4" />
               New task
@@ -366,10 +233,10 @@ function PlannerPage() {
               Flashcards
             </Link>
           </div>
-        </header>
+        </div>
+      </header>
 
-        <div className="flex-1 overflow-y-auto px-4 py-6 md:px-6">
-          <div className="max-w-5xl mx-auto space-y-6">
+      <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <StatCard icon={<CalendarDays className="h-4 w-4" />} label="Today" value={counts.today} tint="var(--primary)" />
@@ -481,9 +348,8 @@ function PlannerPage() {
             ))}
           </ul>
         )}
-          </div>
-        </main>
-      </div>
+      </main>
+    </div>
   );
 }
 
