@@ -14,8 +14,10 @@ import {
   CalendarDays,
   Flame,
   Clock,
-  ArrowLeft,
   ListTodo,
+  Layers,
+  MessageSquare,
+  User,
   Flag,
   Layers,
 } from "lucide-react";
@@ -198,39 +200,43 @@ function PlannerPage() {
       {/* Header */}
       <header className="sticky top-0 z-30 backdrop-blur-md border-b border-border bg-background/60">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+          {/* Feature nav */}
+          <div className="flex items-center gap-1 overflow-x-auto">
             <Link
               to="/chat"
-              className="inline-flex items-center justify-center h-9 w-9 rounded-md hover:bg-accent hover:text-accent-foreground transition"
-              aria-label="Back to chat"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
             >
-              <ArrowLeft className="h-4 w-4" />
+              <MessageSquare className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Chat</span>
             </Link>
-            <div className="flex items-center gap-2">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-primary-foreground"
-                    style={{ background: "var(--gradient-primary)", boxShadow: "var(--shadow-glow)" }}>
-                <ListTodo className="h-4 w-4" />
-              </span>
-              <div>
-                <h1 className="text-base font-semibold leading-none" style={{ fontFamily: "var(--font-display)" }}>
-                  Study Planner
-                </h1>
-                <p className="text-xs text-muted-foreground mt-0.5">Plan it. Crush it.</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-3">
-            <Button onClick={() => setShowNew((v) => !v)} className="gap-2">
-              <Plus className="h-4 w-4" />
-              New task
-            </Button>
+            <Link
+              to="/planner"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition bg-primary text-primary-foreground"
+            >
+              <ListTodo className="h-3.5 w-3.5" />
+              <span>Planner</span>
+            </Link>
             <Link
               to="/flashcards"
-              className="hidden sm:inline-flex text-sm font-medium text-muted-foreground hover:text-foreground transition items-center gap-1.5 px-2"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
             >
-              <Layers className="h-4 w-4" />
-              Flashcards
+              <Layers className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Flashcards</span>
+            </Link>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <Button onClick={() => setShowNew((v) => !v)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">New task</span>
+              <span className="sm:hidden">New</span>
+            </Button>
+            <Link
+              to="/profile"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+              title="Profile"
+            >
+              <User className="h-4 w-4" />
             </Link>
           </div>
         </div>

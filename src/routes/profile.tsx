@@ -14,6 +14,7 @@ import {
   LogOut,
   CheckCircle,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
 
 export const Route = createFileRoute("/profile")({
@@ -180,17 +181,30 @@ function ProfilePage() {
 
     setEmailLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({
-        email: newEmail,
-      });
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user?.email) {
+        toast.error("User session expired. Please sign in again.");
+        return;
+      }
 
+      // Verify current password before allowing email change
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: userData.user.email,
+        password: emailPassword,
+      });
+      if (signInError) {
+        toast.error("Current password is incorrect");
+        return;
+      }
+
+      const { error } = await supabase.auth.updateUser({ email: newEmail });
       if (error) {
         toast.error(error.message || "Failed to update email");
         console.error(error);
         return;
       }
 
-      toast.success("Email update initiated. Please check your inbox to confirm.");
+      toast.success("Confirmation sent! Check both your current and new email inbox.");
       setNewEmail("");
       setEmailPassword("");
     } catch (err) {
@@ -228,7 +242,7 @@ function ProfilePage() {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+          <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
           <p className="mt-4 text-muted-foreground">Loading profile...</p>
         </div>
       </div>
@@ -237,7 +251,7 @@ function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto max-w-4xl px-4 py-8">
+      <div className="container mx-auto max-w-4xl px-4 py-6 sm:py-8">
         {/* Header */}
         <div className="mb-8 flex items-center gap-4">
           <Button
@@ -254,10 +268,10 @@ function ProfilePage() {
         <div className="grid gap-8 lg:grid-cols-3">
           {/* Left sidebar - Navigation */}
           <div className="lg:col-span-1">
-            <div className="glass rounded-xl p-6 space-y-2">
+            <div className="glass rounded-xl p-3 sm:p-6 flex lg:flex-col gap-1 sm:gap-2 overflow-x-auto lg:overflow-visible">
               <button
                 onClick={() => setActiveTab("profile")}
-                className={`w-full flex items-center gap-3 rounded-lg px-4 py-3 text-left transition-colors ${
+                className={`shrink-0 lg:w-full flex items-center gap-3 rounded-lg px-4 py-2.5 sm:py-3 text-left transition-colors ${
                   activeTab === "profile"
                     ? "bg-primary text-primary-foreground"
                     : "hover:bg-secondary text-muted-foreground hover:text-foreground"
@@ -268,7 +282,7 @@ function ProfilePage() {
               </button>
               <button
                 onClick={() => setActiveTab("security")}
-                className={`w-full flex items-center gap-3 rounded-lg px-4 py-3 text-left transition-colors ${
+                className={`shrink-0 lg:w-full flex items-center gap-3 rounded-lg px-4 py-2.5 sm:py-3 text-left transition-colors ${
                   activeTab === "security"
                     ? "bg-primary text-primary-foreground"
                     : "hover:bg-secondary text-muted-foreground hover:text-foreground"
@@ -280,7 +294,7 @@ function ProfilePage() {
               <Button
                 variant="ghost"
                 onClick={logout}
-                className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive"
+                className="shrink-0 lg:w-full justify-start gap-3 text-muted-foreground hover:text-destructive"
               >
                 <LogOut className="h-4 w-4" />
                 Sign out
@@ -291,7 +305,7 @@ function ProfilePage() {
           {/* Main content */}
           <div className="lg:col-span-2">
             {activeTab === "profile" && (
-              <div className="glass rounded-xl p-6 space-y-6">
+              <div className="glass rounded-xl p-4 sm:p-6 space-y-6">
                 <div>
                   <h2 className="mb-4 text-xl font-semibold flex items-center gap-2">
                     <User className="h-5 w-5" />
@@ -330,7 +344,7 @@ function ProfilePage() {
                     className="w-full mt-6"
                   >
                     {loading ? (
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <CheckCircle className="h-4 w-4" />
                     )}
@@ -343,7 +357,7 @@ function ProfilePage() {
             {activeTab === "security" && (
               <div className="space-y-6">
                 {/* Password Change */}
-                <div className="glass rounded-xl p-6">
+                <div className="glass rounded-xl p-4 sm:p-6">
                   <h2 className="mb-4 text-xl font-semibold flex items-center gap-2">
                     <Lock className="h-5 w-5" />
                     Change Password
@@ -393,7 +407,7 @@ function ProfilePage() {
                     className="w-full mt-6"
                   >
                     {passwordLoading ? (
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <CheckCircle className="h-4 w-4" />
                     )}
@@ -402,7 +416,7 @@ function ProfilePage() {
                 </div>
 
                 {/* Email Change */}
-                <div className="glass rounded-xl p-6">
+                <div className="glass rounded-xl p-4 sm:p-6">
                   <h2 className="mb-4 text-xl font-semibold flex items-center gap-2">
                     <Mail className="h-5 w-5" />
                     Change Email
@@ -440,7 +454,7 @@ function ProfilePage() {
                     className="w-full mt-6"
                   >
                     {emailLoading ? (
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <CheckCircle className="h-4 w-4" />
                     )}
@@ -449,7 +463,7 @@ function ProfilePage() {
                 </div>
 
                 {/* 2FA/MFA */}
-                <div className="glass rounded-xl p-6">
+                <div className="glass rounded-xl p-4 sm:p-6">
                   <h2 className="mb-4 text-xl font-semibold flex items-center gap-2">
                     <Shield className="h-5 w-5" />
                     Two-Factor Authentication
@@ -464,17 +478,10 @@ function ProfilePage() {
                         </p>
                       </div>
                       <Button
-                        variant={twoFactorEnabled ? "destructive" : "default"}
-                        onClick={toggleTwoFactor}
-                        disabled={twoFactorLoading}
+                        variant="outline"
+                        disabled
                       >
-                        {twoFactorLoading ? (
-                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                        ) : twoFactorEnabled ? (
-                          "Disable"
-                        ) : (
-                          "Enable"
-                        )}
+                        Coming Soon
                       </Button>
                     </div>
                     
