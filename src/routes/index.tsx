@@ -18,6 +18,50 @@ export const Route = createFileRoute("/")({
         content:
           "AI tutor with voice mode, math rendering, and a built-in study planner. Learn smarter, not shadier.",
       },
+      { property: "og:url", content: "https://scholarx.space/" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:title", content: "ScholarX — Your AI Study Companion" },
+      {
+        name: "twitter:description",
+        content: "AI tutor with voice mode, math rendering, and a built-in study planner. Learn smarter, not shadier.",
+      },
+    ],
+    links: [{ rel: "canonical", href: "https://scholarx.space/" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "WebSite",
+              "@id": "https://scholarx.space/#website",
+              url: "https://scholarx.space",
+              name: "ScholarX",
+              description:
+                "AI homework helper that explains Math, Science, English and History — built to help students learn, not cheat.",
+            },
+            {
+              "@type": "WebApplication",
+              "@id": "https://scholarx.space/#app",
+              name: "ScholarX",
+              url: "https://scholarx.space",
+              applicationCategory: "EducationApplication",
+              operatingSystem: "Web",
+              description:
+                "AI tutor + study planner with voice mode, math rendering, flashcards, and practice tests.",
+              offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+            },
+            {
+              "@type": "Organization",
+              "@id": "https://scholarx.space/#org",
+              name: "ScholarX",
+              url: "https://scholarx.space",
+              logo: "https://scholarx.space/logo-favicon.png",
+            },
+          ],
+        }),
+      },
     ],
   }),
   beforeLoad: async () => {

@@ -57,6 +57,7 @@ export const Route = createFileRoute("/tests")({
     meta: [
       { title: "Test Creator — ScholarX" },
       { name: "description", content: "Generate interactive AI practice tests and answer them inside ScholarX." },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   errorComponent: RouteError,

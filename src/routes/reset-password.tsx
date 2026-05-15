@@ -8,6 +8,14 @@ import { toast } from "sonner";
 import { Sparkles, Loader2, ArrowLeft, CheckCircle } from "lucide-react";
 
 export const Route = createFileRoute("/reset-password")({
+  head: () => ({
+    meta: [
+      { title: "Reset Password — ScholarX" },
+      { name: "description", content: "Set a new password for your ScholarX account." },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+    links: [{ rel: "canonical", href: "https://scholarx.space/reset-password" }],
+  }),
   component: ResetPasswordPage,
 });
 

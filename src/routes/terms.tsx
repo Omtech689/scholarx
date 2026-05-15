@@ -5,7 +5,11 @@ export const Route = createFileRoute("/terms")({
     meta: [
       { title: "Terms of Service — ScholarX" },
       { name: "description", content: "The terms and conditions for using ScholarX." },
+      { property: "og:title", content: "Terms of Service — ScholarX" },
+      { property: "og:description", content: "The terms and conditions for using ScholarX." },
+      { property: "og:url", content: "https://scholarx.space/terms" },
     ],
+    links: [{ rel: "canonical", href: "https://scholarx.space/terms" }],
   }),
   component: TermsPage,
 });

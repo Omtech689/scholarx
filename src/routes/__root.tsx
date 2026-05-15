@@ -48,9 +48,32 @@ export const Route = createRootRoute({
         content:
           "ScholarX is an AI homework helper that explains Math, Science, English and History concepts to help students learn — not cheat.",
       },
+      // Global OG fallbacks (per-route head() overrides these)
+      { property: "og:site_name", content: "ScholarX" },
+      { property: "og:type", content: "website" },
+      { property: "og:image", content: "https://scholarx.space/og-image.png" },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:image:alt", content: "ScholarX — AI Homework Helper" },
+      // Twitter card defaults
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:site", content: "@scholarxapp" },
+      { name: "twitter:image", content: "https://scholarx.space/og-image.png" },
+      // Baseline Content-Security-Policy (also set as HTTP header at the Cloudflare level)
       {
-        name: "google-fonts",
-        content: "preconnect",
+        httpEquiv: "Content-Security-Policy",
+        content: [
+          "default-src 'self'",
+          "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
+          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+          "font-src 'self' data: https://fonts.gstatic.com",
+          "img-src 'self' data: blob: https:",
+          "connect-src 'self' https://nozxlljeuswjxqoffrti.supabase.co wss://nozxlljeuswjxqoffrti.supabase.co https://generativelanguage.googleapis.com",
+          "frame-src https://challenges.cloudflare.com",
+          "frame-ancestors 'none'",
+          "object-src 'none'",
+          "base-uri 'self'",
+        ].join("; "),
       },
     ],
     links: [

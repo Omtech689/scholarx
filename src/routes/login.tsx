@@ -8,6 +8,22 @@ import { toast } from "sonner";
 import { Sparkles, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/login")({
+  head: () => ({
+    meta: [
+      { title: "Sign In — ScholarX" },
+      {
+        name: "description",
+        content: "Sign in or create a free ScholarX account to access your AI tutor, flashcards, and study planner.",
+      },
+      { property: "og:title", content: "Sign In — ScholarX" },
+      {
+        property: "og:description",
+        content: "Sign in or create a free ScholarX account to access your AI tutor, flashcards, and study planner.",
+      },
+      { property: "og:url", content: "https://scholarx.space/login" },
+    ],
+    links: [{ rel: "canonical", href: "https://scholarx.space/login" }],
+  }),
   validateSearch: (s: Record<string, unknown>) => ({
     mode: (s.mode as string) === "signup" ? "signup" : "signin",
   }),

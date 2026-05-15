@@ -34,6 +34,7 @@ export const Route = createFileRoute("/progress")({
     meta: [
       { title: "Progress — ScholarX" },
       { name: "description", content: "Track your study progress across tasks, flashcards, and tests." },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   beforeLoad: async () => {

@@ -56,6 +56,7 @@ export const Route = createFileRoute("/planner")({
     meta: [
       { title: "Study Planner — ScholarX" },
       { name: "description", content: "Track assignments, deadlines and priorities. Your personal study planner." },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   beforeLoad: async () => {

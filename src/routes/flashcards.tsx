@@ -82,6 +82,7 @@ export const Route = createFileRoute("/flashcards")({
     meta: [
       { title: "Flashcards — ScholarX" },
       { name: "description", content: "Generate AI flashcards from any topic and save them to your library." },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   beforeLoad: async () => {

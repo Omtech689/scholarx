@@ -86,6 +86,13 @@ const SUBJECTS: { id: Subject; label: string; icon: typeof Calculator; color: st
 ];
 
 export const Route = createFileRoute("/chat")({
+  head: () => ({
+    meta: [
+      { title: "AI Tutor — ScholarX" },
+      { name: "description", content: "Ask your AI tutor anything — Math, Science, English, or History. Instant explanations with full math rendering." },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+  }),
   beforeLoad: async () => {
     if (typeof window === "undefined") return;
     const { data } = await supabase.auth.getSession();

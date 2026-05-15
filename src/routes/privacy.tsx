@@ -5,7 +5,11 @@ export const Route = createFileRoute("/privacy")({
     meta: [
       { title: "Privacy Policy — ScholarX" },
       { name: "description", content: "How ScholarX collects, uses, and protects your personal information." },
+      { property: "og:title", content: "Privacy Policy — ScholarX" },
+      { property: "og:description", content: "How ScholarX collects, uses, and protects your personal information." },
+      { property: "og:url", content: "https://scholarx.space/privacy" },
     ],
+    links: [{ rel: "canonical", href: "https://scholarx.space/privacy" }],
   }),
   component: PrivacyPage,
 });

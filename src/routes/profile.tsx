@@ -18,6 +18,13 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/profile")({
+  head: () => ({
+    meta: [
+      { title: "Profile — ScholarX" },
+      { name: "description", content: "Manage your ScholarX account settings, email, password, and two-factor authentication." },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+  }),
   beforeLoad: async () => {
     if (typeof window === "undefined") return;
     const { data } = await supabase.auth.getSession();
