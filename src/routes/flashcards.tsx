@@ -564,6 +564,14 @@ function FlashcardsPage() {
               Study planner
             </Link>
             <Link
+              to="/tests"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+            >
+              <BookOpen className="h-4 w-4" />
+              Test creator
+            </Link>
+            <Link
               to="/chat"
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
@@ -598,7 +606,7 @@ function FlashcardsPage() {
           ScholarX
         </div>
         <div className="px-3">
-          <Button className="w-full justify-start gap-2" variant="secondary">
+          <Button onClick={() => navigate({ to: "/chat" })} className="w-full justify-start gap-2" variant="secondary">
             <Plus className="h-4 w-4" /> New chat
           </Button>
         </div>
@@ -647,6 +655,13 @@ function FlashcardsPage() {
           >
             <ListTodo className="h-4 w-4" />
             Study planner
+          </Link>
+          <Link
+            to="/tests"
+            className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+          >
+            <BookOpen className="h-4 w-4" />
+            Test creator
           </Link>
           <Link
             to="/chat"

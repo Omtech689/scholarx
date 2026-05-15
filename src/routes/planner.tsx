@@ -217,7 +217,6 @@ function PlannerPage() {
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
-      {/* Mobile drawer */}
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <SheetContent side="left" className="w-80 p-0 flex flex-col">
           <div className="flex items-center gap-2 px-5 py-5 font-display text-lg font-semibold">
@@ -225,6 +224,18 @@ function PlannerPage() {
               <Sparkles className="h-4 w-4 text-primary-foreground" />
             </span>
             ScholarX
+          </div>
+          <div className="px-3">
+            <Button
+              onClick={() => {
+                setShowNew((value) => !value);
+                setMobileMenuOpen(false);
+              }}
+              className="w-full justify-start gap-2"
+              variant="secondary"
+            >
+              <Plus className="h-4 w-4" /> New task
+            </Button>
           </div>
           <div className="mt-auto border-t border-border px-3 py-3 space-y-2">
             <Link

@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,7 @@ function ProfilePage() {
   // 2FA states
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [twoFactorLoading, setTwoFactorLoading] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadProfile();
@@ -221,7 +222,7 @@ function ProfilePage() {
 
   async function logout() {
     await supabase.auth.signOut();
-    window.location.href = "/";
+    navigate({ to: "/" });
   }
 
   if (loading) {
