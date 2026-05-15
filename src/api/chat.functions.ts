@@ -46,69 +46,36 @@ Subject focus: ${data.subject.toUpperCase()}
 ${SUBJECT_GUIDANCE[data.subject]}`;
 
     try {
-      let content: string;
-      if (data.image) {
-        // Use Gemma for image analysis
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b:generateContent?key=${GEMINI_API_KEY}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              contents: [{
-                parts: [
-                  { text: systemPrompt + "\n\n" + data.messages.map(m => `${m.role}: ${m.content}`).join('\n') + "\nAssistant: " },
-                  { inline_data: { mime_type: "image/jpeg", data: data.image } }
-                ]
-              }]
-            }),
+      // Use Gemini 3.1 Flash Lite for all conversations
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-        );
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { text: systemPrompt + "\n\n" + data.messages.map(m => `${m.role}: ${m.content}`).join('\n') + "\nAssistant: " },
+                ...(data.image ? [{ inline_data: { mime_type: "image/jpeg", data: data.image } }] : [])
+              ]
+            }]
+          }),
+        },
+      );
 
-        if (res.status === 429) {
-          return { content: "", error: "Too many requests right now. Please try again in a moment." };
-        }
-        if (!res.ok) {
-          const text = await res.text();
-          console.error("Gemini API error", res.status, text);
-          return { content: "", error: "The AI tutor couldn't respond. Please try again." };
-        }
-
-        const json = await res.json();
-        content = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-      } else {
-        // Use Gemini 3.1 Flash Lite for text conversations
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              contents: [{
-                parts: [
-                  { text: systemPrompt + "\n\n" + data.messages.map(m => `${m.role}: ${m.content}`).join('\n') + "\nAssistant: " }
-                ]
-              }]
-            }),
-          },
-        );
-
-        if (res.status === 429) {
-          return { content: "", error: "Too many requests right now. Please try again in a moment." };
-        }
-        if (!res.ok) {
-          const text = await res.text();
-          console.error("Gemini API error", res.status, text);
-          return { content: "", error: "The AI tutor couldn't respond. Please try again." };
-        }
-
-        const json = await res.json();
-        content = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+      if (res.status === 429) {
+        return { content: "", error: "Too many requests right now. Please try again in a moment." };
       }
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("Gemini API error", res.status, text);
+        return { content: "", error: "The AI tutor couldn't respond. Please try again." };
+      }
+
+      const json = await res.json();
+      const content: string = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
       return { content, error: null as string | null };
     } catch (e) {
       console.error("askHomework error", e);
