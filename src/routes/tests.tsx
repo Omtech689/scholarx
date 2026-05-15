@@ -61,7 +61,7 @@ export const Route = createFileRoute("/tests")({
   beforeLoad: async () => {
     if (typeof window === "undefined") return;
     const { data } = await supabase.auth.getSession();
-    if (!data.session) throw redirect({ to: "/login", search: { mode: "signin" } });
+    if (!data.session) throw redirect({ to: "/login?mode=signin" });
   },
   component: TestCreatorPage,
 });
@@ -82,9 +82,9 @@ function TestCreatorPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [displayName, setDisplayName] = useState<string>("");
 
-  const savedTestsQuery = useQuery<SavedTest[]>(
-    ["tests", userId],
-    async () => {
+  const savedTestsQuery = useQuery<SavedTest[]>({
+    queryKey: ["tests", userId],
+    queryFn: async () => {
       const { data, error } = await supabase
         .from("tests")
         .select("id, topic, mode, questions, answers, created_at")
@@ -104,11 +104,9 @@ function TestCreatorPage() {
         answers: (row.answers as Record<string, string>) ?? {},
       }));
     },
-    {
-      enabled: !!userId,
-      staleTime: 1000 * 60 * 2,
-    },
-  );
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 2,
+  });
 
   useEffect(() => {
     (async () => {

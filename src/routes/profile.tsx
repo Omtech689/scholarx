@@ -20,7 +20,7 @@ export const Route = createFileRoute("/profile")({
   beforeLoad: async () => {
     if (typeof window === "undefined") return;
     const { data } = await supabase.auth.getSession();
-    if (!data.session) throw redirect({ to: "/login", search: { mode: "signin" } });
+    if (!data.session) throw redirect({ to: "/login?mode=signin" });
   },
   component: ProfilePage,
 });

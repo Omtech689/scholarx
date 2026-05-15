@@ -45,7 +45,7 @@ export const Route = createFileRoute("/flashcards")({
   beforeLoad: async () => {
     if (typeof window === "undefined") return;
     const { data } = await supabase.auth.getSession();
-    if (!data.session) throw redirect({ to: "/login", search: { mode: "signin" } });
+    if (!data.session) throw redirect({ to: "/login?mode=signin" });
   },
   errorComponent: RouteError,
   component: FlashcardsPage,
@@ -68,9 +68,9 @@ function FlashcardsPage() {
   const queryClient = useQueryClient();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const profileQuery = useQuery(
-    ["profile"],
-    async () => {
+  const profileQuery = useQuery<string>({
+    queryKey: ["profile"],
+    queryFn: async () => {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) throw new Error("Sign in required");
       const { data: p, error } = await supabase
@@ -81,12 +81,13 @@ function FlashcardsPage() {
       if (error) throw error;
       return p?.display_name ?? u.user.email?.split("@")[0] ?? "Student";
     },
-    { staleTime: 1000 * 60 * 5, retry: 1 },
-  );
+    staleTime: 1000 * 60 * 5,
+    retry: 1,
+  });
 
-  const deckQuery = useQuery(
-    ["flashcard_sets"],
-    async () => {
+  const deckQuery = useQuery<DeckRow[]>({
+    queryKey: ["flashcard_sets"],
+    queryFn: async () => {
       const { data, error } = await supabase
         .from("flashcard_sets")
         .select("id, topic, created_at")
@@ -94,18 +95,16 @@ function FlashcardsPage() {
       if (error) throw error;
       return (data ?? []) as DeckRow[];
     },
-    {
-      staleTime: 1000 * 60 * 3,
-      retry: 1,
-      onError: () => {
-        toast.error("Could not load your decks");
-      },
+    staleTime: 1000 * 60 * 3,
+    retry: 1,
+    onError: () => {
+      toast.error("Could not load your decks");
     },
-  );
+  });
 
-  const studyCardsQuery = useQuery(
-    ["flashcards", selectedDeckId],
-    async () => {
+  const studyCardsQuery = useQuery<DbCard[]>({
+    queryKey: ["flashcards", selectedDeckId],
+    queryFn: async () => {
       if (!selectedDeckId) return [] as DbCard[];
       const { data, error } = await supabase
         .from("flashcards")
@@ -115,15 +114,13 @@ function FlashcardsPage() {
       if (error) throw error;
       return (data ?? []) as DbCard[];
     },
-    {
-      enabled: Boolean(selectedDeckId),
-      staleTime: 1000 * 60 * 2,
-      retry: 1,
-      onError: () => {
-        toast.error("Could not load cards");
-      },
+    enabled: Boolean(selectedDeckId),
+    staleTime: 1000 * 60 * 2,
+    retry: 1,
+    onError: () => {
+      toast.error("Could not load cards");
     },
-  );
+  });
 
   const displayName = profileQuery.data ?? "Student";
   const decks = deckQuery.data ?? [];
@@ -218,8 +215,8 @@ function FlashcardsPage() {
       toast.success("Deck saved");
       setPreview(null);
       setSelectedDeckId(setRow.id);
-      queryClient.invalidateQueries(["flashcard_sets"]);
-      queryClient.invalidateQueries(["flashcards", setRow.id]);
+      queryClient.invalidateQueries({ queryKey: ["flashcard_sets"] });
+      queryClient.invalidateQueries({ queryKey: ["flashcards", setRow.id] });
     } finally {
       setSaving(false);
     }
@@ -239,8 +236,8 @@ function FlashcardsPage() {
     }
     if (selectedDeckId === id) setSelectedDeckId(null);
     toast.success("Deck deleted");
-    queryClient.invalidateQueries(["flashcard_sets"]);
-    queryClient.invalidateQueries(["flashcards", id]);
+    queryClient.invalidateQueries({ queryKey: ["flashcard_sets"] });
+    queryClient.invalidateQueries({ queryKey: ["flashcards", id] });
   }
 
   const currentStudy = studyCards[studyIdx];

@@ -60,7 +60,7 @@ export const Route = createFileRoute("/planner")({
   beforeLoad: async () => {
     if (typeof window === "undefined") return;
     const { data } = await supabase.auth.getSession();
-    if (!data.session) throw redirect({ to: "/login", search: { mode: "signin" } });
+    if (!data.session) throw redirect({ to: "/login?mode=signin" });
   },
   errorComponent: RouteError,
   component: PlannerPage,
@@ -81,9 +81,9 @@ function PlannerPage() {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const profileQuery = useQuery(
-    ["profile"],
-    async () => {
+  const profileQuery = useQuery<string>({
+    queryKey: ["profile"],
+    queryFn: async () => {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) throw new Error("Sign in required");
       const { data: p, error } = await supabase
@@ -94,14 +94,15 @@ function PlannerPage() {
       if (error) throw error;
       return p?.display_name ?? u.user.email?.split("@")[0] ?? "Student";
     },
-    { staleTime: 1000 * 60 * 5, retry: 1 },
-  );
+    staleTime: 1000 * 60 * 5,
+    retry: 1,
+  });
 
   const displayName = profileQuery.data ?? "Student";
 
-  const tasksQuery = useQuery(
-    ["study_tasks"],
-    async () => {
+  const tasksQuery = useQuery<Task[]>({
+    queryKey: ["study_tasks"],
+    queryFn: async () => {
       const { data, error } = await supabase
         .from("study_tasks")
         .select("*")
@@ -111,14 +112,12 @@ function PlannerPage() {
       if (error) throw error;
       return (data ?? []) as Task[];
     },
-    {
-      staleTime: 1000 * 60 * 2,
-      retry: 1,
-      onError: () => {
-        toast.error("Couldn't load tasks");
-      },
+    staleTime: 1000 * 60 * 2,
+    retry: 1,
+    onError: () => {
+      toast.error("Couldn't load tasks");
     },
-  );
+  });
 
   const addTaskMutation = useMutation(
     async (payload: { title: string; notes: string; subject: string; dueDate: string; priority: Priority }) => {
@@ -136,7 +135,7 @@ function PlannerPage() {
     },
     {
       onSuccess: () => {
-        queryClient.invalidateQueries(["study_tasks"]);
+        queryClient.invalidateQueries({ queryKey: ["study_tasks"] });
         setTitle("");
         setNotes("");
         setDueDate("");
@@ -162,7 +161,7 @@ function PlannerPage() {
       onError: () => {
         toast.error("Update failed");
       },
-      onSettled: () => queryClient.invalidateQueries(["study_tasks"]),
+      onSettled: () => queryClient.invalidateQueries({ queryKey: ["study_tasks"] }),
     },
   );
 
@@ -173,7 +172,7 @@ function PlannerPage() {
     },
     {
       onSuccess: () => {
-        queryClient.invalidateQueries(["study_tasks"]);
+        queryClient.invalidateQueries({ queryKey: ["study_tasks"] });
         toast.success("Task deleted");
       },
       onError: () => {
@@ -201,12 +200,17 @@ function PlannerPage() {
     deleteTaskMutation.mutate(t.id);
   }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  const tasks = tasksQuery.data ?? [];
 
   const counts = useMemo(() => {
     const out = { all: 0, today: 0, upcoming: 0, overdue: 0, done: 0 };
-    for (const t of tasksQuery.data ?? []) {
+    for (const t of tasks) {
       out.all++;
       if (t.completed) {
         out.done++;
@@ -223,10 +227,10 @@ function PlannerPage() {
       }
     }
     return out;
-  }, [tasks]);
+  }, [tasks, today]);
 
   const filtered = useMemo(() => {
-    return (tasksQuery.data ?? []).filter((t) => {
+    return tasks.filter((t) => {
       if (filter === "done") return t.completed;
       if (t.completed) return false;
       if (filter === "all") return true;
@@ -238,7 +242,7 @@ function PlannerPage() {
       if (filter === "upcoming") return d.getTime() > today.getTime();
       return true;
     });
-  }, [tasks, filter]);
+  }, [tasks, filter, today]);
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
