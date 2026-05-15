@@ -1,6 +1,3 @@
-import "./instrument";
-import * as Sentry from "@sentry/react";
-import { tanstackRouterBrowserTracingIntegration } from "@sentry/react";
 import { createRouter, useRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 
@@ -68,8 +65,6 @@ export const getRouter = () => {
     defaultPendingMinMs: 500,
     defaultErrorComponent: DefaultErrorComponent,
   });
-
-  Sentry.addIntegration(tanstackRouterBrowserTracingIntegration(router));
 
   return router;
 };

@@ -1,7 +1,6 @@
 import { Outlet, createRootRoute, HeadContent, Scripts, Link } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
-import * as Sentry from "@sentry/react";
 
 import appCss from "../styles.css?url";
 
@@ -78,9 +77,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <QueryClientProvider client={queryClient}>
-          <Sentry.ErrorBoundary fallback={<p>Something went wrong</p>}>
-            {children}
-          </Sentry.ErrorBoundary>
+          {children}
           <Toaster />
         </QueryClientProvider>
         <Scripts />
