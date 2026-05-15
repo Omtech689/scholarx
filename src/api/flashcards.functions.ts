@@ -25,6 +25,17 @@ const cardsSchema = z
   .min(4)
   .max(24);
 
+async function fetchWithRetry(url: string, init: RequestInit, maxRetries = 2): Promise<Response> {
+  let attempt = 0;
+  while (true) {
+    const res = await fetch(url, init);
+    if (res.status !== 503 && res.status !== 502 && res.status !== 504) return res;
+    attempt++;
+    if (attempt >= maxRetries) return res;
+    await new Promise((r) => setTimeout(r, 800 * attempt));
+  }
+}
+
 function extractJsonArray(raw: string): unknown {
   const t = raw.trim();
   const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
@@ -64,7 +75,7 @@ Rules:
     const messages = [{ role: "system" as const, content: systemPrompt }, ...history];
 
     try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`, {
+      const res = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${GEMINI_API_KEY}`,

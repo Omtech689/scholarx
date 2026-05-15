@@ -28,12 +28,54 @@ import {
   Menu,
   Plus,
   MessageSquare,
+  TrendingUp,
+  Download,
+  ThumbsUp,
+  ThumbsDown,
+  Shuffle,
 } from "lucide-react";
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
 type Card = { q: string; a: string };
 type DeckRow = { id: string; topic: string; created_at: string };
 type DbCard = { id: string; question: string; answer: string; sort_order: number };
+
+type SrsState = { ease: number; interval: number; due: number };
+
+function getSrsKey(setId: string) { return `srs_${setId}`; }
+
+function loadSrs(setId: string): Record<string, SrsState> {
+  try { return JSON.parse(localStorage.getItem(getSrsKey(setId)) ?? "{}"); } catch { return {}; }
+}
+
+function saveSrs(setId: string, data: Record<string, SrsState>) {
+  localStorage.setItem(getSrsKey(setId), JSON.stringify(data));
+}
+
+function sm2Next(state: SrsState, quality: 0 | 3 | 5): SrsState {
+  const ease = Math.max(1.3, state.ease + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)));
+  let interval: number;
+  if (quality < 3) {
+    interval = 1;
+  } else if (state.interval <= 1) {
+    interval = quality === 5 ? 4 : 1;
+  } else {
+    interval = Math.round(state.interval * ease);
+  }
+  return { ease, interval, due: Date.now() + interval * 24 * 60 * 60 * 1000 };
+}
+
+function exportDeckAsCsv(cards: DbCard[], topic: string) {
+  const rows = [["Question", "Answer"], ...cards.map((c) => [c.question.replace(/,/g, ";"), c.answer.replace(/,/g, ";")])];
+  const csv = rows.map((r) => r.map((v) => `"${v.replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${topic.replace(/[^a-z0-9]/gi, "_")}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export const Route = createFileRoute("/flashcards")({
   head: () => ({
@@ -64,6 +106,8 @@ function FlashcardsPage() {
   const [studyIdx, setStudyIdx] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
+  const [srsData, setSrsData] = useState<Record<string, SrsState>>({});
+  const [shuffled, setShuffled] = useState(false);
 
   const queryClient = useQueryClient();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -118,7 +162,45 @@ function FlashcardsPage() {
 
   const displayName = profileQuery.data ?? "Student";
   const decks = deckQuery.data ?? [];
-  const studyCards = studyCardsQuery.data ?? [];
+  const rawStudyCards = studyCardsQuery.data ?? [];
+
+  const studyCards = shuffled
+    ? [...rawStudyCards].sort(() => (srsData[rawStudyCards[0]?.id ?? ""] ? 0 : Math.random() - 0.5))
+    : rawStudyCards;
+
+  // Load SRS state from localStorage when deck changes
+  const prevDeckRef = { current: "" };
+  if (selectedDeckId && selectedDeckId !== prevDeckRef.current) {
+    prevDeckRef.current = selectedDeckId;
+  }
+
+  function handleRate(quality: 0 | 3 | 5) {
+    if (!selectedDeckId || !studyCards[studyIdx]) return;
+    const cardId = studyCards[studyIdx].id;
+    const prev = srsData[cardId] ?? { ease: 2.5, interval: 0, due: 0 };
+    const next = sm2Next(prev, quality);
+    const updated = { ...srsData, [cardId]: next };
+    setSrsData(updated);
+    saveSrs(selectedDeckId, updated);
+    setShowAnswer(false);
+    setStudyIdx((i) => Math.min(studyCards.length - 1, i + 1));
+  }
+
+  function loadSrsForDeck(id: string) {
+    setSrsData(loadSrs(id));
+    setStudyIdx(0);
+    setShowAnswer(false);
+  }
+
+  function getDueCount() {
+    const now = Date.now();
+    return studyCards.filter((c) => !srsData[c.id] || srsData[c.id].due <= now).length;
+  }
+
+  function selectDeck(id: string) {
+    setSelectedDeckId(id);
+    loadSrsForDeck(id);
+  }
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -209,6 +291,7 @@ function FlashcardsPage() {
       toast.success("Deck saved");
       setPreview(null);
       setSelectedDeckId(setRow.id);
+      loadSrsForDeck(setRow.id);
       queryClient.invalidateQueries({ queryKey: ["flashcard_sets"] });
       queryClient.invalidateQueries({ queryKey: ["flashcards", setRow.id] });
     } finally {
@@ -279,7 +362,7 @@ function FlashcardsPage() {
                   <li key={d.id}>
                     <button
                       onClick={() => {
-                        setSelectedDeckId(d.id);
+                        selectDeck(d.id);
                         setPreviewMode(false);
                         setMobileMenuOpen(false);
                       }}
@@ -394,7 +477,7 @@ function FlashcardsPage() {
                   <div className="flex items-center gap-1 group">
                     <button
                       onClick={() => {
-                        setSelectedDeckId(d.id);
+                        selectDeck(d.id);
                         setPreviewMode(false);
                       }}
                       className={`flex-1 flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
@@ -448,6 +531,13 @@ function FlashcardsPage() {
             >
               <User className="h-4 w-4" />
               Profile
+            </Link>
+            <Link
+              to="/progress"
+              className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+            >
+              <TrendingUp className="h-4 w-4" />
+              Progress
             </Link>
             <div className="flex items-center justify-between gap-2 px-2 text-sm">
               <span className="truncate text-muted-foreground">{displayName}</span>
@@ -595,6 +685,14 @@ function FlashcardsPage() {
               <User className="h-4 w-4" />
               Profile
             </Link>
+            <Link
+              to="/progress"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+            >
+              <TrendingUp className="h-4 w-4" />
+              Progress
+            </Link>
             <div className="flex items-center justify-between gap-2 px-2 text-sm">
               <span className="truncate text-muted-foreground">{displayName}</span>
               <Button variant="ghost" size="icon" onClick={logout} title="Sign out">
@@ -632,7 +730,7 @@ function FlashcardsPage() {
               <li key={d.id}>
                 <div className="flex items-center gap-1 group">
                   <button
-                    onClick={() => setSelectedDeckId(d.id)}
+                    onClick={() => selectDeck(d.id)}
                     className={`flex-1 flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
                       selectedDeckId === d.id
                         ? "bg-primary/15 text-foreground"
@@ -839,14 +937,42 @@ function FlashcardsPage() {
             {/* Study section */}
             {selectedDeckId && studyCards.length > 0 && currentStudy && (
               <div className="rounded-xl border border-border bg-card/70 backdrop-blur-md p-4 sm:p-5 space-y-4">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="font-semibold flex items-center gap-2" style={{ fontFamily: "var(--font-display)" }}>
                     <Layers className="h-4 w-4 text-primary" />
                     Study
+                    {getDueCount() > 0 && (
+                      <span className="ml-1 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
+                        {getDueCount()} due
+                      </span>
+                    )}
                   </h3>
-                  <span className="text-xs text-muted-foreground">
-                    {studyIdx + 1} / {studyCards.length}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-muted-foreground">{studyIdx + 1} / {studyCards.length}</span>
+                    <Button
+                      type="button"
+                      variant={shuffled ? "default" : "ghost"}
+                      size="icon"
+                      className="h-7 w-7"
+                      title="Shuffle cards"
+                      onClick={() => setShuffled((v) => !v)}
+                    >
+                      <Shuffle className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      title="Export deck as CSV"
+                      onClick={() => {
+                        const deck = decks.find((d) => d.id === selectedDeckId);
+                        exportDeckAsCsv(studyCards, deck?.topic ?? "flashcards");
+                      }}
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -863,8 +989,48 @@ function FlashcardsPage() {
                   )}
                 </button>
                 <p className="text-xs text-muted-foreground text-center">
-                  {showAnswer ? "Tap card to see question" : "Tap card to reveal answer"}
+                  {showAnswer ? "Rate your recall, or tap card to see question" : "Tap card to reveal answer"}
                 </p>
+
+                {/* SRS rating buttons — only shown after answer is revealed */}
+                {showAnswer && (
+                  <div className="flex items-center justify-center gap-2">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="gap-1"
+                      onClick={() => handleRate(0)}
+                      title="Again — forgot it, review soon"
+                    >
+                      <RotateCw className="h-3.5 w-3.5" />
+                      Again
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-1"
+                      onClick={() => handleRate(3)}
+                      title="Hard — remembered with difficulty"
+                    >
+                      <ThumbsDown className="h-3.5 w-3.5" />
+                      Hard
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="gap-1"
+                      onClick={() => handleRate(5)}
+                      title="Easy — remembered well"
+                    >
+                      <ThumbsUp className="h-3.5 w-3.5" />
+                      Easy
+                    </Button>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between gap-2">
                   <Button
                     type="button"
@@ -904,7 +1070,6 @@ function FlashcardsPage() {
                       type="button"
                       variant="secondary"
                       size="sm"
-                      disabled={studyIdx >= studyCards.length - 1}
                       onClick={() => {
                         setStudyIdx((i) => Math.min(studyCards.length - 1, i + 1));
                         setShowAnswer(false);

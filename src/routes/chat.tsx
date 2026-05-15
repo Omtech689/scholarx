@@ -33,11 +33,37 @@ import {
   User,
   Menu,
   GripVertical,
+  Search,
+  Download,
+  TrendingUp,
 } from "lucide-react";
 
 type Subject = "math" | "science" | "english" | "history" | "general";
 type Msg = { id?: string; role: "user" | "assistant"; content: string; image?: string };
 type Convo = { id: string; title: string; subject: string | null; updated_at: string };
+
+async function compressImage(file: File, maxDim = 1024, quality = 0.75): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        if (width >= height) { height = Math.round((height * maxDim) / width); width = maxDim; }
+        else { width = Math.round((width * maxDim) / height); height = maxDim; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+      const base64 = canvas.toDataURL("image/jpeg", quality).split(",")[1];
+      resolve(base64);
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
 
 function stripForSpeech(s: string) {
   return s
@@ -89,12 +115,21 @@ function ChatPage() {
   const [ttsSupported, setTtsSupported] = useState(false);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [convoSearch, setConvoSearch] = useState("");
   const [sidebarWidth, setSidebarWidth] = useState(320);
   const sidebarDraggingRef = useRef(false);
   const sidebarStartXRef = useRef(0);
   const sidebarStartWidthRef = useRef(320);
   const [mounted, setMounted] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
+
+  const filteredConversations = useMemo(
+    () =>
+      convoSearch.trim()
+        ? conversations.filter((c) => c.title.toLowerCase().includes(convoSearch.toLowerCase()))
+        : conversations,
+    [conversations, convoSearch],
+  );
   useEffect(() => {
     setMounted(true);
     setSpeechSupported(
@@ -325,7 +360,7 @@ function ChatPage() {
         id: m.id,
         role: m.role as "user" | "assistant",
         content: m.content,
-        image: m.image,
+        image: m.image ?? undefined,
       })),
     );
   }
@@ -397,6 +432,23 @@ function ChatPage() {
     }
   }
 
+  function exportConversation() {
+    if (messages.length === 0) return;
+    const convo = conversations.find((c) => c.id === activeId);
+    const title = convo?.title ?? "conversation";
+    const lines = messages.map((m) =>
+      `## ${m.role === "user" ? "You" : "ScholarX"}\n\n${m.content}`,
+    );
+    const md = `# ${title}\n\n${lines.join("\n\n---\n\n")}`;
+    const blob = new Blob([md], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${title.replace(/[^a-z0-9]/gi, "_")}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function logout() {
     await supabase.auth.signOut();
     navigate({ to: "/" });
@@ -433,13 +485,7 @@ function ChatPage() {
       let imageBase64: string | undefined;
 
       if (imageFile) {
-        const reader = new FileReader();
-        await new Promise<void>((resolve, reject) => {
-          reader.onload = () => resolve();
-          reader.onerror = () => reject(reader.error);
-          reader.readAsDataURL(imageFile);
-        });
-        imageBase64 = (reader.result as string).split(',')[1];
+        imageBase64 = await compressImage(imageFile);
         userMsg = { role: "user", content: text, image: imageBase64 };
       } else {
         userMsg = { role: "user", content: text };
@@ -531,6 +577,17 @@ function ChatPage() {
           <div className="mt-4 px-5 text-xs uppercase tracking-wider text-muted-foreground">
             History
           </div>
+          <div className="px-3 pt-2 pb-1">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={convoSearch}
+                onChange={(e) => setConvoSearch(e.target.value)}
+                placeholder="Search chats…"
+                className="w-full rounded-md border border-border bg-secondary/50 py-1.5 pl-8 pr-3 text-xs outline-none placeholder:text-muted-foreground focus:border-primary"
+              />
+            </div>
+          </div>
           <ScrollArea className="mt-2 flex-1 px-2">
             <ul className="space-y-1 pb-4">
               {conversations.length === 0 && (
@@ -538,7 +595,12 @@ function ChatPage() {
                   No chats yet. Ask your first question!
                 </li>
               )}
-              {conversations.map((c) => (
+              {filteredConversations.length === 0 && conversations.length > 0 && (
+                <li className="px-3 py-4 text-center text-sm text-muted-foreground">
+                  No chats match "{convoSearch}"
+                </li>
+              )}
+              {filteredConversations.map((c) => (
                 <li key={c.id}>
                   <div className="group flex items-center gap-1">
                     <button
@@ -638,11 +700,22 @@ function ChatPage() {
         <div className="mt-4 px-5 text-xs uppercase tracking-wider text-muted-foreground">
           History
         </div>
+        <div className="px-3 pt-2 pb-1">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={convoSearch}
+              onChange={(e) => setConvoSearch(e.target.value)}
+              placeholder="Search chats…"
+              className="w-full rounded-md border border-border bg-secondary/50 py-1.5 pl-8 pr-3 text-xs outline-none placeholder:text-muted-foreground focus:border-primary"
+            />
+          </div>
+        </div>
         {conversations.length > 0 && (
           <div className="px-3 pb-2">
-            <Button 
+            <Button
               onClick={deleteAllConversations}
-              variant="ghost" 
+              variant="ghost"
               size="sm"
               className="w-full justify-start gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
             >
@@ -658,7 +731,12 @@ function ChatPage() {
                 No chats yet. Ask your first question!
               </li>
             )}
-            {conversations.map((c) => (
+            {filteredConversations.length === 0 && conversations.length > 0 && (
+              <li className="px-3 py-4 text-center text-sm text-muted-foreground">
+                No chats match "{convoSearch}"
+              </li>
+            )}
+            {filteredConversations.map((c) => (
               <li key={c.id}>
                 <div className="flex items-center gap-1 group">
                   <button
@@ -715,6 +793,13 @@ function ChatPage() {
             <User className="h-4 w-4" />
             Profile
           </Link>
+          <Link
+            to="/progress"
+            className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+          >
+            <TrendingUp className="h-4 w-4" />
+            Progress
+          </Link>
           <div className="flex items-center justify-between gap-2 px-2 text-sm">
             <span className="truncate text-muted-foreground">{displayName}</span>
             <Button variant="ghost" size="icon" onClick={logout} title="Sign out">
@@ -735,6 +820,17 @@ function ChatPage() {
           >
             <Menu className="h-5 w-5" />
           </button>
+          {messages.length > 0 && (
+            <Button
+              onClick={exportConversation}
+              size="icon"
+              variant="ghost"
+              className="shrink-0 h-8 w-8"
+              title="Export conversation as Markdown"
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+          )}
           <div className="flex flex-1 items-center gap-2 overflow-x-auto min-w-0">
             <span className="shrink-0 text-sm text-muted-foreground">Subject:</span>
             <button

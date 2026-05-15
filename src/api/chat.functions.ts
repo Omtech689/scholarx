@@ -2,6 +2,17 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
+async function fetchWithRetry(url: string, init: RequestInit, maxRetries = 2): Promise<Response> {
+  let attempt = 0;
+  while (true) {
+    const res = await fetch(url, init);
+    if (res.status !== 503 && res.status !== 502 && res.status !== 504) return res;
+    attempt++;
+    if (attempt >= maxRetries) return res;
+    await new Promise((r) => setTimeout(r, 800 * attempt));
+  }
+}
+
 const SUBJECT_GUIDANCE: Record<string, string> = {
   math: "Focus on step-by-step problem solving. Show every step clearly. Use LaTeX-style notation when helpful (e.g. x^2). Never just give the final answer — walk through reasoning.",
   science: "Explain underlying concepts and the 'why'. Use real-world analogies. Cover physics, chemistry and biology.",
@@ -57,7 +68,7 @@ ${SUBJECT_GUIDANCE[data.subject]}`;
 
     try {
       // Use Gemini 3.1 Flash Lite for all conversations
-      const res = await fetch(
+      const res = await fetchWithRetry(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: "POST",

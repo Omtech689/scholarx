@@ -198,6 +198,7 @@ export type Database = {
         Relationships: []
       }
       study_tasks: {
+        Row: {
           completed: boolean
           completed_at: string | null
           created_at: string
@@ -254,9 +255,9 @@ export type Database = {
   }
 }
 
-export type Database = Database
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof DatabaseWithoutInternals, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends

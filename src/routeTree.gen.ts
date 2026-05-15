@@ -10,8 +10,11 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TestsRouteImport } from './routes/tests'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PlannerRouteImport } from './routes/planner'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as FlashcardsRouteImport } from './routes/flashcards'
@@ -24,14 +27,29 @@ const TestsRoute = TestsRouteImport.update({
   path: '/tests',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProgressRoute = ProgressRouteImport.update({
+  id: '/progress',
+  path: '/progress',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlannerRoute = PlannerRouteImport.update({
@@ -71,8 +89,11 @@ export interface FileRoutesByFullPath {
   '/flashcards': typeof FlashcardsRoute
   '/login': typeof LoginRoute
   '/planner': typeof PlannerRoute
+  '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
+  '/progress': typeof ProgressRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/terms': typeof TermsRoute
   '/tests': typeof TestsRoute
   '/auth/callback': typeof AuthCallbackRoute
 }
@@ -82,8 +103,11 @@ export interface FileRoutesByTo {
   '/flashcards': typeof FlashcardsRoute
   '/login': typeof LoginRoute
   '/planner': typeof PlannerRoute
+  '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
+  '/progress': typeof ProgressRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/terms': typeof TermsRoute
   '/tests': typeof TestsRoute
   '/auth/callback': typeof AuthCallbackRoute
 }
@@ -94,8 +118,11 @@ export interface FileRoutesById {
   '/flashcards': typeof FlashcardsRoute
   '/login': typeof LoginRoute
   '/planner': typeof PlannerRoute
+  '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
+  '/progress': typeof ProgressRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/terms': typeof TermsRoute
   '/tests': typeof TestsRoute
   '/auth/callback': typeof AuthCallbackRoute
 }
@@ -107,8 +134,11 @@ export interface FileRouteTypes {
     | '/flashcards'
     | '/login'
     | '/planner'
+    | '/privacy'
     | '/profile'
+    | '/progress'
     | '/reset-password'
+    | '/terms'
     | '/tests'
     | '/auth/callback'
   fileRoutesByTo: FileRoutesByTo
@@ -118,8 +148,11 @@ export interface FileRouteTypes {
     | '/flashcards'
     | '/login'
     | '/planner'
+    | '/privacy'
     | '/profile'
+    | '/progress'
     | '/reset-password'
+    | '/terms'
     | '/tests'
     | '/auth/callback'
   id:
@@ -129,8 +162,11 @@ export interface FileRouteTypes {
     | '/flashcards'
     | '/login'
     | '/planner'
+    | '/privacy'
     | '/profile'
+    | '/progress'
     | '/reset-password'
+    | '/terms'
     | '/tests'
     | '/auth/callback'
   fileRoutesById: FileRoutesById
@@ -141,8 +177,11 @@ export interface RootRouteChildren {
   FlashcardsRoute: typeof FlashcardsRoute
   LoginRoute: typeof LoginRoute
   PlannerRoute: typeof PlannerRoute
+  PrivacyRoute: typeof PrivacyRoute
   ProfileRoute: typeof ProfileRoute
+  ProgressRoute: typeof ProgressRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  TermsRoute: typeof TermsRoute
   TestsRoute: typeof TestsRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
 }
@@ -156,6 +195,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TestsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
@@ -163,11 +209,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/progress': {
+      id: '/progress'
+      path: '/progress'
+      fullPath: '/progress'
+      preLoaderRoute: typeof ProgressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/profile': {
       id: '/profile'
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/planner': {
@@ -221,8 +281,11 @@ const rootRouteChildren: RootRouteChildren = {
   FlashcardsRoute: FlashcardsRoute,
   LoginRoute: LoginRoute,
   PlannerRoute: PlannerRoute,
+  PrivacyRoute: PrivacyRoute,
   ProfileRoute: ProfileRoute,
+  ProgressRoute: ProgressRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  TermsRoute: TermsRoute,
   TestsRoute: TestsRoute,
   AuthCallbackRoute: AuthCallbackRoute,
 }
