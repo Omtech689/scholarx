@@ -1,7 +1,7 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { generateTest, evaluateTest } from "@/api/tests.functions";
+import { generateTest } from "@/api/tests.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,13 +32,6 @@ type TestQuestion = {
   choices?: string[];
 };
 
-type EvaluationResult = {
-  questionId: string;
-  type: "mcq" | "essay";
-  correct: boolean;
-  feedback: string;
-};
-
 type SavedTest = {
   id: string;
   topic: string;
@@ -46,7 +39,6 @@ type SavedTest = {
   createdAt: string;
   questions: TestQuestion[];
   answers: Record<string, string>;
-  evaluation?: EvaluationResult[];
 };
 
 const TEST_MODES = [
@@ -82,8 +74,6 @@ function TestCreatorPage() {
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [savedTests, setSavedTests] = useState<SavedTest[]>([]);
   const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
-  const [evaluation, setEvaluation] = useState<EvaluationResult[]>([]);
-  const [submitting, setSubmitting] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [displayName, setDisplayName] = useState<string>("");
@@ -112,7 +102,7 @@ function TestCreatorPage() {
     if (!userId) return;
     const { data, error } = await supabase
       .from("tests")
-      .select("id, topic, mode, questions, answers, evaluation, created_at")
+      .select("id, topic, mode, questions, answers, created_at")
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
@@ -129,7 +119,6 @@ function TestCreatorPage() {
         createdAt: row.created_at,
         questions: row.questions as TestQuestion[],
         answers: (row.answers as Record<string, string>) ?? {},
-        evaluation: (row.evaluation as EvaluationResult[]) ?? [],
       })),
     );
   }
@@ -140,7 +129,6 @@ function TestCreatorPage() {
     setSelectedTestId(id);
     setPreview(saved.questions);
     setAnswers(saved.answers);
-    setEvaluation(saved.evaluation ?? []);
     setTopicSeed(saved.topic);
     setTestMode(saved.mode);
   }
@@ -167,7 +155,6 @@ function TestCreatorPage() {
         mode: saved.mode,
         questions: saved.questions,
         answers: saved.answers,
-        evaluation: saved.evaluation ?? [],
       })
       .eq("id", selectedTestId)
       .eq("user_id", userId);
@@ -232,7 +219,6 @@ function TestCreatorPage() {
               mode: testMode,
               questions,
               answers: {},
-              evaluation: [],
             },
           ])
           .select("id, created_at")
@@ -254,7 +240,6 @@ function TestCreatorPage() {
         createdAt,
         questions,
         answers: {},
-        evaluation: [],
       };
 
       setSelectedTestId(savedTest.id);
@@ -297,67 +282,10 @@ function TestCreatorPage() {
     setRevealed(next);
   }
 
-  async function submitTest() {
-    if (!preview || submitting) return;
-    setSubmitting(true);
-
-    try {
-      const topic = topicSeed.trim() || preview[0]?.question.slice(0, 400) || "Practice test";
-      const answerPayload = preview.map((item) => ({
-        questionId: item.id,
-        answer: answers[item.id] ?? "",
-      }));
-      const { data: sess } = await supabase.auth.getSession();
-      const token = sess.session?.access_token;
-
-      const result = await evaluateTest({
-        data: {
-          topic,
-          questions: preview,
-          answers: answerPayload,
-        },
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
-
-      if (result.error) {
-        toast.error(result.error);
-        return;
-      }
-
-      const essayEvaluation = result.evaluations ?? [];
-      const mcqEvaluation = preview
-        .filter((item) => item.type === "mcq")
-        .map((item) => ({
-          questionId: item.id,
-          type: "mcq" as const,
-          correct: answers[item.id] === item.answer,
-          feedback:
-            answers[item.id] === item.answer
-              ? "Correct answer."
-              : `Correct answer: ${item.answer}`,
-        }));
-
-      const allEvaluation = [...mcqEvaluation, ...essayEvaluation];
-      setEvaluation(allEvaluation);
-      updateSavedTest({ answers, evaluation: allEvaluation });
-
-      const score = mcqEvaluation.reduce((count, item) => (item.correct ? count + 1 : count), 0);
-      toast.success(
-        `Test submitted. ${score}/${mcqEvaluation.length} MCQ correct and ${essayEvaluation.length} essay answers evaluated by AI.`,
-      );
-    } catch (err) {
-      console.error(err);
-      toast.error("Unable to evaluate the test. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   function resetTest() {
     setPreview(null);
     setAnswers({});
     setRevealed({});
-    setEvaluation([]);
     setMessages([]);
     setDraft("");
     setSelectedTestId(null);
@@ -369,10 +297,6 @@ function TestCreatorPage() {
     }
     return count;
   }, 0);
-
-  const evaluationById = Object.fromEntries(
-    evaluation.map((item) => [item.questionId, item]),
-  ) as Record<string, EvaluationResult | undefined>;
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
@@ -626,9 +550,6 @@ function TestCreatorPage() {
                     <Button variant="secondary" size="sm" onClick={resetTest}>
                       Reset test
                     </Button>
-                    <Button variant="primary" size="sm" onClick={submitTest} disabled={submitting}>
-                      {submitting ? "Submitting…" : "Submit test"}
-                    </Button>
                   </div>
                 </div>
                 <div className="rounded-2xl border border-border bg-muted/50 p-3 text-sm text-muted-foreground">
@@ -684,20 +605,6 @@ function TestCreatorPage() {
                               </span>
                             )}
                           </div>
-                          {evaluationById[item.id] && (
-                            <div
-                              className={`mt-3 rounded-2xl border px-3 py-2 text-sm ${
-                                evaluationById[item.id].correct
-                                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                                  : "border-rose-200 bg-rose-50 text-rose-700"
-                              }`}
-                            >
-                              <p className="font-semibold">
-                                {evaluationById[item.id].correct ? "Correct" : "Needs improvement"}
-                              </p>
-                              <p className="mt-1 whitespace-pre-wrap">{evaluationById[item.id].feedback}</p>
-                            </div>
-                          )}
                         </div>
                       ) : (
                         <div className="mt-4 space-y-3">
@@ -721,20 +628,6 @@ function TestCreatorPage() {
                             <div className="rounded-2xl border border-border bg-muted/10 p-3 text-sm text-foreground">
                               <p className="font-semibold">Model answer</p>
                               <p className="mt-2 whitespace-pre-wrap">{item.answer}</p>
-                            </div>
-                          )}
-                          {evaluationById[item.id] && (
-                            <div
-                              className={`rounded-2xl border px-3 py-2 text-sm ${
-                                evaluationById[item.id].correct
-                                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                                  : "border-rose-200 bg-rose-50 text-rose-700"
-                              }`}
-                            >
-                              <p className="font-semibold">
-                                {evaluationById[item.id].correct ? "AI evaluation: correct" : "AI evaluation: incorrect"}
-                              </p>
-                              <p className="mt-1 whitespace-pre-wrap">{evaluationById[item.id].feedback}</p>
                             </div>
                           )}
                         </div>
@@ -776,14 +669,6 @@ function TestCreatorPage() {
                       </div>
                       <span className="text-xs font-medium text-muted-foreground">Load</span>
                     </div>
-                    {test.evaluation?.length ? (
-                      <p className="mt-3 text-sm text-muted-foreground">
-                        {test.evaluation.filter((item) => item.type === "mcq" && item.correct).length}/
-                        {test.questions.filter((item) => item.type === "mcq").length} MCQ correct • {test.evaluation.filter((item) => item.type === "essay").length} essay evaluated
-                      </p>
-                    ) : (
-                      <p className="mt-3 text-sm text-muted-foreground">Not submitted yet</p>
-                    )}
                   </button>
                 ))}
               </div>

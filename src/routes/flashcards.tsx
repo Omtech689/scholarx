@@ -360,6 +360,18 @@ function FlashcardsPage() {
             </Button>
           </div>
           <div className="mt-4 px-5 text-xs uppercase tracking-wider text-muted-foreground">
+            Quick actions
+          </div>
+          <div className="px-3 mt-2">
+            <Link
+              to="/tests"
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-secondary text-muted-foreground hover:text-foreground"
+            >
+              <BookOpen className="h-4 w-4" />
+              Create test
+            </Link>
+          </div>
+          <div className="mt-4 px-5 text-xs uppercase tracking-wider text-muted-foreground">
             My decks
           </div>
           <ScrollArea className="mt-2 flex-1 px-2">
