@@ -21,7 +21,7 @@ const inputSchema = z.object({
     .min(1)
     .max(40),
   subject: z.enum(["math", "science", "english", "history", "general"]).default("general"),
-  image: z.string().optional(),
+  image: z.string().max(1_500_000).optional(),
 });
 
 export const askHomework = createServerFn({ method: "POST" })

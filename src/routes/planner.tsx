@@ -114,13 +114,10 @@ function PlannerPage() {
     },
     staleTime: 1000 * 60 * 2,
     retry: 1,
-    onError: () => {
-      toast.error("Couldn't load tasks");
-    },
   });
 
-  const addTaskMutation = useMutation(
-    async (payload: { title: string; notes: string; subject: string; dueDate: string; priority: Priority }) => {
+  const addTaskMutation = useMutation({
+    mutationFn: async (payload: { title: string; notes: string; subject: string; dueDate: string; priority: Priority }) => {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) throw new Error("Sign in required");
       const { error } = await supabase.from("study_tasks").insert({
@@ -133,53 +130,47 @@ function PlannerPage() {
       });
       if (error) throw error;
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["study_tasks"] });
-        setTitle("");
-        setNotes("");
-        setDueDate("");
-        setPriority("medium");
-        setShowNew(false);
-        toast.success("Task added");
-      },
-      onError: () => {
-        toast.error("Couldn't save task");
-      },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["study_tasks"] });
+      setTitle("");
+      setNotes("");
+      setDueDate("");
+      setPriority("medium");
+      setShowNew(false);
+      toast.success("Task added");
     },
-  );
+    onError: () => {
+      toast.error("Couldn't save task");
+    },
+  });
 
-  const updateTaskMutation = useMutation(
-    async ({ id, completed }: { id: string; completed: boolean }) => {
+  const updateTaskMutation = useMutation({
+    mutationFn: async ({ id, completed }: { id: string; completed: boolean }) => {
       const { error } = await supabase
         .from("study_tasks")
         .update({ completed, completed_at: completed ? new Date().toISOString() : null })
         .eq("id", id);
       if (error) throw error;
     },
-    {
-      onError: () => {
-        toast.error("Update failed");
-      },
-      onSettled: () => queryClient.invalidateQueries({ queryKey: ["study_tasks"] }),
+    onError: () => {
+      toast.error("Update failed");
     },
-  );
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["study_tasks"] }),
+  });
 
-  const deleteTaskMutation = useMutation(
-    async (id: string) => {
+  const deleteTaskMutation = useMutation({
+    mutationFn: async (id: string) => {
       const { error } = await supabase.from("study_tasks").delete().eq("id", id);
       if (error) throw error;
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["study_tasks"] });
-        toast.success("Task deleted");
-      },
-      onError: () => {
-        toast.error("Delete failed");
-      },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["study_tasks"] });
+      toast.success("Task deleted");
     },
-  );
+    onError: () => {
+      toast.error("Delete failed");
+    },
+  });
 
   async function logout() {
     await supabase.auth.signOut();
@@ -458,8 +449,8 @@ function PlannerPage() {
                 </div>
                 <div className="flex justify-end gap-2 pt-1">
                   <Button type="button" variant="ghost" onClick={() => setShowNew(false)}>Cancel</Button>
-                  <Button type="submit" disabled={addTaskMutation.isLoading || !title.trim()}>
-                    {addTaskMutation.isLoading ? "Saving…" : "Add task"}
+                  <Button type="submit" disabled={addTaskMutation.isPending || !title.trim()}>
+                    {addTaskMutation.isPending ? "Saving…" : "Add task"}
                   </Button>
                 </div>
               </form>

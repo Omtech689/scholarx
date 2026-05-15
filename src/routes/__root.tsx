@@ -10,7 +10,7 @@ const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
       retry: 1,
       staleTime: 1000 * 60 * 2,
-      cacheTime: 1000 * 60 * 10,
+      gcTime: 1000 * 60 * 10,
     },
   },
 });
@@ -56,7 +56,6 @@ export const Route = createRootRoute({
     links: [
       { rel: "icon", type: "image/png", href: "/logo-favicon.png?v=2", sizes: "48x48" },
       { rel: "shortcut icon", href: "/logo-favicon.png?v=2" },
-      { rel: "stylesheet", href: appCss },
       { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },

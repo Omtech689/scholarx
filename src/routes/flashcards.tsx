@@ -97,9 +97,6 @@ function FlashcardsPage() {
     },
     staleTime: 1000 * 60 * 3,
     retry: 1,
-    onError: () => {
-      toast.error("Could not load your decks");
-    },
   });
 
   const studyCardsQuery = useQuery<DbCard[]>({
@@ -117,9 +114,6 @@ function FlashcardsPage() {
     enabled: Boolean(selectedDeckId),
     staleTime: 1000 * 60 * 2,
     retry: 1,
-    onError: () => {
-      toast.error("Could not load cards");
-    },
   });
 
   const displayName = profileQuery.data ?? "Student";
