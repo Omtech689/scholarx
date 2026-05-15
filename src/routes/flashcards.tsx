@@ -5,7 +5,7 @@ import { generateFlashcards } from "@/api/flashcards.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MobileMenu } from "@/components/ui/mobile-menu";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -240,24 +240,107 @@ function FlashcardsPage() {
   if (previewMode && selectedDeckId && studyCards.length > 0) {
     return (
       <div className="flex h-screen w-full overflow-hidden">
-        <MobileMenu
-          open={mobileMenuOpen}
-          onOpenChange={setMobileMenuOpen}
-          displayName={displayName}
-          onSignOut={logout}
-          headerContent={
-            <Button
-              onClick={() => {
-                setPreviewMode(false);
-                setMobileMenuOpen(false);
-              }}
-              className="w-full justify-start gap-2"
-              variant="secondary"
-            >
-              <ArrowLeft className="h-4 w-4" /> Back to study
-            </Button>
-          }
-        />
+        {/* Mobile drawer */}
+        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+          <SheetContent side="left" className="w-80 p-0 flex flex-col">
+            <div className="flex items-center gap-2 px-5 py-5 font-display text-lg font-semibold">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent glow">
+                <Sparkles className="h-4 w-4 text-primary-foreground" />
+              </span>
+              ScholarX
+            </div>
+            <div className="px-3">
+              <Button
+                onClick={() => {
+                  setPreviewMode(false);
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full justify-start gap-2"
+                variant="secondary"
+              >
+                <ArrowLeft className="h-4 w-4" /> Back to study
+              </Button>
+            </div>
+            <div className="mt-4 px-5 text-xs uppercase tracking-wider text-muted-foreground">
+              My decks
+            </div>
+            <ScrollArea className="mt-2 flex-1 px-2">
+              <ul className="space-y-1 pb-4">
+                {decks.length === 0 && (
+                  <li className="px-3 py-6 text-center text-sm text-muted-foreground">
+                    No saved decks yet.
+                  </li>
+                )}
+                {decks.map((d) => (
+                  <li key={d.id}>
+                    <button
+                      onClick={() => {
+                        setSelectedDeckId(d.id);
+                        setPreviewMode(false);
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                        selectedDeckId === d.id
+                          ? "bg-primary/15 text-foreground"
+                          : "hover:bg-secondary text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <Layers className="h-3.5 w-3.5 shrink-0" />
+                      <span className="flex-1 truncate">{d.topic}</span>
+                      <Trash2
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void deleteDeck(d.id);
+                        }}
+                        className="h-3.5 w-3.5 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                      />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </ScrollArea>
+            <div className="border-t border-border px-3 py-3 space-y-2">
+              <Link
+                to="/planner"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+              >
+                <ListTodo className="h-4 w-4" />
+                Study planner
+              </Link>
+              <Link
+                to="/tests"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+              >
+                <BookOpen className="h-4 w-4" />
+                Test creator
+              </Link>
+              <Link
+                to="/chat"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+              >
+                <MessageSquare className="h-4 w-4" />
+                Chat
+              </Link>
+              <Link
+                to="/profile"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+              >
+                <User className="h-4 w-4" />
+                Profile
+              </Link>
+              <div className="flex items-center justify-between gap-2 px-2 text-sm">
+                <span className="truncate text-muted-foreground">{displayName}</span>
+                <Button variant="ghost" size="icon" onClick={logout} title="Sign out">
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
 
         {/* Desktop sidebar */}
         <aside className="hidden w-80 shrink-0 flex-col border-r border-border bg-card/40 backdrop-blur md:flex">
@@ -416,21 +499,95 @@ function FlashcardsPage() {
   // Main study/generation view
   return (
     <div className="flex h-screen w-full overflow-hidden">
-      <MobileMenu
-        open={mobileMenuOpen}
-        onOpenChange={setMobileMenuOpen}
-        displayName={displayName}
-        onSignOut={logout}
-        headerContent={
-          <Link
-            to="/chat"
-            onClick={() => setMobileMenuOpen(false)}
-            className="flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary transition w-full"
-          >
-            <Plus className="h-4 w-4" /> New chat
-          </Link>
-        }
-      />
+      {/* Mobile drawer */}
+      <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+        <SheetContent side="left" className="w-80 p-0 flex flex-col">
+          <div className="flex items-center gap-2 px-5 py-5 font-display text-lg font-semibold">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent glow">
+              <Sparkles className="h-4 w-4 text-primary-foreground" />
+            </span>
+            ScholarX
+          </div>
+          <div className="px-3">
+            <Link
+              to="/chat"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary transition w-full"
+            >
+              <Plus className="h-4 w-4" /> New chat
+            </Link>
+          </div>
+          <div className="mt-4 px-5 text-xs uppercase tracking-wider text-muted-foreground">
+            My decks
+          </div>
+          <ScrollArea className="mt-2 flex-1 px-2">
+            <ul className="space-y-1 pb-4">
+              {decks.length === 0 && (
+                <li className="px-3 py-6 text-center text-sm text-muted-foreground">
+                  No saved decks yet.
+                </li>
+              )}
+              {decks.map((d) => (
+                <li key={d.id}>
+                  <button
+                    onClick={() => {
+                      setSelectedDeckId(d.id);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                      selectedDeckId === d.id
+                        ? "bg-primary/15 text-foreground"
+                        : "hover:bg-secondary text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Layers className="h-3.5 w-3.5 shrink-0" />
+                    <span className="flex-1 truncate">{d.topic}</span>
+                    <Trash2
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void deleteDeck(d.id);
+                      }}
+                      className="h-3.5 w-3.5 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                    />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </ScrollArea>
+          <div className="border-t border-border px-3 py-3 space-y-2">
+            <Link
+              to="/planner"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+            >
+              <ListTodo className="h-4 w-4" />
+              Study planner
+            </Link>
+            <Link
+              to="/chat"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+            >
+              <MessageSquare className="h-4 w-4" />
+              Chat
+            </Link>
+            <Link
+              to="/profile"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+            >
+              <User className="h-4 w-4" />
+              Profile
+            </Link>
+            <div className="flex items-center justify-between gap-2 px-2 text-sm">
+              <span className="truncate text-muted-foreground">{displayName}</span>
+              <Button variant="ghost" size="icon" onClick={logout} title="Sign out">
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Desktop sidebar */}
       <aside className="hidden w-80 shrink-0 flex-col border-r border-border bg-card/40 backdrop-blur md:flex">
