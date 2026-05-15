@@ -47,6 +47,7 @@ export type Database = {
           conversation_id: string
           created_at: string
           id: string
+          image: string | null
           role: string
           user_id: string
         }
@@ -55,6 +56,7 @@ export type Database = {
           conversation_id: string
           created_at?: string
           id?: string
+          image?: string | null
           role: string
           user_id: string
         }
@@ -252,7 +254,7 @@ export type Database = {
   }
 }
 
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+export type Database = Database
 
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 

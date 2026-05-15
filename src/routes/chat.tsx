@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 
 type Subject = "math" | "science" | "english" | "history" | "general";
-type Msg = { id?: string; role: "user" | "assistant"; content: string };
+type Msg = { id?: string; role: "user" | "assistant"; content: string; image?: string };
 type Convo = { id: string; title: string; subject: string | null; updated_at: string };
 
 function stripForSpeech(s: string) {
@@ -92,6 +92,7 @@ function ChatPage() {
   const sidebarStartXRef = useRef(0);
   const sidebarStartWidthRef = useRef(320);
   const [mounted, setMounted] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   useEffect(() => {
     setMounted(true);
     setSpeechSupported(
@@ -310,7 +311,7 @@ function ChatPage() {
     if (c?.subject) setSubject(c.subject as Subject);
     const { data, error } = await supabase
       .from("messages")
-      .select("id, role, content")
+      .select("id, role, content, image")
       .eq("conversation_id", id)
       .order("created_at", { ascending: true });
     if (error) {
@@ -322,6 +323,7 @@ function ChatPage() {
         id: m.id,
         role: m.role as "user" | "assistant",
         content: m.content,
+        image: m.image,
       })),
     );
   }
@@ -400,7 +402,7 @@ function ChatPage() {
 
   async function send(overrideText?: string) {
     const text = (overrideText ?? input).trim();
-    if (!text || loading) return;
+    if (!text && !imageFile) return;
 
     const { data: u } = await supabase.auth.getUser();
     if (!u.user) {
@@ -414,7 +416,7 @@ function ChatPage() {
     let convoId = activeId;
     try {
       if (!convoId) {
-        const title = text.slice(0, 60);
+        const title = text || "Image analysis";
         const { data, error } = await supabase
           .from("conversations")
           .insert({ user_id: u.user.id, title, subject })
@@ -425,7 +427,22 @@ function ChatPage() {
         setActiveId(convoId);
       }
 
-      const userMsg: Msg = { role: "user", content: text };
+      let userMsg: Msg;
+      let imageBase64: string | undefined;
+
+      if (imageFile) {
+        const reader = new FileReader();
+        await new Promise<void>((resolve, reject) => {
+          reader.onload = () => resolve();
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(imageFile);
+        });
+        imageBase64 = (reader.result as string).split(',')[1];
+        userMsg = { role: "user", content: text, image: imageBase64 };
+      } else {
+        userMsg = { role: "user", content: text };
+      }
+
       const nextMessages = [...messages, userMsg];
       setMessages(nextMessages);
 
@@ -434,6 +451,7 @@ function ChatPage() {
         user_id: u.user.id,
         role: "user",
         content: text,
+        image: imageBase64,
       });
 
       const { data: sess } = await supabase.auth.getSession();
@@ -442,6 +460,7 @@ function ChatPage() {
         data: {
           messages: nextMessages.map((m) => ({ role: m.role, content: m.content })),
           subject,
+          image: imageBase64,
         },
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
@@ -479,6 +498,7 @@ function ChatPage() {
       toast.error(err instanceof Error ? err.message : "Failed to send");
     } finally {
       setLoading(false);
+      setImageFile(null);
     }
   }
 
@@ -743,7 +763,7 @@ function ChatPage() {
           <div className="mx-auto max-w-3xl space-y-4">
             {messages.length === 0 && <EmptyState subject={subject} onPick={setInput} />}
             {messages.map((m, i) => (
-              <Bubble key={m.id ?? i} role={m.role} content={m.content} ttsSupported={ttsSupported} />
+              <Bubble key={m.id ?? i} role={m.role} content={m.content} image={m.image} ttsSupported={ttsSupported} />
             ))}
             {loading && (
               <div className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground">
@@ -774,6 +794,33 @@ function ChatPage() {
                 maxLength={4000}
                 className="min-h-[44px] max-h-40 resize-none border-0 bg-transparent focus-visible:ring-0"
               />
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                className="hidden"
+                id="image-upload"
+              />
+              <label
+                htmlFor="image-upload"
+                className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-border bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                title="Upload image"
+              >
+                <Layers className="h-4 w-4" />
+              </label>
+              {imageFile && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <span>{imageFile.name}</span>
+                  <Button
+                    onClick={() => setImageFile(null)}
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 w-6 p-0"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
               {mounted && speechSupported && (
                 <Button
                   onClick={toggleListening}
@@ -799,7 +846,7 @@ function ChatPage() {
               )}
               <Button
                 onClick={() => send()}
-                disabled={loading || !input.trim()}
+                disabled={loading || (!input.trim() && !imageFile)}
                 size="icon"
                 className="h-10 w-10 shrink-0 rounded-xl glow"
               >
@@ -818,7 +865,7 @@ function ChatPage() {
   );
 }
 
-function Bubble({ role, content, ttsSupported }: { role: "user" | "assistant"; content: string; ttsSupported: boolean }) {
+function Bubble({ role, content, image, ttsSupported }: { role: "user" | "assistant"; content: string; image?: string; ttsSupported: boolean }) {
   const isUser = role === "user";
   const [speaking, setSpeaking] = useState(false);
 
@@ -847,6 +894,7 @@ function Bubble({ role, content, ttsSupported }: { role: "user" | "assistant"; c
             : "glass"
         }`}
       >
+        {image && <img src={`data:image/jpeg;base64,${image}`} alt="Uploaded" className="mb-2 max-w-full rounded-lg" />}
         <FormattedContent text={content} />
         {!isUser && ttsSupported && (
           <button

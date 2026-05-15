@@ -21,6 +21,7 @@ const inputSchema = z.object({
     .min(1)
     .max(40),
   subject: z.enum(["math", "science", "english", "history", "general"]).default("general"),
+  image: z.string().optional(),
 });
 
 export const askHomework = createServerFn({ method: "POST" })
@@ -28,7 +29,8 @@ export const askHomework = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => inputSchema.parse(input))
   .handler(async ({ data }) => {
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-    if (!GEMINI_API_KEY) {
+    const HF_TOKEN = process.env.HF_TOKEN;
+    if (!GEMINI_API_KEY || !HF_TOKEN) {
       return { content: "", error: "AI is not configured. Please contact support." };
     }
 
@@ -45,32 +47,69 @@ Subject focus: ${data.subject.toUpperCase()}
 ${SUBJECT_GUIDANCE[data.subject]}`;
 
     try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${GEMINI_API_KEY}`,
-            "Content-Type": "application/json",
+      let content: string;
+      if (data.image) {
+        // Use Gemini for image analysis
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              contents: [{
+                parts: [
+                  { text: systemPrompt + "\n\n" + data.messages.map(m => `${m.role}: ${m.content}`).join('\n') + "\nAssistant: " },
+                  { inline_data: { mime_type: "image/jpeg", data: data.image } }
+                ]
+              }]
+            }),
           },
-          body: JSON.stringify({
-            model: "gemini-3.1-flash-lite",
-            messages: [{ role: "system", content: systemPrompt }, ...data.messages],
-          }),
-        },
-      );
+        );
 
-      if (res.status === 429) {
-        return { content: "", error: "Too many requests right now. Please try again in a moment." };
-      }
-      if (!res.ok) {
-        const text = await res.text();
-        console.error("Gemini API error", res.status, text);
-        return { content: "", error: "The AI tutor couldn't respond. Please try again." };
-      }
+        if (res.status === 429) {
+          return { content: "", error: "Too many requests right now. Please try again in a moment." };
+        }
+        if (!res.ok) {
+          const text = await res.text();
+          console.error("Gemini API error", res.status, text);
+          return { content: "", error: "The AI tutor couldn't respond. Please try again." };
+        }
 
-      const json = await res.json();
-      const content: string = json?.choices?.[0]?.message?.content ?? "";
+        const json = await res.json();
+        content = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+      } else {
+        // Use Gemma via Hugging Face
+        const prompt = systemPrompt + "\n\n" + data.messages.map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n') + "\nAssistant: ";
+        const res = await fetch(
+          'https://api-inference.huggingface.co/models/google/gemma-2-27b-it',
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${HF_TOKEN}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              inputs: prompt,
+              parameters: { max_new_tokens: 512, temperature: 0.7 }
+            }),
+          },
+        );
+
+        if (res.status === 429) {
+          return { content: "", error: "Too many requests right now. Please try again in a moment." };
+        }
+        if (!res.ok) {
+          const text = await res.text();
+          console.error("HF API error", res.status, text);
+          return { content: "", error: "The AI tutor couldn't respond. Please try again." };
+        }
+
+        const json = await res.json();
+        const fullText = json[0]?.generated_text ?? "";
+        content = fullText.replace(prompt, '').trim();
+      }
       return { content, error: null as string | null };
     } catch (e) {
       console.error("askHomework error", e);
