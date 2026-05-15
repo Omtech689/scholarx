@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import "@/styles/landing.css";
 
@@ -29,9 +29,6 @@ export const Route = createFileRoute("/")({
 });
 
 function Landing() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-
   // Scroll-reveal: add `is-visible` to elements with `.reveal` when they enter the viewport.
   const rootRef = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -51,8 +48,6 @@ function Landing() {
     els.forEach((el) => io.observe(el));
     return () => io.disconnect();
   }, []);
-
-  const v = mounted ? "reveal is-visible" : "reveal";
 
   return (
     <main className="landing" ref={rootRef}>
@@ -85,24 +80,24 @@ function Landing() {
 
       {/* ---------- Hero ---------- */}
       <section className="section hero">
-        <div className={`hero-pill ${v}`}>
+        <div className="hero-pill hero-animate">
           <span className="hero-pill-dot" />
           New · Voice tutor &amp; study planner
         </div>
 
-        <h1 className={`hero-title ${v} delay-1`}>
+        <h1 className="hero-title hero-animate delay-1">
           Homework, <span className="accent">decoded</span>.
           <br />
           Mind, <span className="accent">unlocked</span>.
         </h1>
 
-        <p className={`hero-sub ${v} delay-2`}>
+        <p className="hero-sub hero-animate delay-2">
           A fancy AI tutor that explains Math, Science, English and History step by step —
           plus a built-in study planner that keeps you on track. Built to teach, not to do
           the work for you.
         </p>
 
-        <div className={`hero-actions ${v} delay-3`}>
+        <div className="hero-actions hero-animate delay-3">
           <a href="/login?mode=signup" className="btn btn-gradient btn-lg btn-glow">
             Start learning free
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -112,7 +107,7 @@ function Landing() {
           <a href="/login" className="btn btn-outline btn-lg">I have an account</a>
         </div>
 
-        <div className={`hero-stats ${v} delay-4`}>
+        <div className="hero-stats hero-animate delay-4">
           <div className="stat">
             <div className="stat-num">4</div>
             <div className="stat-label">Core subjects</div>
