@@ -10,7 +10,6 @@ type MobileMenuProps = {
   displayName: string;
   onSignOut: () => Promise<void> | void;
   headerContent?: ReactNode;
-  children?: ReactNode;
 };
 
 const NAV_ITEMS = [
@@ -32,8 +31,7 @@ export function MobileMenu({ open, onOpenChange, displayName, onSignOut, headerC
           ScholarX
         </div>
         {headerContent ? <div className="px-3">{headerContent}</div> : null}
-        {children ? <div className="flex-1 overflow-y-auto px-3">{children}</div> : null}
-        <div className="border-t border-border px-3 py-3 space-y-2">
+        <div className="mt-auto border-t border-border px-3 py-3 space-y-2">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             return (
