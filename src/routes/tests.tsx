@@ -462,104 +462,117 @@ function TestCreatorPage() {
             </span>
             <div className="min-w-0">
               <h1 className="text-base font-semibold leading-none truncate" style={{ fontFamily: "var(--font-display)" }}>
-                Test creator
+                {selectedTestId ? "Test Review" : "Test creator"}
               </h1>
-              <p className="text-xs text-muted-foreground mt-0.5 truncate">Create interactive practice tests with MCQ, essay, or mixed mode.</p>
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                {selectedTestId ? "Review and practice your saved test" : "Create interactive practice tests with MCQ, essay, or mixed mode."}
+              </p>
             </div>
           </div>
-          <Link to="/planner" className="text-xs font-medium text-muted-foreground hover:text-foreground transition shrink-0 ml-auto">
-            Study planner
-          </Link>
+          <div className="flex items-center gap-2 ml-auto">
+            {selectedTestId && (
+              <Button variant="outline" size="sm" onClick={() => resetTest()}>
+                Back to create
+              </Button>
+            )}
+            <Link to="/planner" className="text-xs font-medium text-muted-foreground hover:text-foreground transition shrink-0">
+              Study planner
+            </Link>
+          </div>
         </header>
 
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-5xl mx-auto px-4 py-6 md:px-6 space-y-4">
-            <div className="rounded-xl border border-border bg-card/70 backdrop-blur-md p-4 sm:p-5 space-y-4">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-primary" />
-                <h2 className="font-semibold" style={{ fontFamily: "var(--font-display)" }}>
-                  Generate an interactive test
-                </h2>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Choose the test type, set a topic, and optionally chat with the AI to narrow the focus before generating.
-              </p>
+            {!selectedTestId ? (
+              <>
+                <div className="rounded-xl border border-border bg-card/70 backdrop-blur-md p-4 sm:p-5 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <h2 className="font-semibold" style={{ fontFamily: "var(--font-display)" }}>
+                      Generate an interactive test
+                    </h2>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Choose the test type, set a topic, and optionally chat with the AI to narrow the focus before generating.
+                  </p>
 
-              <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Test topic / title</label>
-                  <Input
-                    value={topicSeed}
-                    onChange={(e) => setTopicSeed(e.target.value)}
-                    placeholder="e.g. Cellular respiration, Shakespeare Sonnets, algebra review"
-                    className="bg-background/50"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Mode</label>
-                  <select
-                    value={testMode}
-                    onChange={(e) => setTestMode(e.target.value as typeof testMode)}
-                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary"
-                  >
-                    {TEST_MODES.map((mode) => (
-                      <option key={mode.value} value={mode.value}>
-                        {mode.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-border bg-card/70 backdrop-blur-md flex flex-col min-h-[420px] max-h-[min(70vh,560px)]">
-              <div className="border-b border-border px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Chat with the tutor
-              </div>
-              <ScrollArea className="flex-1 px-3">
-                <ul className="space-y-3 py-4 pr-2">
-                  {messages.length === 0 && (
-                    <li className="text-sm text-muted-foreground text-center py-8">
-                      Describe the topic or test focus. Example: "Make a short biology quiz on photosynthesis with a mix of questions."
-                    </li>
-                  )}
-                  {messages.map((m, i) => (
-                    <li key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                      <div
-                        className={`max-w-[92%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
-                          m.role === "user"
-                            ? "bg-primary text-primary-foreground rounded-br-md"
-                            : "bg-muted/80 text-foreground rounded-bl-md border border-border/60"
-                        }`}
+                  <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">Test topic / title</label>
+                      <Input
+                        value={topicSeed}
+                        onChange={(e) => setTopicSeed(e.target.value)}
+                        placeholder="e.g. Cellular respiration, Shakespeare Sonnets, algebra review"
+                        className="bg-background/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">Mode</label>
+                      <select
+                        value={testMode}
+                        onChange={(e) => setTestMode(e.target.value as typeof testMode)}
+                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary"
                       >
-                        <span className="whitespace-pre-wrap">{m.content}</span>
-                      </div>
-                    </li>
-                  ))}
-                  {loading && (
-                    <li className="flex justify-start">
-                      <div className="rounded-2xl rounded-bl-md border border-border/60 bg-muted/50 px-3 py-2 text-sm flex items-center gap-2 text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Generating test…
-                      </div>
-                    </li>
-                  )}
-                </ul>
-              </ScrollArea>
-              <form onSubmit={handleSend} className="border-t border-border px-3 py-3">
-                <div className="flex gap-2">
-                  <Input
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    placeholder="Refine the test request or ask for a narrower focus"
-                    className="bg-background/50"
-                  />
-                  <Button type="submit" disabled={loading}>
-                    {loading ? "Generating…" : <Send className="h-4 w-4" />}
-                  </Button>
+                        {TEST_MODES.map((mode) => (
+                          <option key={mode.value} value={mode.value}>
+                            {mode.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                 </div>
-              </form>
-            </div>
+
+                <div className="rounded-xl border border-border bg-card/70 backdrop-blur-md flex flex-col min-h-[420px] max-h-[min(70vh,560px)]">
+                  <div className="border-b border-border px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Chat with the tutor
+                  </div>
+                  <ScrollArea className="flex-1 px-3">
+                    <ul className="space-y-3 py-4 pr-2">
+                      {messages.length === 0 && (
+                        <li className="text-sm text-muted-foreground text-center py-8">
+                          Describe the topic or test focus. Example: "Make a short biology quiz on photosynthesis with a mix of questions."
+                        </li>
+                      )}
+                      {messages.map((m, i) => (
+                        <li key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                          <div
+                            className={`max-w-[92%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
+                              m.role === "user"
+                                ? "bg-primary text-primary-foreground rounded-br-md"
+                                : "bg-muted/80 text-foreground rounded-bl-md border border-border/60"
+                            }`}
+                          >
+                            <span className="whitespace-pre-wrap">{m.content}</span>
+                          </div>
+                        </li>
+                      ))}
+                      {loading && (
+                        <li className="flex justify-start">
+                          <div className="rounded-2xl rounded-bl-md border border-border/60 bg-muted/50 px-3 py-2 text-sm flex items-center gap-2 text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Generating test…
+                          </div>
+                        </li>
+                      )}
+                    </ul>
+                  </ScrollArea>
+                  <form onSubmit={handleSend} className="border-t border-border px-3 py-3">
+                    <div className="flex gap-2">
+                      <Input
+                        value={draft}
+                        onChange={(e) => setDraft(e.target.value)}
+                        placeholder="Refine the test request or ask for a narrower focus"
+                        className="bg-background/50"
+                      />
+                      <Button type="submit" disabled={loading}>
+                        {loading ? "Generating…" : <Send className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </form>
+                </div>
+              </>
+            ) : null}
 
             {preview ? (
               <div className="rounded-xl border border-border bg-card/70 backdrop-blur-md p-4 sm:p-5 space-y-4">
