@@ -917,6 +917,18 @@ function FormattedContent({ text }: { text: string }) {
   return (
     <div className="space-y-2 whitespace-pre-wrap break-words">
       {blocks.map((b, i) => {
+        // Heading level 3
+        if (b.startsWith('### ')) {
+          return <h3 key={i} className="text-lg font-semibold mt-4 mb-2">{renderInline(b.replace('### ', ''))}</h3>;
+        }
+        // Heading level 2
+        if (b.startsWith('## ')) {
+          return <h2 key={i} className="text-xl font-semibold mt-5 mb-3">{renderInline(b.replace('## ', ''))}</h2>;
+        }
+        // Heading level 1
+        if (b.startsWith('# ')) {
+          return <h1 key={i} className="text-2xl font-bold mt-6 mb-4">{renderInline(b.replace('# ', ''))}</h1>;
+        }
         // Code blocks
         if (/^```/.test(b)) {
           const code = b.replace(/^```\w*\n?|```$/g, "");
@@ -999,9 +1011,9 @@ function renderMath(src: string, displayMode: boolean, key: string | number) {
 }
 
 function renderInline(s: string): React.ReactNode {
-  // Split on $$...$$, \[...\], $...$, \(...\), **bold**, `code`
+  // Split on $$...$$, \[...\], $...$, \(...\), **bold**, *italics*, `code`
   const regex =
-    /(\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\$[^$\n]+?\$|\*\*[^*]+\*\*|`[^`]+`)/g;
+    /(\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\$[^$\n]+?\$|\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g;
   const parts = s.split(regex);
   return parts.map((p, i) => {
     if (!p) return null;
@@ -1014,6 +1026,12 @@ function renderInline(s: string): React.ReactNode {
         <strong key={i} className="font-semibold">
           {p.slice(2, -2)}
         </strong>
+      );
+    if (/^\*.+\*$/.test(p))
+      return (
+        <em key={i} className="italic">
+          {p.slice(1, -1)}
+        </em>
       );
     if (/^`.+`$/.test(p))
       return (
@@ -1111,3 +1129,4 @@ function EmptyState({ subject, onPick }: { subject: Subject; onPick: (s: string)
     </div>
   );
 }
+
