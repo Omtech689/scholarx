@@ -320,7 +320,41 @@ function TestCreatorPage() {
             <BookOpen className="h-4 w-4" /> New test
           </Button>
         }
-      />
+      >
+        <div className="mt-4 px-1 text-xs uppercase tracking-wider text-muted-foreground">
+          Saved tests
+        </div>
+        <div className="mt-2 space-y-1 pb-4">
+          {savedTests.length === 0 ? (
+            <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+              No saved tests yet.
+            </div>
+          ) : (
+            savedTests.map((test) => (
+              <button
+                key={test.id}
+                onClick={() => {
+                  selectSavedTest(test.id);
+                  setMobileMenuOpen(false);
+                }}
+                className={`w-full flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                  selectedTestId === test.id
+                    ? "bg-primary/15 text-foreground"
+                    : "hover:bg-secondary text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <BookOpen className="h-3.5 w-3.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="truncate font-medium">{test.topic}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {test.mode.replace("all_", "").replace("mixed", "mixed")} • {new Date(test.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      </MobileMenu>
 
       <aside className="hidden w-80 shrink-0 flex-col border-r border-border bg-card/40 backdrop-blur md:flex">
         <div className="flex items-center gap-2 px-5 py-5 font-display text-lg font-semibold">

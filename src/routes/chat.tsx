@@ -525,7 +525,46 @@ function ChatPage() {
             <Plus className="h-4 w-4" /> New chat
           </Button>
         }
-      />
+      >
+        <div className="mt-4 px-1 text-xs uppercase tracking-wider text-muted-foreground">
+          History
+        </div>
+        <div className="mt-2 space-y-1 pb-4">
+          {conversations.length === 0 ? (
+            <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+              No chats yet. Ask your first question!
+            </div>
+          ) : (
+            conversations.map((c) => (
+              <div key={c.id} className="group flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    selectConversation(c.id);
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`flex-1 flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                    activeId === c.id
+                      ? "bg-primary/15 text-foreground"
+                      : "hover:bg-secondary text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+                  <span className="flex-1 truncate">{c.title}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => deleteConversation(c.id, e)}
+                  className="h-8 w-8 rounded-full text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                  title="Delete conversation"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </MobileMenu>
 
       {/* Sidebar — desktop only */}
       <aside

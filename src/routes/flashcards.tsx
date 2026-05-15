@@ -257,7 +257,44 @@ function FlashcardsPage() {
               <ArrowLeft className="h-4 w-4" /> Back to study
             </Button>
           }
-        />
+        >
+          <div className="mt-4 px-1 text-xs uppercase tracking-wider text-muted-foreground">
+            My decks
+          </div>
+          <div className="mt-2 space-y-1 pb-4">
+            {decks.length === 0 ? (
+              <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+                No saved decks yet.
+              </div>
+            ) : (
+              decks.map((d) => (
+                <button
+                  key={d.id}
+                  onClick={() => {
+                    setSelectedDeckId(d.id);
+                    setPreviewMode(false);
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                    selectedDeckId === d.id
+                      ? "bg-primary/15 text-foreground"
+                      : "hover:bg-secondary text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Layers className="h-3.5 w-3.5 shrink-0" />
+                  <span className="flex-1 truncate">{d.topic}</span>
+                  <Trash2
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void deleteDeck(d.id);
+                    }}
+                    className="h-3.5 w-3.5 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                  />
+                </button>
+              ))
+            )}
+          </div>
+        </MobileMenu>
 
         {/* Desktop sidebar */}
         <aside className="hidden w-80 shrink-0 flex-col border-r border-border bg-card/40 backdrop-blur md:flex">
@@ -430,7 +467,43 @@ function FlashcardsPage() {
             <Plus className="h-4 w-4" /> New chat
           </Link>
         }
-      />
+      >
+        <div className="mt-4 px-1 text-xs uppercase tracking-wider text-muted-foreground">
+          My decks
+        </div>
+        <div className="mt-2 space-y-1 pb-4">
+          {decks.length === 0 ? (
+            <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+              No saved decks yet.
+            </div>
+          ) : (
+            decks.map((d) => (
+              <button
+                key={d.id}
+                onClick={() => {
+                  setSelectedDeckId(d.id);
+                  setMobileMenuOpen(false);
+                }}
+                className={`group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                  selectedDeckId === d.id
+                    ? "bg-primary/15 text-foreground"
+                    : "hover:bg-secondary text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Layers className="h-3.5 w-3.5 shrink-0" />
+                <span className="flex-1 truncate">{d.topic}</span>
+                <Trash2
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void deleteDeck(d.id);
+                  }}
+                  className="h-3.5 w-3.5 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                />
+              </button>
+            ))
+          )}
+        </div>
+      </MobileMenu>
 
       {/* Desktop sidebar */}
       <aside className="hidden w-80 shrink-0 flex-col border-r border-border bg-card/40 backdrop-blur md:flex">
