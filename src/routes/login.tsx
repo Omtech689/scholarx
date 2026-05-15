@@ -6,6 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Sparkles, Loader2 } from "lucide-react";
+import Turnstile from "react-turnstile";
+
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string;
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -38,8 +41,14 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [widgetKey, setWidgetKey] = useState(0);
 
-  useEffect(() => setIsSignup(mode === "signup"), [mode]);
+  useEffect(() => {
+    setIsSignup(mode === "signup");
+    setTurnstileToken(null);
+    setWidgetKey((k) => k + 1);
+  }, [mode]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -47,8 +56,17 @@ function LoginPage() {
     });
   }, [navigate]);
 
+  const resetTurnstile = () => {
+    setTurnstileToken(null);
+    setWidgetKey((k) => k + 1);
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!turnstileToken) {
+      toast.error("Please complete the security check.");
+      return;
+    }
     setLoading(true);
     try {
       if (isSignup) {
@@ -62,7 +80,6 @@ function LoginPage() {
         });
         if (error) throw error;
         toast.success("Account created! Please check your email to verify your account.");
-        // Don't immediately navigate - let user verify email first
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -71,6 +88,7 @@ function LoginPage() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Something went wrong";
       toast.error(msg);
+      resetTurnstile();
     } finally {
       setLoading(false);
     }
@@ -154,7 +172,17 @@ function LoginPage() {
                 maxLength={72}
               />
             </div>
-            <Button type="submit" className="w-full glow" disabled={loading}>
+            <div className="flex justify-center">
+              <Turnstile
+                key={widgetKey}
+                siteKey={TURNSTILE_SITE_KEY}
+                theme="dark"
+                onSuccess={(token) => setTurnstileToken(token)}
+                onExpire={() => setTurnstileToken(null)}
+                onError={() => setTurnstileToken(null)}
+              />
+            </div>
+            <Button type="submit" className="w-full glow" disabled={loading || !turnstileToken}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isSignup ? "Create account" : "Sign in"}
             </Button>
