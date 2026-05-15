@@ -10,7 +10,6 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import katex from "katex";
 import {
-  Sparkles,
   Plus,
   Send,
   Loader2,
@@ -567,9 +566,7 @@ function ChatPage() {
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <SheetContent side="left" className="w-80 p-0 flex flex-col">
           <div className="flex items-center gap-2 px-5 py-5 font-display text-lg font-semibold">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent glow">
-              <Sparkles className="h-4 w-4 text-primary-foreground" />
-            </span>
+            <img src="/logo-removebg-preview.png" className="h-8 w-8 object-contain" alt="ScholarX" />
             ScholarX
           </div>
           <div className="px-3">
@@ -694,9 +691,7 @@ function ChatPage() {
           />
         </div>
         <div className="flex items-center gap-2 px-5 py-5 font-display text-lg font-semibold">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent glow">
-            <Sparkles className="h-4 w-4 text-primary-foreground" />
-          </span>
+          <img src="/logo-removebg-preview.png" className="h-8 w-8 object-contain" alt="ScholarX" />
           ScholarX
         </div>
         <div className="px-3">
@@ -1221,9 +1216,7 @@ function EmptyState({ subject, onPick }: { subject: Subject; onPick: (s: string)
 
   return (
     <div className="mt-12 text-center">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent glow">
-        <Sparkles className="h-6 w-6 text-primary-foreground" />
-      </div>
+      <img src="/logo-removebg-preview.png" className="mx-auto h-14 w-14 object-contain" alt="ScholarX" />
       <h2 className="mt-5 text-2xl font-bold">What are you studying today?</h2>
       <p className="mt-2 text-sm text-muted-foreground">
         Pick a subject above and ask anything. I'll explain step by step.

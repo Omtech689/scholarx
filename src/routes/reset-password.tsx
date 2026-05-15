@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Sparkles, Loader2, ArrowLeft, CheckCircle } from "lucide-react";
+import { Loader2, ArrowLeft, CheckCircle } from "lucide-react";
 
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
@@ -227,9 +227,7 @@ function ResetPasswordPage() {
 
         <div className="glass rounded-2xl p-8 shadow-[var(--shadow-card)]">
           <div className="mb-6 flex items-center justify-center gap-2 font-display text-lg font-semibold">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent glow">
-              <Sparkles className="h-4 w-4 text-primary-foreground" />
-            </span>
+            <img src="/logo-removebg-preview.png" className="h-8 w-8 object-contain" alt="ScholarX" />
             ScholarX
           </div>
 

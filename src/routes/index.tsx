@@ -57,7 +57,7 @@ export const Route = createFileRoute("/")({
               "@id": "https://scholarx.space/#org",
               name: "ScholarX",
               url: "https://scholarx.space",
-              logo: "https://scholarx.space/logo-favicon.png",
+              logo: "https://scholarx.space/logo-removebg-preview.png",
             },
           ],
         }),

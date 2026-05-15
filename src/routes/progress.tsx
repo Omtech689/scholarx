@@ -16,7 +16,6 @@ import {
   CartesianGrid,
 } from "recharts";
 import {
-  Sparkles,
   ListTodo,
   Layers,
   BookOpen,
@@ -175,9 +174,7 @@ function ProgressPage() {
       {/* Sidebar */}
       <aside className="hidden w-72 shrink-0 flex-col border-r border-border bg-card/40 backdrop-blur md:flex">
         <div className="flex items-center gap-2 px-5 py-5 font-display text-lg font-semibold">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent glow">
-            <Sparkles className="h-4 w-4 text-primary-foreground" />
-          </span>
+          <img src="/logo-removebg-preview.png" className="h-8 w-8 object-contain" alt="ScholarX" />
           ScholarX
         </div>
         <div className="mt-auto border-t border-border px-3 py-3 space-y-2">

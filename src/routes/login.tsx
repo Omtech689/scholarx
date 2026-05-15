@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import Turnstile from "react-turnstile";
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string;
@@ -120,9 +120,7 @@ function LoginPage() {
     <main className="relative flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
         <Link to="/" className="mb-8 flex items-center justify-center gap-2 font-display text-lg font-semibold">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent glow">
-            <Sparkles className="h-4 w-4 text-primary-foreground" />
-          </span>
+          <img src="/logo-removebg-preview.png" className="h-8 w-8 object-contain" alt="ScholarX" />
           ScholarX
         </Link>
 

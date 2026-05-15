@@ -418,9 +418,7 @@ function TestCreatorPage() {
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <SheetContent side="left" className="w-80 p-0 flex flex-col">
           <div className="flex items-center gap-2 px-5 py-5 font-display text-lg font-semibold">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent glow">
-              <Sparkles className="h-4 w-4 text-primary-foreground" />
-            </span>
+            <img src="/logo-removebg-preview.png" className="h-8 w-8 object-contain" alt="ScholarX" />
             ScholarX
           </div>
           <div className="px-3">
