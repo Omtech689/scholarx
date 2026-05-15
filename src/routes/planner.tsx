@@ -1,11 +1,14 @@
 import { createFileRoute, redirect, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
+import { RouteError } from "@/components/ui/route-error";
 import { toast } from "sonner";
 import {
   Sparkles,
@@ -57,15 +60,15 @@ export const Route = createFileRoute("/planner")({
   beforeLoad: async () => {
     if (typeof window === "undefined") return;
     const { data } = await supabase.auth.getSession();
-    if (!data.session) throw redirect({ to: "/login", search: { mode: "signin" } });
+    if (!data.session) throw redirect({ to: "/login?mode=signin" });
   },
+  errorComponent: RouteError,
   component: PlannerPage,
 });
 
 function PlannerPage() {
   const navigate = useNavigate();
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [showNew, setShowNew] = useState(false);
   const [filter, setFilter] = useState<"all" | "today" | "upcoming" | "overdue" | "done">("all");
 
@@ -75,43 +78,108 @@ function PlannerPage() {
   const [subject, setSubject] = useState<string>("Math");
   const [dueDate, setDueDate] = useState("");
   const [priority, setPriority] = useState<Priority>("medium");
-  const [saving, setSaving] = useState(false);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [displayName, setDisplayName] = useState<string>("");
 
-  useEffect(() => {
-    void load();
-    void loadUserProfile();
-  }, []);
-
-  async function loadUserProfile() {
-    const { data: u } = await supabase.auth.getUser();
-    if (u.user) {
-      const { data: p } = await supabase
+  const profileQuery = useQuery<string>({
+    queryKey: ["profile"],
+    queryFn: async () => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) throw new Error("Sign in required");
+      const { data: p, error } = await supabase
         .from("profiles")
         .select("display_name")
         .eq("id", u.user.id)
         .maybeSingle();
-      setDisplayName(p?.display_name ?? u.user.email?.split("@")[0] ?? "Student");
-    }
-  }
+      if (error) throw error;
+      return p?.display_name ?? u.user.email?.split("@")[0] ?? "Student";
+    },
+    staleTime: 1000 * 60 * 5,
+    retry: 1,
+  });
 
-  async function load() {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("study_tasks")
-      .select("*")
-      .order("completed", { ascending: true })
-      .order("due_date", { ascending: true, nullsFirst: false })
-      .order("created_at", { ascending: false });
-    if (error) {
+  const displayName = profileQuery.data ?? "Student";
+
+  const tasksQuery = useQuery<Task[]>({
+    queryKey: ["study_tasks"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("study_tasks")
+        .select("*")
+        .order("completed", { ascending: true })
+        .order("due_date", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Task[];
+    },
+    staleTime: 1000 * 60 * 2,
+    retry: 1,
+    onError: () => {
       toast.error("Couldn't load tasks");
-    } else {
-      setTasks((data ?? []) as Task[]);
-    }
-    setLoading(false);
-  }
+    },
+  });
+
+  const addTaskMutation = useMutation(
+    async (payload: { title: string; notes: string; subject: string; dueDate: string; priority: Priority }) => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) throw new Error("Sign in required");
+      const { error } = await supabase.from("study_tasks").insert({
+        user_id: u.user.id,
+        title: payload.title.trim(),
+        notes: payload.notes.trim() || null,
+        subject: payload.subject,
+        due_date: payload.dueDate || null,
+        priority: payload.priority,
+      });
+      if (error) throw error;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["study_tasks"] });
+        setTitle("");
+        setNotes("");
+        setDueDate("");
+        setPriority("medium");
+        setShowNew(false);
+        toast.success("Task added");
+      },
+      onError: () => {
+        toast.error("Couldn't save task");
+      },
+    },
+  );
+
+  const updateTaskMutation = useMutation(
+    async ({ id, completed }: { id: string; completed: boolean }) => {
+      const { error } = await supabase
+        .from("study_tasks")
+        .update({ completed, completed_at: completed ? new Date().toISOString() : null })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    {
+      onError: () => {
+        toast.error("Update failed");
+      },
+      onSettled: () => queryClient.invalidateQueries({ queryKey: ["study_tasks"] }),
+    },
+  );
+
+  const deleteTaskMutation = useMutation(
+    async (id: string) => {
+      const { error } = await supabase.from("study_tasks").delete().eq("id", id);
+      if (error) throw error;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["study_tasks"] });
+        toast.success("Task deleted");
+      },
+      onError: () => {
+        toast.error("Delete failed");
+      },
+    },
+  );
 
   async function logout() {
     await supabase.auth.signOut();
@@ -121,63 +189,24 @@ function PlannerPage() {
   async function addTask(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    setSaving(true);
-    const { data: u } = await supabase.auth.getUser();
-    if (!u.user) {
-      toast.error("Sign in required");
-      setSaving(false);
-      return;
-    }
-    const { error } = await supabase.from("study_tasks").insert({
-      user_id: u.user.id,
-      title: title.trim(),
-      notes: notes.trim() || null,
-      subject,
-      due_date: dueDate || null,
-      priority,
-    });
-    setSaving(false);
-    if (error) {
-      toast.error("Couldn't save task");
-      return;
-    }
-    setTitle("");
-    setNotes("");
-    setDueDate("");
-    setPriority("medium");
-    setShowNew(false);
-    toast.success("Task added");
-    void load();
+    addTaskMutation.mutate({ title, notes, subject, dueDate, priority });
   }
 
-  async function toggleDone(t: Task) {
-    const next = !t.completed;
-    setTasks((cur) =>
-      cur.map((x) =>
-        x.id === t.id ? { ...x, completed: next, completed_at: next ? new Date().toISOString() : null } : x,
-      ),
-    );
-    const { error } = await supabase
-      .from("study_tasks")
-      .update({ completed: next, completed_at: next ? new Date().toISOString() : null })
-      .eq("id", t.id);
-    if (error) {
-      toast.error("Update failed");
-      void load();
-    }
+  function toggleDone(t: Task) {
+    updateTaskMutation.mutate({ id: t.id, completed: !t.completed });
   }
 
-  async function removeTask(t: Task) {
-    setTasks((cur) => cur.filter((x) => x.id !== t.id));
-    const { error } = await supabase.from("study_tasks").delete().eq("id", t.id);
-    if (error) {
-      toast.error("Delete failed");
-      void load();
-    }
+  function removeTask(t: Task) {
+    deleteTaskMutation.mutate(t.id);
   }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  const tasks = tasksQuery.data ?? [];
 
   const counts = useMemo(() => {
     const out = { all: 0, today: 0, upcoming: 0, overdue: 0, done: 0 };
@@ -198,7 +227,7 @@ function PlannerPage() {
       }
     }
     return out;
-  }, [tasks]);
+  }, [tasks, today]);
 
   const filtered = useMemo(() => {
     return tasks.filter((t) => {
@@ -213,7 +242,7 @@ function PlannerPage() {
       if (filter === "upcoming") return d.getTime() > today.getTime();
       return true;
     });
-  }, [tasks, filter]);
+  }, [tasks, filter, today]);
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
@@ -429,8 +458,8 @@ function PlannerPage() {
                 </div>
                 <div className="flex justify-end gap-2 pt-1">
                   <Button type="button" variant="ghost" onClick={() => setShowNew(false)}>Cancel</Button>
-                  <Button type="submit" disabled={saving || !title.trim()}>
-                    {saving ? "Saving…" : "Add task"}
+                  <Button type="submit" disabled={addTaskMutation.isLoading || !title.trim()}>
+                    {addTaskMutation.isLoading ? "Saving…" : "Add task"}
                   </Button>
                 </div>
               </form>
@@ -460,8 +489,16 @@ function PlannerPage() {
             </div>
 
             {/* Task list */}
-            {loading ? (
-              <div className="text-center py-12 text-muted-foreground text-sm">Loading…</div>
+            {tasksQuery.isLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3, 4].map((index) => (
+                  <Skeleton key={index} className="h-28 rounded-3xl" />
+                ))}
+              </div>
+            ) : tasksQuery.isError ? (
+              <div className="rounded-3xl border border-destructive/20 bg-destructive/10 p-6 text-center text-sm text-destructive">
+                Unable to load tasks. <button type="button" onClick={() => tasksQuery.refetch()} className="underline">Try again</button>.
+              </div>
             ) : filtered.length === 0 ? (
               <EmptyState onAdd={() => setShowNew(true)} />
             ) : (

@@ -1,5 +1,6 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { generateTest } from "@/api/tests.functions";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
+import { RouteError } from "@/components/ui/route-error";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -54,16 +57,18 @@ export const Route = createFileRoute("/tests")({
       { name: "description", content: "Generate interactive AI practice tests and answer them inside ScholarX." },
     ],
   }),
+  errorComponent: RouteError,
   beforeLoad: async () => {
     if (typeof window === "undefined") return;
     const { data } = await supabase.auth.getSession();
-    if (!data.session) throw redirect({ to: "/login", search: { mode: "signin" } });
+    if (!data.session) throw redirect({ to: "/login?mode=signin" });
   },
   component: TestCreatorPage,
 });
 
 function TestCreatorPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [topicSeed, setTopicSeed] = useState("");
   const [testMode, setTestMode] = useState<(typeof TEST_MODES)[number]["value"]>("mixed");
   const [messages, setMessages] = useState<ChatMsg[]>([]);
@@ -72,11 +77,36 @@ function TestCreatorPage() {
   const [preview, setPreview] = useState<TestQuestion[] | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
-  const [savedTests, setSavedTests] = useState<SavedTest[]>([]);
   const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [displayName, setDisplayName] = useState<string>("");
+
+  const savedTestsQuery = useQuery<SavedTest[]>({
+    queryKey: ["tests", userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tests")
+        .select("id, topic, mode, questions, answers, created_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      return (data ?? []).map((row) => ({
+        id: row.id,
+        topic: row.topic,
+        mode: row.mode as TestMode,
+        createdAt: row.created_at,
+        questions: row.questions as TestQuestion[],
+        answers: (row.answers as Record<string, string>) ?? {},
+      }));
+    },
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 2,
+  });
 
   useEffect(() => {
     (async () => {
@@ -93,49 +123,11 @@ function TestCreatorPage() {
     })();
   }, []);
 
-  useEffect(() => {
-    if (!userId) return;
-    void loadSavedTests();
-  }, [userId]);
-
-  async function loadSavedTests() {
-    if (!userId) return;
-    const { data, error } = await supabase
-      .from("tests")
-      .select("id, topic, mode, questions, answers, created_at")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("Failed to load saved tests", error);
-      return;
-    }
-
-    setSavedTests(
-      (data ?? []).map((row) => ({
-        id: row.id,
-        topic: row.topic,
-        mode: row.mode as TestMode,
-        createdAt: row.created_at,
-        questions: row.questions as TestQuestion[],
-        answers: (row.answers as Record<string, string>) ?? {},
-      })),
-    );
-  }
-
-  async function selectSavedTest(id: string) {
-    const saved = savedTests.find((test) => test.id === id);
-    if (!saved) return;
-    setSelectedTestId(id);
-    setPreview(saved.questions);
-    setAnswers(saved.answers);
-    setTopicSeed(saved.topic);
-    setTestMode(saved.mode);
-  }
-
   async function updateSavedTest(update: Partial<SavedTest>) {
     if (!selectedTestId || !userId) return;
-    const nextTests = savedTests.map((test) =>
+
+    const previousTests = savedTestsQuery.data ?? [];
+    const nextTests = previousTests.map((test) =>
       test.id === selectedTestId
         ? {
             ...test,
@@ -143,8 +135,8 @@ function TestCreatorPage() {
           }
         : test,
     );
-    setSavedTests(nextTests);
 
+    queryClient.setQueryData<SavedTest[]>(["tests", userId], nextTests);
     const saved = nextTests.find((test) => test.id === selectedTestId);
     if (!saved) return;
 
@@ -161,7 +153,18 @@ function TestCreatorPage() {
 
     if (error) {
       console.error("Failed to update saved test", error);
+      queryClient.setQueryData(["tests", userId], previousTests);
     }
+  }
+
+  async function selectSavedTest(id: string) {
+    const saved = (savedTestsQuery.data ?? []).find((test) => test.id === id);
+    if (!saved) return;
+    setSelectedTestId(id);
+    setPreview(saved.questions);
+    setAnswers(saved.answers);
+    setTopicSeed(saved.topic);
+    setTestMode(saved.mode);
   }
 
   async function handleSend(e: React.FormEvent) {
@@ -243,7 +246,7 @@ function TestCreatorPage() {
       };
 
       setSelectedTestId(savedTest.id);
-      setSavedTests((prev) => [savedTest, ...prev].slice(0, 20));
+      queryClient.setQueryData<SavedTest[]>(["tests", userId], (previous) => [savedTest, ...(previous ?? [])].slice(0, 20));
       setPreview(questions);
       setMessages((prev) => [
         ...prev,
@@ -325,12 +328,23 @@ function TestCreatorPage() {
           </div>
           <ScrollArea className="mt-2 flex-1 px-2">
             <ul className="space-y-1 pb-4">
-              {savedTests.length === 0 && (
+              {savedTestsQuery.isLoading &&
+                Array.from({ length: 4 }).map((_, index) => (
+                  <li key={index}>
+                    <Skeleton className="h-12 rounded-xl" />
+                  </li>
+                ))}
+              {savedTestsQuery.isError && (
+                <li className="px-3 py-6 text-center text-sm text-destructive">
+                  Failed to load saved tests.
+                </li>
+              )}
+              {!savedTestsQuery.isLoading && (savedTestsQuery.data ?? []).length === 0 && (
                 <li className="px-3 py-6 text-center text-sm text-muted-foreground">
                   No saved tests yet.
                 </li>
               )}
-              {savedTests.map((test) => (
+              {(savedTestsQuery.data ?? []).map((test) => (
                 <li key={test.id}>
                   <button
                     onClick={() => {
@@ -421,12 +435,23 @@ function TestCreatorPage() {
         <div className="mt-4 px-5 text-xs uppercase tracking-wider text-muted-foreground">Saved tests</div>
         <ScrollArea className="mt-2 flex-1 px-2">
           <ul className="space-y-1 pb-4">
-            {savedTests.length === 0 && (
+            {savedTestsQuery.isLoading &&
+              Array.from({ length: 4 }).map((_, index) => (
+                <li key={index}>
+                  <Skeleton className="h-12 rounded-xl" />
+                </li>
+              ))}
+            {savedTestsQuery.isError && (
+              <li className="px-3 py-6 text-center text-sm text-destructive">
+                Failed to load saved tests.
+              </li>
+            )}
+            {!savedTestsQuery.isLoading && (savedTestsQuery.data ?? []).length === 0 && (
               <li className="px-3 py-6 text-center text-sm text-muted-foreground">
                 No saved tests yet.
               </li>
             )}
-            {savedTests.map((test) => (
+            {(savedTestsQuery.data ?? []).map((test) => (
               <li key={test.id}>
                 <button
                   onClick={() => selectSavedTest(test.id)}

@@ -9,6 +9,7 @@
 
     /* Bundler mode */
     "moduleResolution": "Bundler",
+    "baseUrl": ".",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": false,
     "noEmit": true,

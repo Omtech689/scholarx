@@ -1,11 +1,14 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { generateFlashcards } from "@/api/flashcards.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
+import { RouteError } from "@/components/ui/route-error";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -42,8 +45,9 @@ export const Route = createFileRoute("/flashcards")({
   beforeLoad: async () => {
     if (typeof window === "undefined") return;
     const { data } = await supabase.auth.getSession();
-    if (!data.session) throw redirect({ to: "/login", search: { mode: "signin" } });
+    if (!data.session) throw redirect({ to: "/login?mode=signin" });
   },
+  errorComponent: RouteError,
   component: FlashcardsPage,
 });
 
@@ -56,71 +60,71 @@ function FlashcardsPage() {
   const [preview, setPreview] = useState<Card[] | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const [decks, setDecks] = useState<DeckRow[]>([]);
-  const [decksLoading, setDecksLoading] = useState(true);
   const [selectedDeckId, setSelectedDeckId] = useState<string | null>(null);
-  const [studyCards, setStudyCards] = useState<DbCard[]>([]);
   const [studyIdx, setStudyIdx] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
 
+  const queryClient = useQueryClient();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [displayName, setDisplayName] = useState<string>("");
 
-  const loadDecks = useCallback(async () => {
-    setDecksLoading(true);
-    const { data, error } = await supabase
-      .from("flashcard_sets")
-      .select("id, topic, created_at")
-      .order("created_at", { ascending: false });
-    if (error) {
-      toast.error("Could not load your decks");
-      setDecks([]);
-    } else {
-      setDecks((data ?? []) as DeckRow[]);
-    }
-    setDecksLoading(false);
-  }, []);
-
-  useEffect(() => {
-    (async () => {
+  const profileQuery = useQuery<string>({
+    queryKey: ["profile"],
+    queryFn: async () => {
       const { data: u } = await supabase.auth.getUser();
-      if (u.user) {
-        const { data: p } = await supabase
-          .from("profiles")
-          .select("display_name")
-          .eq("id", u.user.id)
-          .maybeSingle();
-        setDisplayName(p?.display_name ?? u.user.email?.split("@")[0] ?? "Student");
-      }
-      await loadDecks();
-    })();
-  }, [loadDecks]);
+      if (!u.user) throw new Error("Sign in required");
+      const { data: p, error } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("id", u.user.id)
+        .maybeSingle();
+      if (error) throw error;
+      return p?.display_name ?? u.user.email?.split("@")[0] ?? "Student";
+    },
+    staleTime: 1000 * 60 * 5,
+    retry: 1,
+  });
 
-  const loadStudyCards = useCallback(async (setId: string) => {
-    const { data, error } = await supabase
-      .from("flashcards")
-      .select("id, question, answer, sort_order")
-      .eq("set_id", setId)
-      .order("sort_order", { ascending: true });
-    if (error) {
+  const deckQuery = useQuery<DeckRow[]>({
+    queryKey: ["flashcard_sets"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("flashcard_sets")
+        .select("id, topic, created_at")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as DeckRow[];
+    },
+    staleTime: 1000 * 60 * 3,
+    retry: 1,
+    onError: () => {
+      toast.error("Could not load your decks");
+    },
+  });
+
+  const studyCardsQuery = useQuery<DbCard[]>({
+    queryKey: ["flashcards", selectedDeckId],
+    queryFn: async () => {
+      if (!selectedDeckId) return [] as DbCard[];
+      const { data, error } = await supabase
+        .from("flashcards")
+        .select("id, question, answer, sort_order")
+        .eq("set_id", selectedDeckId)
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as DbCard[];
+    },
+    enabled: Boolean(selectedDeckId),
+    staleTime: 1000 * 60 * 2,
+    retry: 1,
+    onError: () => {
       toast.error("Could not load cards");
-      setStudyCards([]);
-      return;
-    }
-    setStudyCards((data ?? []) as DbCard[]);
-    setStudyIdx(0);
-    setShowAnswer(false);
-  }, []);
+    },
+  });
 
-  useEffect(() => {
-    if (selectedDeckId) void loadStudyCards(selectedDeckId);
-    else {
-      setStudyCards([]);
-      setStudyIdx(0);
-      setShowAnswer(false);
-    }
-  }, [selectedDeckId, loadStudyCards]);
+  const displayName = profileQuery.data ?? "Student";
+  const decks = deckQuery.data ?? [];
+  const studyCards = studyCardsQuery.data ?? [];
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -211,7 +215,8 @@ function FlashcardsPage() {
       toast.success("Deck saved");
       setPreview(null);
       setSelectedDeckId(setRow.id);
-      void loadDecks();
+      queryClient.invalidateQueries({ queryKey: ["flashcard_sets"] });
+      queryClient.invalidateQueries({ queryKey: ["flashcards", setRow.id] });
     } finally {
       setSaving(false);
     }
@@ -231,7 +236,8 @@ function FlashcardsPage() {
     }
     if (selectedDeckId === id) setSelectedDeckId(null);
     toast.success("Deck deleted");
-    void loadDecks();
+    queryClient.invalidateQueries({ queryKey: ["flashcard_sets"] });
+    queryClient.invalidateQueries({ queryKey: ["flashcards", id] });
   }
 
   const currentStudy = studyCards[studyIdx];
@@ -266,11 +272,15 @@ function FlashcardsPage() {
             </div>
             <ScrollArea className="mt-2 flex-1 px-2">
               <ul className="space-y-1 pb-4">
-                {decks.length === 0 && (
+                {deckQuery.isLoading ? (
+                  [1, 2, 3].map((index) => (
+                    <li key={index} className="rounded-2xl bg-muted/10 p-4 animate-pulse" />
+                  ))
+                ) : decks.length === 0 ? (
                   <li className="px-3 py-6 text-center text-sm text-muted-foreground">
                     No saved decks yet.
                   </li>
-                )}
+                ) : null}
                 {decks.map((d) => (
                   <li key={d.id}>
                     <button
@@ -376,11 +386,15 @@ function FlashcardsPage() {
           </div>
           <ScrollArea className="mt-2 flex-1 px-2">
             <ul className="space-y-1 pb-4">
-              {decks.length === 0 && (
+              {deckQuery.isLoading ? (
+                [1, 2, 3].map((index) => (
+                  <li key={index} className="rounded-2xl bg-muted/10 p-4 animate-pulse" />
+                ))
+              ) : decks.length === 0 ? (
                 <li className="px-3 py-6 text-center text-sm text-muted-foreground">
                   No saved decks yet.
                 </li>
-              )}
+              ) : null}
               {decks.map((d) => (
                 <li key={d.id}>
                   <div className="flex items-center gap-1 group">
@@ -723,7 +737,11 @@ function FlashcardsPage() {
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-4xl mx-auto px-4 py-6 md:px-6 space-y-4">
             {/* Generator section - only show if not studying a deck */}
-            {!selectedDeckId || studyCards.length === 0 ? (
+            {selectedDeckId && studyCardsQuery.isLoading ? (
+              <div className="rounded-xl border border-border bg-card/70 backdrop-blur-md p-6 text-center text-sm text-muted-foreground">
+                Loading cards…
+              </div>
+            ) : !selectedDeckId || studyCards.length === 0 ? (
               <>
                 <div className="rounded-xl border border-border bg-card/70 backdrop-blur-md p-4 sm:p-5 space-y-3">
                   <div className="flex items-center gap-2">
