@@ -10,20 +10,20 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "ScholarX is an AI tutor + study planner that explains Math, Science, English and History — built to help you learn, not cheat.",
+          "ScholarX is an AI study toolkit — AI tutor, flashcards, practice tests, a graphing calculator, and a study planner for Math, Science, English and History. Built to help you learn, not cheat.",
       },
       { property: "og:title", content: "ScholarX — Your AI Study Companion" },
       {
         property: "og:description",
         content:
-          "AI tutor with voice mode, math rendering, and a built-in study planner. Learn smarter, not shadier.",
+          "AI tutor with voice conversation, math rendering, flashcards with spaced repetition, practice tests, a Desmos graphing calculator, and a study planner. Learn smarter.",
       },
       { property: "og:url", content: "https://scholarx.space/" },
       { property: "og:type", content: "website" },
       { name: "twitter:title", content: "ScholarX — Your AI Study Companion" },
       {
         name: "twitter:description",
-        content: "AI tutor with voice mode, math rendering, and a built-in study planner. Learn smarter, not shadier.",
+        content: "AI tutor, flashcards, practice tests, graphing calculator, and study planner — all free. Learn smarter.",
       },
     ],
     links: [{ rel: "canonical", href: "https://scholarx.space/" }],
@@ -39,7 +39,7 @@ export const Route = createFileRoute("/")({
               url: "https://scholarx.space",
               name: "ScholarX",
               description:
-                "AI homework helper that explains Math, Science, English and History — built to help students learn, not cheat.",
+                "AI study toolkit — tutor, flashcards with spaced repetition, practice tests, graphing calculator, and study planner for Math, Science, English and History.",
             },
             {
               "@type": "WebApplication",
@@ -49,7 +49,7 @@ export const Route = createFileRoute("/")({
               applicationCategory: "EducationApplication",
               operatingSystem: "Web",
               description:
-                "AI tutor + study planner with voice mode, math rendering, flashcards, and practice tests.",
+                "AI tutor with voice conversation, KaTeX math rendering, Desmos graphing, AI flashcards with spaced repetition, practice test creator, and a study planner with progress tracking.",
               offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
             },
             {
@@ -185,7 +185,7 @@ function Landing() {
       <section className="section hero">
         <div className="hero-pill hero-animate">
           <span className="hero-pill-dot" />
-          New · Voice tutor &amp; study planner
+          AI tutor · Flashcards · Tests · Graphing · Planner
         </div>
 
         <h1 className="hero-title hero-animate delay-1">
@@ -195,9 +195,9 @@ function Landing() {
         </h1>
 
         <p className="hero-sub hero-animate delay-2">
-          A fancy AI tutor that explains Math, Science, English and History step by step —
-          plus a built-in study planner that keeps you on track. Built to teach, not to do
-          the work for you.
+          ScholarX is a full AI study toolkit — step-by-step tutoring for Math, Science, English and History,
+          plus flashcards, practice tests, a graphing calculator, and a study planner, all in one place.
+          Built to help you understand, not just answer.
         </p>
 
         <div className="hero-actions hero-animate delay-3">
@@ -212,8 +212,8 @@ function Landing() {
 
         <div className="hero-stats hero-animate delay-4">
           <div className="stat">
-            <div className="stat-num">4</div>
-            <div className="stat-label">Core subjects</div>
+            <div className="stat-num">7</div>
+            <div className="stat-label">Tools built-in</div>
           </div>
           <div className="stat">
             <div className="stat-num">24/7</div>
@@ -249,7 +249,7 @@ function Landing() {
           <span className="section-eyebrow">Features</span>
           <h2 className="section-title">Everything you need to actually understand it</h2>
           <p className="section-sub">
-            ScholarX isn't just a chat box. It's a full study toolkit — tutor, planner, and voice partner — wrapped in a design that doesn't feel like 2009.
+            ScholarX isn't just a chat box. It's a complete study toolkit — AI tutor, voice conversation, flashcards, practice tests, a graphing calculator, and a study planner, all in one place.
           </p>
         </div>
 
@@ -266,40 +266,40 @@ function Landing() {
             <div className="feature-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12h4l3-9 4 18 3-9h4" /></svg>
             </div>
-            <h3 className="feature-title">Beautiful math rendering</h3>
-            <p className="feature-desc">Equations render with KaTeX — fractions, integrals, matrices, all looking exactly like your textbook.</p>
+            <h3 className="feature-title">Math rendering &amp; graphing</h3>
+            <p className="feature-desc">Equations render with KaTeX — fractions, integrals, matrices. Click any formula to instantly graph it in the built-in Desmos calculator.</p>
           </div>
 
           <div className="feature is-sci reveal delay-2">
             <div className="feature-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19a7 7 0 0 0 7-7" /><path d="M12 19a7 7 0 0 1-7-7" /><circle cx="12" cy="5" r="3" /><path d="M12 8v4" /></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
             </div>
-            <h3 className="feature-title">Voice tutor mode</h3>
-            <p className="feature-desc">Talk it out. Ask questions out loud and get spoken answers — perfect for studying on the go or hands-free.</p>
+            <h3 className="feature-title">Voice conversation mode</h3>
+            <p className="feature-desc">Go fully hands-free — speak your question, hear the answer, ask a follow-up, all by voice. Or just use the mic to dictate questions when typing isn't convenient.</p>
           </div>
 
           <div className="feature is-eng reveal">
             <div className="feature-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" /><path d="m9 16 2 2 4-4" /></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M6 6V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/><path d="m9 13 2 2 4-4"/></svg>
             </div>
-            <h3 className="feature-title">Built-in study planner</h3>
-            <p className="feature-desc">Track assignments, deadlines, and priorities. See what's due, what's overdue, and what you've crushed — all in one view.</p>
+            <h3 className="feature-title">AI flashcards &amp; spaced repetition</h3>
+            <p className="feature-desc">Generate a full deck from any topic in seconds. Study with smart spaced repetition (SM-2 algorithm) so you review cards at exactly the right time — not too soon, not too late.</p>
           </div>
 
           <div className="feature is-hist reveal delay-1">
             <div className="feature-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8V4H8" /><rect width="16" height="12" x="4" y="8" rx="2" /><path d="M2 14h2" /><path d="M20 14h2" /><path d="M15 13v2" /><path d="M9 13v2" /></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15h6"/><path d="M9 18h6"/><path d="M9 12h1"/></svg>
             </div>
-            <h3 className="feature-title">Saved conversations</h3>
-            <p className="feature-desc">Every chat is saved to your account so you can revisit explanations anytime — across phone, tablet, and laptop.</p>
+            <h3 className="feature-title">Practice test creator</h3>
+            <p className="feature-desc">Generate multiple-choice or essay tests on any topic. Answer interactively, see your MCQ score, reveal model answers, and export to PDF or Markdown.</p>
           </div>
 
           <div className="feature is-accent reveal delay-2">
             <div className="feature-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
             </div>
-            <h3 className="feature-title">Honesty-first</h3>
-            <p className="feature-desc">ScholarX guides you to the answer rather than handing it over. Learn the why, not just the what.</p>
+            <h3 className="feature-title">Photo problem solver</h3>
+            <p className="feature-desc">Snap or upload a photo of a textbook problem, diagram, or handwritten work — ScholarX reads it and walks you through the solution step by step.</p>
           </div>
         </div>
 
@@ -333,7 +333,7 @@ function Landing() {
           <div className="step reveal">
             <div className="step-num">STEP 01</div>
             <h3 className="step-title">Ask anything</h3>
-            <p className="step-desc">Drop in a question, an equation, or a paragraph you don't understand. Type it or say it out loud.</p>
+            <p className="step-desc">Type a question, upload a photo of a problem, or speak it aloud. Ask about Math, Science, English, or History.</p>
           </div>
           <div className="step reveal delay-1">
             <div className="step-num">STEP 02</div>
@@ -342,8 +342,8 @@ function Landing() {
           </div>
           <div className="step reveal delay-2">
             <div className="step-num">STEP 03</div>
-            <h3 className="step-title">Plan &amp; conquer</h3>
-            <p className="step-desc">Add what's due to the planner. Tick things off. Watch your week stop being scary.</p>
+            <h3 className="step-title">Drill &amp; prepare</h3>
+            <p className="step-desc">Turn what you've learned into flashcards, run a practice test before the big day, and track it all in the planner.</p>
           </div>
         </div>
       </section>
@@ -351,10 +351,10 @@ function Landing() {
       {/* ---------- Planner teaser ---------- */}
       <section id="planner" className="section">
         <div className="section-head reveal">
-          <span className="section-eyebrow">New</span>
-          <h2 className="section-title">Your study planner, finally not boring</h2>
+          <span className="section-eyebrow">Planner &amp; Progress</span>
+          <h2 className="section-title">Your study hub, all in one place</h2>
           <p className="section-sub">
-            See every assignment, deadline and priority in one quiet, glassy interface. Built right into ScholarX — no extra app, no extra account.
+            Track assignments, deadlines, and priorities in the planner. Then watch your progress grow — chat activity, flashcard decks, and test scores all visualised in one dashboard. Built right into ScholarX, no extra app needed.
           </p>
         </div>
       </section>
