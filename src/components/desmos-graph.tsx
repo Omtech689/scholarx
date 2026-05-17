@@ -34,9 +34,6 @@ export function DesmosGraph({
     setReady(false);
     setLoadError(false);
 
-    // Poll for window.Desmos — the script is injected early in RootShell.
-    // This avoids relying on dynamic-injection onload events and handles
-    // the case where the script is already in-flight when this component mounts.
     let attempts = 0;
     const MAX_ATTEMPTS = 150; // 15 s at 100 ms intervals
 
@@ -44,21 +41,26 @@ export function DesmosGraph({
       if (!active) return;
 
       if (window.Desmos && containerRef.current) {
-        calcRef.current = window.Desmos.GraphingCalculator(containerRef.current, {
-          keypad,
-          settingsMenu: false,
-          border: false,
-          lockViewport: false,
-          expressions: true,
-        });
-        if (expression) {
-          calcRef.current.setExpression({ id: "e1", latex: expression });
+        // Wrap in try/catch — Desmos throws if the container has no dimensions yet.
+        try {
+          calcRef.current = window.Desmos.GraphingCalculator(containerRef.current, {
+            keypad,
+            settingsMenu: false,
+            border: false,
+            lockViewport: false,
+            expressions: true,
+          });
+          if (expression) {
+            calcRef.current.setExpression({ id: "e1", latex: expression });
+          }
+          requestAnimationFrame(() => {
+            if (!active) return;
+            calcRef.current?.resize();
+            setReady(true);
+          });
+        } catch {
+          setLoadError(true);
         }
-        requestAnimationFrame(() => {
-          if (!active) return;
-          calcRef.current?.resize();
-          setReady(true);
-        });
         return;
       }
 
@@ -71,10 +73,13 @@ export function DesmosGraph({
       setTimeout(tryInit, 100);
     }
 
-    tryInit();
+    // Defer first attempt to the next paint so the container is laid out
+    // before Desmos measures its dimensions.
+    const rafId = requestAnimationFrame(tryInit);
 
     return () => {
       active = false;
+      cancelAnimationFrame(rafId);
       calcRef.current?.destroy();
       calcRef.current = null;
     };
