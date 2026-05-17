@@ -113,7 +113,7 @@ function Landing() {
       <div className="landing-grid" aria-hidden="true" />
 
       {/* ---------- Mobile nav overlay ---------- */}
-      <div className={`mobile-nav${mobileNavOpen ? " is-open" : ""}`} aria-modal="true" role="dialog">
+      <div className={`mobile-nav${mobileNavOpen ? " is-open" : ""}`} aria-modal="true" role="dialog" aria-label="Navigation menu">
         <div className="mobile-nav-header">
           <a href="/" className="landing-logo" onClick={closeMobileNav}>
             <span className="landing-logo-mark">
