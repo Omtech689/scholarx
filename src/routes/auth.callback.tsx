@@ -7,6 +7,7 @@ export const Route = createFileRoute("/auth/callback")({
     const code = params.get("code");
     const type = params.get("type");
 
+    // PKCE flow: code exchanged for session
     if (code && code.length > 10) {
       const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
@@ -29,6 +30,26 @@ export const Route = createFileRoute("/auth/callback")({
 
       if (error) {
         console.error("Auth callback error:", error);
+      }
+    }
+
+    // Implicit flow: tokens delivered in hash fragment (e.g. Google OAuth)
+    const hashParams = new URLSearchParams(location.hash.replace(/^#/, ""));
+    const accessToken = hashParams.get("access_token");
+    const refreshToken = hashParams.get("refresh_token");
+
+    if (accessToken && refreshToken) {
+      const { data, error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+
+      if (!error && data.session) {
+        throw redirect({ to: "/chat" });
+      }
+
+      if (error) {
+        console.error("Auth implicit flow error:", error);
       }
     }
 
