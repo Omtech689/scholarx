@@ -655,7 +655,7 @@ function ChatPage() {
                     <button
                       type="button"
                       onClick={(e) => deleteConversation(c.id, e)}
-                      className="h-8 w-8 rounded-full text-muted-foreground opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
+                      className="h-8 w-8 flex items-center justify-center shrink-0 rounded-full text-muted-foreground hover:text-destructive"
                       title="Delete conversation"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -802,7 +802,7 @@ function ChatPage() {
                     variant="ghost"
                     size="icon"
                     onClick={(e) => deleteConversation(c.id, e)}
-                    className="h-8 w-8 opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
+                    className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
                     title="Delete conversation"
                   >
                     <Trash2 className="h-3.5 w-3.5" />

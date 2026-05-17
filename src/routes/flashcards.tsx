@@ -362,28 +362,30 @@ function FlashcardsPage() {
                 ) : null}
                 {decks.map((d) => (
                   <li key={d.id}>
-                    <button
-                      onClick={() => {
-                        selectDeck(d.id);
-                        setPreviewMode(false);
-                        setMobileMenuOpen(false);
-                      }}
-                      className={`group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                        selectedDeckId === d.id
-                          ? "bg-primary/15 text-foreground"
-                          : "hover:bg-secondary text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      <Layers className="h-3.5 w-3.5 shrink-0" />
-                      <span className="flex-1 truncate">{d.topic}</span>
-                      <Trash2
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void deleteDeck(d.id);
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => {
+                          selectDeck(d.id);
+                          setPreviewMode(false);
+                          setMobileMenuOpen(false);
                         }}
-                        className="h-3.5 w-3.5 opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
-                      />
-                    </button>
+                        className={`flex-1 flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                          selectedDeckId === d.id
+                            ? "bg-primary/15 text-foreground"
+                            : "hover:bg-secondary text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <Layers className="h-3.5 w-3.5 shrink-0" />
+                        <span className="flex-1 truncate">{d.topic}</span>
+                      </button>
+                      <button
+                        onClick={() => void deleteDeck(d.id)}
+                        className="h-8 w-8 flex items-center justify-center shrink-0 rounded-full text-muted-foreground hover:text-destructive"
+                        title="Delete deck"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -488,7 +490,7 @@ function FlashcardsPage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => void deleteDeck(d.id)}
-                      className="h-8 w-8 opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
+                      className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
                       title="Delete deck"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -622,27 +624,29 @@ function FlashcardsPage() {
               )}
               {decks.map((d) => (
                 <li key={d.id}>
-                  <button
-                    onClick={() => {
-                      setSelectedDeckId(d.id);
-                      setMobileMenuOpen(false);
-                    }}
-                    className={`group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                      selectedDeckId === d.id
-                        ? "bg-primary/15 text-foreground"
-                        : "hover:bg-secondary text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <Layers className="h-3.5 w-3.5 shrink-0" />
-                    <span className="flex-1 truncate">{d.topic}</span>
-                    <Trash2
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void deleteDeck(d.id);
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => {
+                        setSelectedDeckId(d.id);
+                        setMobileMenuOpen(false);
                       }}
-                      className="h-3.5 w-3.5 opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
-                    />
-                  </button>
+                      className={`flex-1 flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                        selectedDeckId === d.id
+                          ? "bg-primary/15 text-foreground"
+                          : "hover:bg-secondary text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <Layers className="h-3.5 w-3.5 shrink-0" />
+                      <span className="flex-1 truncate">{d.topic}</span>
+                    </button>
+                    <button
+                      onClick={() => void deleteDeck(d.id)}
+                      className="h-8 w-8 flex items-center justify-center shrink-0 rounded-full text-muted-foreground hover:text-destructive"
+                      title="Delete deck"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -736,7 +740,7 @@ function FlashcardsPage() {
                     variant="ghost"
                     size="icon"
                     onClick={() => void deleteDeck(d.id)}
-                    className="h-8 w-8 opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
+                    className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
                     title="Delete deck"
                   >
                     <Trash2 className="h-3.5 w-3.5" />

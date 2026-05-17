@@ -27,6 +27,7 @@ import {
   Sparkles,
   Send,
   Download,
+  Trash2,
   TrendingUp,
   ChevronDown,
   LineChart,
@@ -132,6 +133,19 @@ function TestCreatorPage() {
       }
     })();
   }, []);
+
+  async function deleteTest(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!confirm("Delete this test?")) return;
+    const { error } = await supabase.from("tests").delete().eq("id", id);
+    if (error) {
+      toast.error("Delete failed");
+      return;
+    }
+    if (selectedTestId === id) setSelectedTestId(null);
+    toast.success("Test deleted");
+    queryClient.invalidateQueries({ queryKey: ["tests", userId] });
+  }
 
   async function updateSavedTest(update: Partial<SavedTest>) {
     if (!selectedTestId || !userId) return;
@@ -463,25 +477,34 @@ function TestCreatorPage() {
               )}
               {(savedTestsQuery.data ?? []).map((test) => (
                 <li key={test.id}>
-                  <button
-                    onClick={() => {
-                      selectSavedTest(test.id);
-                      setMobileMenuOpen(false);
-                    }}
-                    className={`w-full flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                      selectedTestId === test.id
-                        ? "bg-primary/15 text-foreground"
-                        : "hover:bg-secondary text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <BookOpen className="h-3.5 w-3.5 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="truncate font-medium text-sm">{test.topic}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {test.mode.replace("all_", "").replace("mixed", "mixed")} • {new Date(test.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => {
+                        selectSavedTest(test.id);
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`flex-1 flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                        selectedTestId === test.id
+                          ? "bg-primary/15 text-foreground"
+                          : "hover:bg-secondary text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <BookOpen className="h-3.5 w-3.5 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="truncate font-medium text-sm">{test.topic}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {test.mode.replace("all_", "").replace("mixed", "mixed")} • {new Date(test.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </button>
+                    <button
+                      onClick={(e) => deleteTest(test.id, e)}
+                      className="h-8 w-8 flex items-center justify-center shrink-0 rounded-full text-muted-foreground hover:text-destructive"
+                      title="Delete test"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -573,22 +596,33 @@ function TestCreatorPage() {
             )}
             {(savedTestsQuery.data ?? []).map((test) => (
               <li key={test.id}>
-                <button
-                  onClick={() => selectSavedTest(test.id)}
-                  className={`w-full flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                    selectedTestId === test.id
-                      ? "bg-primary/15 text-foreground"
-                      : "hover:bg-secondary text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <BookOpen className="h-3.5 w-3.5 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate font-medium">{test.topic}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {test.mode.replace("all_", "").replace("mixed", "mixed")} • {new Date(test.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => selectSavedTest(test.id)}
+                    className={`flex-1 flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                      selectedTestId === test.id
+                        ? "bg-primary/15 text-foreground"
+                        : "hover:bg-secondary text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <BookOpen className="h-3.5 w-3.5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate font-medium">{test.topic}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {test.mode.replace("all_", "").replace("mixed", "mixed")} • {new Date(test.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => deleteTest(test.id, e)}
+                    className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                    title="Delete test"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>
