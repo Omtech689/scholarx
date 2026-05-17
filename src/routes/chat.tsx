@@ -29,13 +29,17 @@ import {
   PhoneOff,
   ListTodo,
   Layers,
-  User,
   Menu,
   GripVertical,
   Search,
   Download,
   TrendingUp,
+  ChevronDown,
+  LineChart,
+  Sparkles,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { DesmosGraph } from "@/components/desmos-graph";
 
 type Subject = "math" | "science" | "english" | "history" | "general";
 type Msg = { id?: string; role: "user" | "assistant"; content: string; image?: string };
@@ -142,6 +146,8 @@ function ChatPage() {
   const [ttsSupported, setTtsSupported] = useState(false);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [extrasOpen, setExtrasOpen] = useState(false);
+  const [mobileExtrasOpen, setMobileExtrasOpen] = useState(false);
 
   useEffect(() => {
     import("katex/dist/katex.min.css");
@@ -659,34 +665,47 @@ function ChatPage() {
               ))}
             </ul>
           </ScrollArea>
-          <div className="border-t border-border px-3 py-3 space-y-2">
+          <div className="border-t border-border px-3 py-3 space-y-1">
             <Link
               to="/planner"
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
             >
-              <ListTodo className="h-4 w-4" />
-              Study planner
+              <ListTodo className="h-4 w-4" /> Study planner
             </Link>
             <Link
-              to="/flashcards"
+              to="/progress"
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
             >
-              <Layers className="h-4 w-4" />
-              Flashcards
+              <TrendingUp className="h-4 w-4" /> Progress
             </Link>
-            <Link
-              to="/tests"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+            <button
+              onClick={() => setMobileExtrasOpen(!mobileExtrasOpen)}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
             >
-              <BookOpen className="h-4 w-4" />
-              Test creator
-            </Link>
-            <div className="flex items-center justify-between gap-2 px-2 text-sm">
-              <span className="truncate text-muted-foreground">{displayName}</span>
-              <Button variant="ghost" size="icon" onClick={logout} title="Sign out">
+              <Sparkles className="h-4 w-4" />
+              Extra functions
+              <ChevronDown className={`ml-auto h-3.5 w-3.5 transition-transform duration-200 ${mobileExtrasOpen ? "rotate-180" : ""}`} />
+            </button>
+            {mobileExtrasOpen && (
+              <div className="ml-4 space-y-0.5 border-l border-border pl-2">
+                <Link to="/flashcards" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+                  <Layers className="h-3.5 w-3.5" /> Flashcards
+                </Link>
+                <Link to="/tests" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+                  <BookOpen className="h-3.5 w-3.5" /> Test creator
+                </Link>
+                <Link to="/graph" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+                  <LineChart className="h-3.5 w-3.5" /> Graphing
+                </Link>
+              </div>
+            )}
+            <div className="flex items-center justify-between gap-2 px-2 pt-1 text-sm">
+              <Link to="/profile" onClick={() => setMobileMenuOpen(false)} className="min-w-0 truncate text-muted-foreground hover:text-foreground transition">
+                {displayName}
+              </Link>
+              <Button variant="ghost" size="icon" onClick={logout} title="Sign out" className="shrink-0">
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
@@ -793,45 +812,45 @@ function ChatPage() {
             ))}
           </ul>
         </ScrollArea>
-        <div className="border-t border-border px-3 py-3 space-y-2">
+        <div className="border-t border-border px-3 py-3 space-y-1">
           <Link
             to="/planner"
             className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
           >
-            <ListTodo className="h-4 w-4" />
-            Study planner
-          </Link>
-          <Link
-            to="/tests"
-            className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-          >
-            <BookOpen className="h-4 w-4" />
-            Test creator
-          </Link>
-          <Link
-            to="/flashcards"
-            className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-          >
-            <Layers className="h-4 w-4" />
-            Flashcards
-          </Link>
-          <Link
-            to="/profile"
-            className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-          >
-            <User className="h-4 w-4" />
-            Profile
+            <ListTodo className="h-4 w-4" /> Study planner
           </Link>
           <Link
             to="/progress"
             className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
           >
-            <TrendingUp className="h-4 w-4" />
-            Progress
+            <TrendingUp className="h-4 w-4" /> Progress
           </Link>
-          <div className="flex items-center justify-between gap-2 px-2 text-sm">
-            <span className="truncate text-muted-foreground">{displayName}</span>
-            <Button variant="ghost" size="icon" onClick={logout} title="Sign out">
+          <button
+            onClick={() => setExtrasOpen(!extrasOpen)}
+            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+          >
+            <Sparkles className="h-4 w-4" />
+            Extra functions
+            <ChevronDown className={`ml-auto h-3.5 w-3.5 transition-transform duration-200 ${extrasOpen ? "rotate-180" : ""}`} />
+          </button>
+          {extrasOpen && (
+            <div className="ml-4 space-y-0.5 border-l border-border pl-2">
+              <Link to="/flashcards" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+                <Layers className="h-3.5 w-3.5" /> Flashcards
+              </Link>
+              <Link to="/tests" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+                <BookOpen className="h-3.5 w-3.5" /> Test creator
+              </Link>
+              <Link to="/graph" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+                <LineChart className="h-3.5 w-3.5" /> Graphing
+              </Link>
+            </div>
+          )}
+          <div className="flex items-center justify-between gap-2 px-2 pt-1 text-sm">
+            <Link to="/profile" className="min-w-0 truncate text-muted-foreground hover:text-foreground transition">
+              {displayName}
+            </Link>
+            <Button variant="ghost" size="icon" onClick={logout} title="Sign out" className="shrink-0">
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
@@ -1073,11 +1092,7 @@ function FormattedContent({ text }: { text: string }) {
 
   for (const seg of segs) {
     if (seg.kind === 'math') {
-      nodes.push(
-        <div key={keyIdx++} className="my-3 overflow-x-auto text-center">
-          {renderMath(seg.src, true, `dm-${keyIdx}`)}
-        </div>
-      );
+      nodes.push(renderMath(seg.src, true, keyIdx++));
       continue;
     }
 
@@ -1158,23 +1173,68 @@ function FormattedContent({ text }: { text: string }) {
   return <div className="space-y-2 whitespace-pre-wrap break-words">{nodes}</div>;
 }
 
-function renderMath(src: string, displayMode: boolean, key: string | number) {
+function GraphableMath({ src, display }: { src: string; display: boolean }) {
+  const [open, setOpen] = useState(false);
+  let html = "";
   try {
-    const html = katex.renderToString(src, {
-      displayMode,
-      throwOnError: false,
-      output: "html",
-    });
-    return (
-      <span
-        key={key}
-        className={displayMode ? "block my-2 overflow-x-auto" : ""}
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
-    );
+    html = katex.renderToString(src, { displayMode: display, throwOnError: false, output: "html" });
   } catch {
-    return <span key={key}>{src}</span>;
+    return <span>{src}</span>;
   }
+
+  if (display) {
+    return (
+      <>
+        <div className="my-3 flex items-center gap-3">
+          <span
+            className="flex-1 overflow-x-auto text-center"
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
+          <button
+            onClick={() => setOpen(true)}
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground transition"
+            title="Open in Desmos"
+          >
+            <LineChart className="h-3 w-3" />
+            Graph
+          </button>
+        </div>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="max-w-2xl overflow-hidden p-0">
+            <div className="px-5 pt-5 pb-3">
+              <DialogTitle className="font-mono text-sm font-medium">{src}</DialogTitle>
+            </div>
+            <DesmosGraph expression={src} height={460} keypad={false} />
+          </DialogContent>
+        </Dialog>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <span dangerouslySetInnerHTML={{ __html: html }} />
+      <button
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-1 rounded px-1 py-0.5 text-[10px] text-primary/60 hover:text-primary hover:bg-primary/10 transition ml-0.5 align-middle"
+        title="Graph this"
+      >
+        <LineChart className="h-2.5 w-2.5" />
+      </button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-2xl overflow-hidden p-0">
+          <div className="px-5 pt-5 pb-3">
+            <DialogTitle className="font-mono text-sm font-medium">{src}</DialogTitle>
+          </div>
+          <DesmosGraph expression={src} height={460} keypad={false} />
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function renderMath(src: string, displayMode: boolean, key: string | number) {
+  return <GraphableMath key={key} src={src} display={displayMode} />;
 }
 
 function renderInline(s: string): React.ReactNode {

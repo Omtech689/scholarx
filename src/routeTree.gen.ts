@@ -17,6 +17,7 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PlannerRouteImport } from './routes/planner'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as GraphRouteImport } from './routes/graph'
 import { Route as FlashcardsRouteImport } from './routes/flashcards'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as IndexRouteImport } from './routes/index'
@@ -62,6 +63,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GraphRoute = GraphRouteImport.update({
+  id: '/graph',
+  path: '/graph',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FlashcardsRoute = FlashcardsRouteImport.update({
   id: '/flashcards',
   path: '/flashcards',
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/chat': typeof ChatRoute
   '/flashcards': typeof FlashcardsRoute
+  '/graph': typeof GraphRoute
   '/login': typeof LoginRoute
   '/planner': typeof PlannerRoute
   '/privacy': typeof PrivacyRoute
@@ -101,6 +108,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/chat': typeof ChatRoute
   '/flashcards': typeof FlashcardsRoute
+  '/graph': typeof GraphRoute
   '/login': typeof LoginRoute
   '/planner': typeof PlannerRoute
   '/privacy': typeof PrivacyRoute
@@ -116,6 +124,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/chat': typeof ChatRoute
   '/flashcards': typeof FlashcardsRoute
+  '/graph': typeof GraphRoute
   '/login': typeof LoginRoute
   '/planner': typeof PlannerRoute
   '/privacy': typeof PrivacyRoute
@@ -132,6 +141,7 @@ export interface FileRouteTypes {
     | '/'
     | '/chat'
     | '/flashcards'
+    | '/graph'
     | '/login'
     | '/planner'
     | '/privacy'
@@ -146,6 +156,7 @@ export interface FileRouteTypes {
     | '/'
     | '/chat'
     | '/flashcards'
+    | '/graph'
     | '/login'
     | '/planner'
     | '/privacy'
@@ -160,6 +171,7 @@ export interface FileRouteTypes {
     | '/'
     | '/chat'
     | '/flashcards'
+    | '/graph'
     | '/login'
     | '/planner'
     | '/privacy'
@@ -175,6 +187,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChatRoute: typeof ChatRoute
   FlashcardsRoute: typeof FlashcardsRoute
+  GraphRoute: typeof GraphRoute
   LoginRoute: typeof LoginRoute
   PlannerRoute: typeof PlannerRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -251,6 +264,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FlashcardsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/graph': {
+      id: '/graph'
+      path: '/graph'
+      fullPath: '/graph'
+      preLoaderRoute: typeof GraphRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/chat': {
       id: '/chat'
       path: '/chat'
@@ -279,6 +299,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChatRoute: ChatRoute,
   FlashcardsRoute: FlashcardsRoute,
+  GraphRoute: GraphRoute,
   LoginRoute: LoginRoute,
   PlannerRoute: PlannerRoute,
   PrivacyRoute: PrivacyRoute,
