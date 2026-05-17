@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 declare global {
   interface Window {
+    __desmosLoading?: boolean;
     Desmos?: {
       GraphingCalculator: (el: HTMLElement, opts?: Record<string, unknown>) => DesmosCalc;
     };
@@ -12,30 +13,6 @@ interface DesmosCalc {
   setExpression: (expr: { id: string; latex: string }) => void;
   destroy: () => void;
   resize: () => void;
-}
-
-const SCRIPT_URL =
-  "https://www.desmos.com/api/v1.9/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6";
-
-// Module-level singleton so the script is only ever injected once.
-let scriptPromise: Promise<void> | null = null;
-
-function loadDesmos(): Promise<void> {
-  if (typeof window === "undefined") return Promise.resolve();
-  if (window.Desmos) return Promise.resolve();
-  if (scriptPromise) return scriptPromise;
-  scriptPromise = new Promise<void>((resolve, reject) => {
-    const s = document.createElement("script");
-    s.src = SCRIPT_URL;
-    s.async = true;
-    s.onload = () => resolve();
-    s.onerror = () => {
-      scriptPromise = null; // allow retry
-      reject(new Error("Desmos script failed to load"));
-    };
-    document.head.appendChild(s);
-  });
-  return scriptPromise;
 }
 
 export function DesmosGraph({
@@ -57,9 +34,16 @@ export function DesmosGraph({
     setReady(false);
     setLoadError(false);
 
-    loadDesmos()
-      .then(() => {
-        if (!active || !containerRef.current || !window.Desmos) return;
+    // Poll for window.Desmos — the script is injected early in RootShell.
+    // This avoids relying on dynamic-injection onload events and handles
+    // the case where the script is already in-flight when this component mounts.
+    let attempts = 0;
+    const MAX_ATTEMPTS = 150; // 15 s at 100 ms intervals
+
+    function tryInit() {
+      if (!active) return;
+
+      if (window.Desmos && containerRef.current) {
         calcRef.current = window.Desmos.GraphingCalculator(containerRef.current, {
           keypad,
           settingsMenu: false,
@@ -70,23 +54,30 @@ export function DesmosGraph({
         if (expression) {
           calcRef.current.setExpression({ id: "e1", latex: expression });
         }
-        // Give the browser a frame to lay out the container before Desmos measures it.
         requestAnimationFrame(() => {
           if (!active) return;
           calcRef.current?.resize();
           setReady(true);
         });
-      })
-      .catch(() => {
-        if (active) setLoadError(true);
-      });
+        return;
+      }
+
+      attempts++;
+      if (attempts >= MAX_ATTEMPTS) {
+        setLoadError(true);
+        return;
+      }
+
+      setTimeout(tryInit, 100);
+    }
+
+    tryInit();
 
     return () => {
       active = false;
       calcRef.current?.destroy();
       calcRef.current = null;
     };
-  // Re-initialize only if keypad option changes (not on every expression change).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [keypad]);
 
@@ -123,7 +114,6 @@ export function DesmosGraph({
           </span>
         </div>
       )}
-      {/* Desmos attaches to this inner div; width/height 100% fills the outer container. */}
       <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
     </div>
   );
