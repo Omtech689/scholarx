@@ -175,8 +175,10 @@ function GraphPage() {
           <LineChart className="h-5 w-5 shrink-0 text-primary" />
           <h1 className="text-base font-semibold">Graphing Calculator</h1>
         </header>
-        <div className="flex-1 min-h-0">
-          <DesmosGraph height="100%" keypad />
+        <div className="relative flex-1 min-h-0">
+          <div className="absolute inset-0">
+            <DesmosGraph height="100%" keypad />
+          </div>
         </div>
       </main>
     </div>

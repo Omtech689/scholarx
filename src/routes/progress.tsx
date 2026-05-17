@@ -1,4 +1,5 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { RouteError } from "@/components/ui/route-error";
@@ -20,12 +21,14 @@ import {
   Layers,
   BookOpen,
   MessageSquare,
-  User,
   LogOut,
   TrendingUp,
   CheckCircle2,
   FlaskConical,
   BarChart2,
+  ChevronDown,
+  LineChart as LineChartIcon,
+  Sparkles,
 } from "lucide-react";
 
 export const Route = createFileRoute("/progress")({
@@ -66,6 +69,7 @@ function countMcqScore(questions: unknown, answers: unknown): { correct: number;
 
 function ProgressPage() {
   const navigate = useNavigate();
+  const [extrasOpen, setExtrasOpen] = useState(false);
 
   const profileQuery = useQuery<string>({
     queryKey: ["profile"],
@@ -177,25 +181,39 @@ function ProgressPage() {
           <img src="/logo-removebg-preview.png" className="h-8 w-8 object-contain" alt="ScholarX" />
           ScholarX
         </div>
-        <div className="mt-auto border-t border-border px-3 py-3 space-y-2">
-          <Link to="/chat" className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
-            <MessageSquare className="h-4 w-4" />Chat
-          </Link>
+        <div className="border-t border-border px-3 py-3 space-y-1">
           <Link to="/planner" className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
-            <ListTodo className="h-4 w-4" />Study planner
+            <ListTodo className="h-4 w-4" /> Study planner
           </Link>
-          <Link to="/tests" className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
-            <BookOpen className="h-4 w-4" />Test creator
+          <Link to="/progress" className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-primary font-medium hover:bg-accent hover:text-accent-foreground transition">
+            <TrendingUp className="h-4 w-4" /> Progress
           </Link>
-          <Link to="/flashcards" className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
-            <Layers className="h-4 w-4" />Flashcards
-          </Link>
-          <Link to="/profile" className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
-            <User className="h-4 w-4" />Profile
-          </Link>
-          <div className="flex items-center justify-between gap-2 px-2 text-sm">
-            <span className="truncate text-muted-foreground">{displayName}</span>
-            <Button variant="ghost" size="icon" onClick={async () => { await supabase.auth.signOut(); navigate({ to: "/" }); }} title="Sign out">
+          <button
+            onClick={() => setExtrasOpen((v) => !v)}
+            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+          >
+            <Sparkles className="h-4 w-4" />
+            Extra functions
+            <ChevronDown className={`ml-auto h-3.5 w-3.5 transition-transform duration-200 ${extrasOpen ? "rotate-180" : ""}`} />
+          </button>
+          {extrasOpen && (
+            <div className="ml-4 space-y-0.5 border-l border-border pl-2">
+              <Link to="/flashcards" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+                <Layers className="h-3.5 w-3.5" /> Flashcards
+              </Link>
+              <Link to="/tests" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+                <BookOpen className="h-3.5 w-3.5" /> Test creator
+              </Link>
+              <Link to="/graph" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+                <LineChartIcon className="h-3.5 w-3.5" /> Graphing
+              </Link>
+            </div>
+          )}
+          <div className="flex items-center justify-between gap-2 px-2 pt-1 text-sm">
+            <Link to="/profile" className="min-w-0 truncate text-muted-foreground hover:text-foreground transition">
+              {displayName}
+            </Link>
+            <Button variant="ghost" size="icon" onClick={async () => { await supabase.auth.signOut(); navigate({ to: "/" }); }} title="Sign out" className="shrink-0">
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
