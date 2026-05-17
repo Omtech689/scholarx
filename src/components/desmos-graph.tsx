@@ -37,44 +37,55 @@ export function DesmosGraph({
     let attempts = 0;
     const MAX_ATTEMPTS = 150; // 15 s at 100 ms intervals
 
-    function tryInit() {
-      if (!active) return;
-
-      if (window.Desmos && containerRef.current) {
-        // Wrap in try/catch — Desmos throws if the container has no dimensions yet.
-        try {
-          calcRef.current = window.Desmos.GraphingCalculator(containerRef.current, {
-            keypad,
-            settingsMenu: false,
-            border: false,
-            lockViewport: false,
-            expressions: true,
-          });
-          if (expression) {
-            calcRef.current.setExpression({ id: "e1", latex: expression });
-          }
-          requestAnimationFrame(() => {
-            if (!active) return;
-            calcRef.current?.resize();
-            setReady(true);
-          });
-        } catch {
-          setLoadError(true);
-        }
-        return;
-      }
-
+    function schedule() {
       attempts++;
       if (attempts >= MAX_ATTEMPTS) {
-        setLoadError(true);
+        if (active) setLoadError(true);
         return;
       }
-
       setTimeout(tryInit, 100);
     }
 
-    // Defer first attempt to the next paint so the container is laid out
-    // before Desmos measures its dimensions.
+    function tryInit() {
+      if (!active) return;
+
+      // Wait for Desmos API to finish loading.
+      if (!window.Desmos) { schedule(); return; }
+
+      const container = containerRef.current;
+      if (!container) { schedule(); return; }
+
+      // Wait until the container has non-zero dimensions so Desmos
+      // doesn't throw when measuring the element.
+      if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+        schedule();
+        return;
+      }
+
+      try {
+        calcRef.current = window.Desmos.GraphingCalculator(container, {
+          keypad,
+          settingsMenu: false,
+          border: false,
+          lockViewport: false,
+          expressions: true,
+        });
+        if (expression) {
+          calcRef.current.setExpression({ id: "e1", latex: expression });
+        }
+        requestAnimationFrame(() => {
+          if (!active) return;
+          calcRef.current?.resize();
+          setReady(true);
+        });
+      } catch {
+        // Desmos threw (e.g. layout not yet stable) — retry.
+        schedule();
+      }
+    }
+
+    // First attempt after one animation frame so the flex layout has
+    // been computed and the container has real dimensions.
     const rafId = requestAnimationFrame(tryInit);
 
     return () => {
