@@ -31,7 +31,7 @@ export const Route = createFileRoute("/auth/callback")({
       }
 
       if (error) console.error("Auth PKCE callback error:", error);
-      throw redirect({ to: "/login?error=auth_failed" });
+      throw redirect({ to: "/login", search: { mode: "signin" as const } });
     }
 
     // No code — let the component handle implicit flow (hash-based tokens)

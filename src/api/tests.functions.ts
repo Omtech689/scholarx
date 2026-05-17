@@ -16,22 +16,22 @@ const inputSchema = z.object({
     .optional(),
 });
 
-const mcqQuestionSchema = z
-  .object({
-    type: z.literal("mcq"),
-    question: z.string().min(1).max(2000),
-    choices: z.array(z.string().min(1).max(500)).min(3).max(6),
-    answer: z.string().min(1).max(500),
-  })
-  .superRefine((item, ctx) => {
-    if (!item.choices.includes(item.answer)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["answer"],
-        message: "MCQ answer must match one of the provided choices.",
-      });
-    }
-  });
+const mcqBaseSchema = z.object({
+  type: z.literal("mcq"),
+  question: z.string().min(1).max(2000),
+  choices: z.array(z.string().min(1).max(500)).min(3).max(6),
+  answer: z.string().min(1).max(500),
+});
+
+const mcqQuestionSchema = mcqBaseSchema.superRefine((item, ctx) => {
+  if (!item.choices.includes(item.answer)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["answer"],
+      message: "MCQ answer must match one of the provided choices.",
+    });
+  }
+});
 
 const essayQuestionSchema = z.object({
   type: z.literal("essay"),
@@ -43,6 +43,8 @@ const questionsSchema = z
   .array(z.union([mcqQuestionSchema, essayQuestionSchema]))
   .min(4)
   .max(16);
+
+type TestQuestion = z.infer<typeof mcqQuestionSchema> | z.infer<typeof essayQuestionSchema>;
 
 async function fetchWithRetry(url: string, init: RequestInit, maxRetries = 2): Promise<Response> {
   let attempt = 0;
@@ -71,7 +73,7 @@ export const generateTest = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
     if (!GEMINI_API_KEY) {
-      return { questions: [] as unknown[], error: "AI is not configured. Please contact support." };
+      return { questions: [] as TestQuestion[], error: "AI is not configured. Please contact support." };
     }
 
     const topic = data.topic.trim();
@@ -120,36 +122,36 @@ Rules:
       });
 
       if (res.status === 429) {
-        return { questions: [], error: "Too many requests right now. Please try again in a moment." };
+        return { questions: [] as TestQuestion[], error: "Too many requests right now. Please try again in a moment." };
       }
       if (!res.ok) {
         const text = await res.text();
         console.error("Gemini test generation error", res.status, text);
-        return { questions: [], error: "The AI could not generate a test. Please try again." };
+        return { questions: [] as TestQuestion[], error: "The AI could not generate a test. Please try again." };
       }
 
       const json = await res.json();
       const content: string = json?.choices?.[0]?.message?.content ?? "";
       if (!content) {
-        return { questions: [], error: "Empty AI response." };
+        return { questions: [] as TestQuestion[], error: "Empty AI response." };
       }
 
       let parsed: unknown;
       try {
         parsed = extractJsonArray(content);
       } catch {
-        return { questions: [], error: "Could not parse the test output. Try a clearer topic." };
+        return { questions: [] as TestQuestion[], error: "Could not parse the test output. Try a clearer topic." };
       }
 
       const parsedQuestions = questionsSchema.safeParse(parsed);
       if (!parsedQuestions.success) {
-        return { questions: [], error: "The test format was invalid. Please try again." };
+        return { questions: [] as TestQuestion[], error: "The test format was invalid. Please try again." };
       }
 
       return { questions: parsedQuestions.data, error: null as string | null };
     } catch (e) {
       console.error("generateTest error", e);
-      return { questions: [], error: "Network error talking to the AI." };
+      return { questions: [] as TestQuestion[], error: "Network error talking to the AI." };
     }
   });
 
@@ -160,7 +162,15 @@ const answerSchema = z.object({
 
 const evaluateTestInputSchema = z.object({
   topic: z.string().min(1).max(400),
-  questions: questionsSchema,
+  questions: z
+    .array(
+      z.union([
+        mcqBaseSchema.extend({ id: z.string() }),
+        essayQuestionSchema.extend({ id: z.string() }),
+      ]),
+    )
+    .min(4)
+    .max(16),
   answers: z.array(answerSchema).min(1),
 });
 
@@ -171,6 +181,8 @@ const evaluationSchema = z.object({
   feedback: z.string().min(1).max(2000),
 });
 
+type Evaluation = z.infer<typeof evaluationSchema>;
+
 const evaluationResponseSchema = z.array(evaluationSchema);
 
 export const evaluateTest = createServerFn({ method: "POST" })
@@ -180,14 +192,14 @@ export const evaluateTest = createServerFn({ method: "POST" })
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
     if (!GEMINI_API_KEY) {
       return {
-        evaluations: [] as unknown[],
+        evaluations: [] as Evaluation[],
         error: "AI is not configured. Please contact support.",
       };
     }
 
     const essayQuestions = data.questions.filter((item) => item.type === "essay");
     if (essayQuestions.length === 0) {
-      return { evaluations: [] as unknown[], error: null as string | null };
+      return { evaluations: [] as Evaluation[], error: null as string | null };
     }
 
     const answerLookup = Object.fromEntries(data.answers.map((answer) => [answer.questionId, answer.answer]));

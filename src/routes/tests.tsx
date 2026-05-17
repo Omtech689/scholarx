@@ -3,6 +3,10 @@ import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { generateTest } from "@/api/tests.functions";
+type GenerateTestResult = {
+  questions: Array<{ type: "mcq" | "essay"; question: string; answer: string; choices?: string[] }>;
+  error: string | null;
+};
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -64,7 +68,7 @@ export const Route = createFileRoute("/tests")({
   beforeLoad: async () => {
     if (typeof window === "undefined") return;
     const { data } = await supabase.auth.getSession();
-    if (!data.session) throw redirect({ to: "/login?mode=signin" });
+    if (!data.session) throw redirect({ to: "/login", search: { mode: "signin" as const } });
   },
   component: TestCreatorPage,
 });
@@ -87,11 +91,12 @@ function TestCreatorPage() {
 
   const savedTestsQuery = useQuery<SavedTest[]>({
     queryKey: ["tests", userId],
+    enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tests")
         .select("id, topic, mode, questions, answers, created_at")
-        .eq("user_id", userId)
+        .eq("user_id", userId!)
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -107,7 +112,6 @@ function TestCreatorPage() {
         answers: (row.answers as Record<string, string>) ?? {},
       }));
     },
-    enabled: !!userId,
     staleTime: 1000 * 60 * 2,
   });
 
@@ -196,7 +200,7 @@ function TestCreatorPage() {
           messages: nextMessages,
         },
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
+      }) as GenerateTestResult;
 
       if (result.error || !result.questions?.length) {
         toast.error(result.error ?? "No test generated");

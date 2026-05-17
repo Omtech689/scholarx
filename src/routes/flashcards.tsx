@@ -88,7 +88,7 @@ export const Route = createFileRoute("/flashcards")({
   beforeLoad: async () => {
     if (typeof window === "undefined") return;
     const { data } = await supabase.auth.getSession();
-    if (!data.session) throw redirect({ to: "/login?mode=signin" });
+    if (!data.session) throw redirect({ to: "/login", search: { mode: "signin" as const } });
   },
   errorComponent: RouteError,
   component: FlashcardsPage,

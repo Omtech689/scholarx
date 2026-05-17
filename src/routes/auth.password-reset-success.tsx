@@ -33,7 +33,7 @@ function PasswordResetSuccessPage() {
           </p>
 
           <Button asChild className="mt-6 w-full glow">
-            <Link to="/login">Sign in</Link>
+            <Link to="/login" search={{ mode: "signin" }}>Sign in</Link>
           </Button>
 
           <p className="mt-4 text-xs text-muted-foreground">
