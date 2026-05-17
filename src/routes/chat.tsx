@@ -64,6 +64,27 @@ async function compressImage(file: File, maxDim = 1024, quality = 0.75): Promise
   });
 }
 
+function pickVoice(): SpeechSynthesisVoice | null {
+  const voices = window.speechSynthesis.getVoices();
+  // Prefer neural / natural-sounding voices in priority order
+  const priority = [
+    (v: SpeechSynthesisVoice) => /natural/i.test(v.name),
+    (v: SpeechSynthesisVoice) => /aria/i.test(v.name),
+    (v: SpeechSynthesisVoice) => /jenny/i.test(v.name),
+    (v: SpeechSynthesisVoice) => /guy/i.test(v.name),
+    (v: SpeechSynthesisVoice) => /google us english/i.test(v.name),
+    (v: SpeechSynthesisVoice) => /google uk english female/i.test(v.name),
+    (v: SpeechSynthesisVoice) => v.lang.startsWith("en") && /google/i.test(v.name),
+    (v: SpeechSynthesisVoice) => v.lang === "en-US",
+    (v: SpeechSynthesisVoice) => v.lang.startsWith("en"),
+  ];
+  for (const test of priority) {
+    const match = voices.find(test);
+    if (match) return match;
+  }
+  return voices[0] ?? null;
+}
+
 function stripForSpeech(s: string) {
   return s
     .replace(/```[\s\S]*?```/g, " ")
@@ -310,6 +331,8 @@ function ChatPage() {
     if (!ttsSupported) { onDone?.(); return; }
     const clean = stripForSpeech(text);
     const u = new SpeechSynthesisUtterance(clean);
+    const voice = pickVoice();
+    if (voice) u.voice = voice;
     const id = Date.now();
     setSpeakingId(id);
     u.onend = () => { setSpeakingId(null); onDone?.(); };
@@ -990,6 +1013,8 @@ function Bubble({ role, content, image, ttsSupported }: { role: "user" | "assist
     }
     const clean = stripForSpeech(content);
     const u = new SpeechSynthesisUtterance(clean);
+    const voice = pickVoice();
+    if (voice) u.voice = voice;
     u.onend = () => setSpeaking(false);
     u.onerror = () => setSpeaking(false);
     window.speechSynthesis.cancel();
