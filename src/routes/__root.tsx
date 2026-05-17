@@ -70,7 +70,6 @@ export const Route = createRootRoute({
           "img-src 'self' data: blob: https:",
           "connect-src 'self' https://nozxlljeuswjxqoffrti.supabase.co wss://nozxlljeuswjxqoffrti.supabase.co https://generativelanguage.googleapis.com",
           "frame-src https://challenges.cloudflare.com",
-          "frame-ancestors 'none'",
           "object-src 'none'",
           "base-uri 'self'",
         ].join("; "),
