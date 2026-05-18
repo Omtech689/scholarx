@@ -42,7 +42,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { DesmosGraph } from "@/components/desmos-graph";
 
 type Subject = "math" | "science" | "english" | "history" | "general";
-type Msg = { id?: string; role: "user" | "assistant"; content: string; image?: string };
+type Msg = { id?: string; role: "user" | "assistant"; content: string; image?: string; interrupted?: boolean };
 type Convo = { id: string; title: string; subject: string | null; updated_at: string };
 
 async function compressImage(file: File, maxDim = 1024, quality = 0.75): Promise<string> {
@@ -360,10 +360,12 @@ function ChatPage() {
     const sc = data.serverContent;
     if (!sc) return;
 
-    // AI interrupted by user speech — stop audio queue and discard partial response
+    // AI interrupted by user speech — stop audio and save whatever was said so far
     if (sc.interrupted) {
       stopPlayback();
+      const partial = pendingAsstTextRef.current.trim();
       pendingAsstTextRef.current = "";
+      if (partial) setMessages((prev) => [...prev, { role: "assistant" as const, content: partial, interrupted: true }]);
       return;
     }
 
@@ -1100,7 +1102,7 @@ function ChatPage() {
           <div className="mx-auto max-w-3xl space-y-4">
             {messages.length === 0 && <EmptyState subject={subject} onPick={setInput} />}
             {messages.map((m, i) => (
-              <Bubble key={m.id ?? i} role={m.role} content={m.content} image={m.image} ttsSupported={ttsSupported} />
+              <Bubble key={m.id ?? i} role={m.role} content={m.content} image={m.image} ttsSupported={ttsSupported} interrupted={m.interrupted} />
             ))}
             {loading && (
               <div className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground">
@@ -1204,7 +1206,7 @@ function ChatPage() {
   );
 }
 
-function Bubble({ role, content, image, ttsSupported }: { role: "user" | "assistant"; content: string; image?: string; ttsSupported: boolean }) {
+function Bubble({ role, content, image, ttsSupported, interrupted }: { role: "user" | "assistant"; content: string; image?: string; ttsSupported: boolean; interrupted?: boolean }) {
   const isUser = role === "user";
   const [speaking, setSpeaking] = useState(false);
 
@@ -1237,6 +1239,12 @@ function Bubble({ role, content, image, ttsSupported }: { role: "user" | "assist
       >
         {image && <img src={`data:image/jpeg;base64,${image}`} alt="Uploaded" className="mb-2 max-w-full rounded-lg" />}
         <FormattedContent text={content} />
+        {interrupted && (
+          <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground opacity-70">
+            <Square className="h-2.5 w-2.5" />
+            interrupted
+          </p>
+        )}
         {!isUser && ttsSupported && (
           <button
             onClick={toggleSpeak}
