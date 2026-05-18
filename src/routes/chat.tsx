@@ -1,6 +1,6 @@
 import { createFileRoute, redirect, useNavigate, Link } from "@tanstack/react-router";
 import { RouteError } from "@/components/ui/route-error";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { askHomework, getGeminiKey } from "@/api/chat.functions";
 import { Button } from "@/components/ui/button";
@@ -231,10 +231,6 @@ function ChatPage() {
       window.removeEventListener("mouseup", handleMouseUp);
     };
   }, []);
-
-  useEffect(() => {
-    convoModeRef.current = convoMode;
-  }, [convoMode]);
 
   const startListening = useCallback((autoSend: boolean) => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -629,10 +625,10 @@ registerProcessor('mic-processor', MicProcessor);`;
     })();
   }, []);
 
-  // auto scroll
+  // auto scroll — also follows tokens as they stream in
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, loading]);
+  }, [messages, loading, streamingContent, streamingVoiceContent, streamingUserContent]);
 
   async function loadConversations() {
     const { data, error } = await supabase
@@ -1351,7 +1347,7 @@ registerProcessor('mic-processor', MicProcessor);`;
   );
 }
 
-function Bubble({ role, content, image, ttsSupported, interrupted, streaming }: { role: "user" | "assistant"; content: string; image?: string; ttsSupported: boolean; interrupted?: boolean; streaming?: boolean }) {
+const Bubble = memo(function Bubble({ role, content, image, ttsSupported, interrupted, streaming }: { role: "user" | "assistant"; content: string; image?: string; ttsSupported: boolean; interrupted?: boolean; streaming?: boolean }) {
   const isUser = role === "user";
   const [speaking, setSpeaking] = useState(false);
 
@@ -1404,7 +1400,7 @@ function Bubble({ role, content, image, ttsSupported, interrupted, streaming }: 
       </div>
     </div>
   );
-}
+});
 
 // Markdown + KaTeX renderer. Display math blocks are pre-tokenized so the
 // paragraph splitter never fragments a $$...$$ or \[...\] spanning blank lines.

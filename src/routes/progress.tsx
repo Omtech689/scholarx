@@ -83,8 +83,10 @@ function ProgressPage() {
     staleTime: 1000 * 60 * 30,
   });
 
+  // Distinct key from the planner's ["study_tasks"]: this query selects only a
+  // subset of columns, so sharing the cache would feed the planner truncated rows.
   const tasksQuery = useQuery<Task[]>({
-    queryKey: ["study_tasks"],
+    queryKey: ["study_tasks", "progress"],
     queryFn: async () => {
       const { data, error } = await supabase.from("study_tasks").select("completed,subject,completed_at,created_at");
       if (error) throw error;
@@ -151,18 +153,13 @@ function ProgressPage() {
 
   // Test scores over time line chart
   const testScoreData = tests
-    .filter((t) => {
-      const { total } = countMcqScore(t.questions, t.answers);
-      return total > 0;
-    })
-    .map((t, i) => {
-      const { correct, total } = countMcqScore(t.questions, t.answers);
-      return {
-        name: `#${i + 1}`,
-        topic: t.topic,
-        score: Math.round((correct / total) * 100),
-      };
-    });
+    .map((t) => ({ t, ...countMcqScore(t.questions, t.answers) }))
+    .filter(({ total }) => total > 0)
+    .map(({ t, correct, total }, i) => ({
+      name: `#${i + 1}`,
+      topic: t.topic,
+      score: Math.round((correct / total) * 100),
+    }));
 
   // Chats by subject
   const chatSubjectCounts: Record<string, number> = {};

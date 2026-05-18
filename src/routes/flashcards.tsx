@@ -1,5 +1,5 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { generateFlashcards } from "@/api/flashcards.functions";
@@ -168,15 +168,18 @@ function FlashcardsPage() {
   const decks = deckQuery.data ?? [];
   const rawStudyCards = studyCardsQuery.data ?? [];
 
-  const studyCards = shuffled
-    ? [...rawStudyCards].sort(() => (srsData[rawStudyCards[0]?.id ?? ""] ? 0 : Math.random() - 0.5))
-    : rawStudyCards;
-
-  // Load SRS state from localStorage when deck changes
-  const prevDeckRef = { current: "" };
-  if (selectedDeckId && selectedDeckId !== prevDeckRef.current) {
-    prevDeckRef.current = selectedDeckId;
-  }
+  // Stable Fisher–Yates shuffle: only recomputed when the deck, its cards, or
+  // the shuffle toggle change — never on every render (which previously made
+  // the studied card jump unpredictably).
+  const studyCards = useMemo(() => {
+    if (!shuffled) return rawStudyCards;
+    const pool = [...rawStudyCards];
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    return pool;
+  }, [rawStudyCards, shuffled]);
 
   function handleRate(quality: 0 | 3 | 5) {
     if (!selectedDeckId || !studyCards[studyIdx]) return;
