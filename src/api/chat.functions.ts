@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
-export const getGeminiKey = createServerFn({ method: "GET" })
+export const getGeminiKey = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async () => ({ key: process.env.GEMINI_API_KEY ?? "" }));
 
