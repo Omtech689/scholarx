@@ -1072,6 +1072,8 @@ function ChatPage() {
           <div className="mx-auto max-w-3xl">
             <div className="glass flex items-end gap-2 rounded-2xl p-2 focus-within:ring-2 focus-within:ring-primary/50">
               <Textarea
+                id="chat-input"
+                name="chat-input"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -1460,14 +1462,21 @@ const ALL_PROMPTS: Record<Subject, string[]> = {
   ],
 };
 
+function shuffle(arr: string[]): string[] {
+  const pool = [...arr];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, 3);
+}
+
 function EmptyState({ subject, onPick }: { subject: Subject; onPick: (s: string) => void }) {
-  const displayed = useMemo(() => {
-    const pool = [...ALL_PROMPTS[subject]];
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
-    }
-    return pool.slice(0, 3);
+  // Start deterministic (SSR-safe) and shuffle after hydration in useEffect
+  const [displayed, setDisplayed] = useState<string[]>(ALL_PROMPTS[subject].slice(0, 3));
+
+  useEffect(() => {
+    setDisplayed(shuffle(ALL_PROMPTS[subject]));
   }, [subject]);
 
   return (
