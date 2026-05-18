@@ -151,13 +151,15 @@ function ChatPage() {
   const playbackCtxRef = useRef<AudioContext | null>(null);
   const micCtxRef = useRef<AudioContext | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
-  const processorRef = useRef<ScriptProcessorNode | null>(null);
+  const processorRef = useRef<AudioWorkletNode | null>(null);
   const nextPlayTimeRef = useRef(0);
   const pendingAsstTextRef = useRef("");
   const pendingUserTextRef = useRef("");
   const voiceConvoIdRef = useRef<string | null>(null);
   const [streamingContent, setStreamingContent] = useState<string | null>(null);
   const [streamingVoiceContent, setStreamingVoiceContent] = useState<string | null>(null);
+  const [streamingUserContent, setStreamingUserContent] = useState<string | null>(null);
+  const userCommittedRef = useRef(false);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [extrasOpen, setExtrasOpen] = useState(false);
@@ -357,57 +359,73 @@ function ChatPage() {
     nextPlayTimeRef.current = 0;
   }
 
+  // Commit the user's pending utterance as a chat message (once per turn, before the AI reply)
+  function commitVoiceUser() {
+    if (userCommittedRef.current) return;
+    const user = pendingUserTextRef.current.trim();
+    if (!user) return;
+    pendingUserTextRef.current = "";
+    userCommittedRef.current = true;
+    setStreamingUserContent(null);
+    setMessages((prev) => [...prev, { role: "user" as const, content: user }]);
+    saveVoiceMessage("user", user);
+  }
+
+  // Commit the AI's pending reply and reset for the next turn
+  function commitVoiceAssistant(interrupted: boolean) {
+    const asst = pendingAsstTextRef.current.trim();
+    pendingAsstTextRef.current = "";
+    setStreamingVoiceContent(null);
+    if (asst) {
+      setMessages((prev) => [...prev, { role: "assistant" as const, content: asst, ...(interrupted ? { interrupted: true } : {}) }]);
+      saveVoiceMessage("assistant", asst);
+    }
+    userCommittedRef.current = false; // ready for the next user turn
+  }
+
   function handleLiveMessage(raw: string) {
     let data: any;
     try { data = JSON.parse(raw); } catch { return; }
     const sc = data.serverContent;
     if (!sc) return;
 
-    // AI interrupted — stop audio, commit whatever was transcribed so far
+    // AI interrupted by user speech — flush user (if not yet) then the AI partial
     if (sc.interrupted) {
       stopPlayback();
-      const partial = pendingAsstTextRef.current.trim();
-      pendingAsstTextRef.current = "";
-      setStreamingVoiceContent(null);
-      if (partial) {
-        setMessages((prev) => [...prev, { role: "assistant" as const, content: partial, interrupted: true }]);
-        saveVoiceMessage("assistant", partial);
-      }
+      commitVoiceUser();
+      commitVoiceAssistant(true);
       return;
     }
 
-    // Accumulate user transcription (do NOT add to chat yet — wait for turnComplete for correct ordering)
+    // User speech transcription — accumulate and show live as a user bubble
     const inTx = sc.inputTranscription;
-    if (inTx?.text) pendingUserTextRef.current += inTx.text;
+    if (inTx?.text) {
+      pendingUserTextRef.current += inTx.text;
+      if (!userCommittedRef.current) setStreamingUserContent(pendingUserTextRef.current);
+    }
+
+    const parts: any[] = sc.modelTurn?.parts ?? [];
+    const outTx = sc.outputTranscription;
+    const modelResponding = !!outTx?.text || parts.some((p) => p.inlineData?.data);
+
+    // Model started replying → the user's turn is over: commit user message now (before the AI reply)
+    if (modelResponding) commitVoiceUser();
 
     // AI audio chunks — play immediately
-    const parts: any[] = sc.modelTurn?.parts ?? [];
     for (const p of parts) {
       if (p.inlineData?.data) playLivePcm(p.inlineData.data);
     }
 
     // AI transcription — stream live into bubble
-    const outTx = sc.outputTranscription;
     if (outTx?.text) {
       pendingAsstTextRef.current += outTx.text;
       setStreamingVoiceContent(pendingAsstTextRef.current);
     }
 
-    // Turn complete — commit both messages: user first, then AI (preserves conversation order)
+    // Model finished this turn — commit the AI reply (and any user text that never triggered the transition)
     if (sc.turnComplete) {
-      const user = pendingUserTextRef.current.trim();
-      const asst = pendingAsstTextRef.current.trim();
-      pendingUserTextRef.current = "";
-      pendingAsstTextRef.current = "";
-      setStreamingVoiceContent(null);
-      setMessages((prev) => {
-        const next = [...prev];
-        if (user) next.push({ role: "user" as const, content: user });
-        if (asst) next.push({ role: "assistant" as const, content: asst });
-        return next;
-      });
-      if (user) saveVoiceMessage("user", user);
-      if (asst) saveVoiceMessage("assistant", asst);
+      commitVoiceUser();
+      commitVoiceAssistant(false);
     }
   }
 
@@ -435,6 +453,9 @@ function ChatPage() {
     nextPlayTimeRef.current = 0;
     pendingAsstTextRef.current = "";
     pendingUserTextRef.current = "";
+    userCommittedRef.current = false;
+    setStreamingUserContent(null);
+    setStreamingVoiceContent(null);
   }
 
   async function startGeminiLive() {
@@ -490,26 +511,46 @@ function ChatPage() {
         const micCtx = new AudioContext();
         await micCtx.resume();
         micCtxRef.current = micCtx;
+
+        // Inline AudioWorklet processor — accumulates 2048 samples then posts a Float32Array
+        const workletSrc = `
+class MicProcessor extends AudioWorkletProcessor {
+  constructor() { super(); this._buf = []; }
+  process(inputs) {
+    const ch = inputs[0]?.[0];
+    if (ch) {
+      for (let i = 0; i < ch.length; i++) this._buf.push(ch[i]);
+      if (this._buf.length >= 2048) {
+        this.port.postMessage(new Float32Array(this._buf.splice(0, 2048)));
+      }
+    }
+    return true;
+  }
+}
+registerProcessor('mic-processor', MicProcessor);`;
+        const blobUrl = URL.createObjectURL(new Blob([workletSrc], { type: "application/javascript" }));
+        await micCtx.audioWorklet.addModule(blobUrl);
+        URL.revokeObjectURL(blobUrl);
+
         const source = micCtx.createMediaStreamSource(stream);
-        const bufSize = 4096;
-        const proc = micCtx.createScriptProcessor(bufSize, 1, 1);
-        processorRef.current = proc;
-        proc.onaudioprocess = (ev) => {
+        const workletNode = new AudioWorkletNode(micCtx, "mic-processor");
+        processorRef.current = workletNode;
+        workletNode.port.onmessage = (ev) => {
           if (ws.readyState !== WebSocket.OPEN) return;
-          const input = ev.inputBuffer.getChannelData(0);
+          const float32: Float32Array = ev.data;
           const ratio = micCtx.sampleRate / 16000;
-          const outLen = Math.floor(input.length / ratio);
+          const outLen = Math.floor(float32.length / ratio);
           const int16 = new Int16Array(outLen);
           for (let i = 0; i < outLen; i++) {
-            const s = input[Math.floor(i * ratio)];
+            const s = float32[Math.floor(i * ratio)];
             int16[i] = Math.max(-32768, Math.min(32767, s * 32768));
           }
           ws.send(JSON.stringify({
             realtimeInput: { audio: { data: bufToBase64(int16.buffer), mimeType: "audio/pcm;rate=16000" } },
           }));
         };
-        source.connect(proc);
-        proc.connect(micCtx.destination);
+        source.connect(workletNode);
+        workletNode.connect(micCtx.destination);
         return;
       }
 
@@ -527,6 +568,8 @@ function ChatPage() {
     ws.onclose = (ev) => {
       console.log("[GeminiLive] WebSocket closed", ev.code, ev.reason);
       if (convoModeRef.current) {
+        commitVoiceUser();
+        commitVoiceAssistant(false);
         setConvoMode(false);
         setListening(false);
         stopGeminiLive();
@@ -539,6 +582,9 @@ function ChatPage() {
   async function toggleConvoMode() {
     if (convoMode) {
       convoModeRef.current = false;
+      // Flush the last in-progress turn before tearing down (buffers are cleared by stopGeminiLive)
+      commitVoiceUser();
+      commitVoiceAssistant(false);
       setConvoMode(false);
       setListening(false);
       stopGeminiLive();
@@ -1196,6 +1242,9 @@ function ChatPage() {
             ))}
             {streamingContent !== null && (
               <Bubble role="assistant" content={streamingContent} ttsSupported={false} streaming />
+            )}
+            {streamingUserContent !== null && (
+              <Bubble role="user" content={streamingUserContent} ttsSupported={false} streaming />
             )}
             {streamingVoiceContent !== null && (
               <Bubble role="assistant" content={streamingVoiceContent} ttsSupported={false} streaming />
