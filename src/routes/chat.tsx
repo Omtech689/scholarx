@@ -2,7 +2,7 @@ import { createFileRoute, redirect, useNavigate, Link } from "@tanstack/react-ro
 import { RouteError } from "@/components/ui/route-error";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { askHomework, streamHomework, generateTitle, getLiveToken } from "@/api/chat.functions";
+import { askHomework, generateTitle, getLiveToken } from "@/api/chat.functions";
 import { useConfirm } from "@/components/ui/confirm";
 import type { TablesInsert } from "@/integrations/supabase/types";
 import { downloadMarkdown, printMarkdownAsPdf } from "@/lib/export";
@@ -968,78 +968,20 @@ registerProcessor('mic-processor', MicProcessor);`;
         .slice(-24)
         .map((m) => ({ role: m.role, content: m.content }));
 
-      // Push an empty assistant bubble and stream tokens into it (SSE). The
-      // Gemini API key stays server-side; the browser only ever sees text.
-      let fullContent = "";
-      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
-      const setStreamed = (txt: string) =>
-        setMessages((prev) => {
-          const copy = prev.slice();
-          for (let i = copy.length - 1; i >= 0; i--) {
-            if (copy[i].role === "assistant") {
-              copy[i] = { ...copy[i], content: txt };
-              break;
-            }
-          }
-          return copy;
-        });
-
-      try {
-        const res = (await streamHomework({
-          data: { messages: payloadMessages, subject, image: imageBase64 },
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        })) as unknown;
-        setLoading(false);
-        const decoder = new TextDecoder();
-        const append = (chunk: Uint8Array | string) => {
-          fullContent +=
-            typeof chunk === "string" ? chunk : decoder.decode(chunk, { stream: true });
-          setStreamed(fullContent);
-        };
-        if (res && typeof (res as ReadableStream).getReader === "function") {
-          const reader = (res as ReadableStream<Uint8Array>).getReader();
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            if (value) append(value);
-          }
-        } else if (
-          res &&
-          typeof (res as AsyncIterable<unknown>)[Symbol.asyncIterator] === "function"
-        ) {
-          for await (const part of res as AsyncIterable<Uint8Array | string>) append(part);
-        } else {
-          throw new Error("unrecognized stream response");
-        }
-      } catch (streamErr) {
-        // Fall back to the non-streaming endpoint on any streaming failure.
-        console.error("stream failed, falling back", streamErr);
-        const result = await askHomework({
-          data: { messages: payloadMessages, subject, image: imageBase64 },
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
-        if (result.error || !result.content) {
-          setMessages((prev) =>
-            prev.filter(
-              (m, i) => !(m.role === "assistant" && i === prev.length - 1 && m.content === ""),
-            ),
-          );
-          toast.error(result.error ?? "No response");
-          return;
-        }
-        fullContent = result.content;
-        setStreamed(fullContent);
-      }
-
-      if (!fullContent.trim()) {
-        setMessages((prev) =>
-          prev.filter(
-            (m, i) => !(m.role === "assistant" && i === prev.length - 1 && m.content === ""),
-          ),
-        );
-        toast.error("No response from AI");
+      // Non-streaming: fetch the full reply and render it once. (A
+      // ReadableStream-returning server function did not stream reliably
+      // through TanStack Start on Cloudflare Workers.)
+      const result = await askHomework({
+        data: { messages: payloadMessages, subject, image: imageBase64 },
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      setLoading(false);
+      if (result.error || !result.content) {
+        toast.error(result.error ?? "No response from AI");
         return;
       }
+      const fullContent = result.content;
+      setMessages((prev) => [...prev, { role: "assistant", content: fullContent }]);
 
       await supabase.from("messages").insert({
         conversation_id: convoId,
