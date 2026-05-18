@@ -154,6 +154,7 @@ function ChatPage() {
   const processorRef = useRef<ScriptProcessorNode | null>(null);
   const nextPlayTimeRef = useRef(0);
   const pendingAsstTextRef = useRef("");
+  const pendingUserTextRef = useRef("");
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [extrasOpen, setExtrasOpen] = useState(false);
@@ -344,20 +345,64 @@ function ChatPage() {
     nextPlayTimeRef.current = start + buf.duration;
   }
 
+  function stopPlayback() {
+    // Close and recreate the AudioContext so any scheduled/playing buffers stop immediately
+    playbackCtxRef.current?.close();
+    const fresh = new AudioContext();
+    fresh.resume();
+    playbackCtxRef.current = fresh;
+    nextPlayTimeRef.current = 0;
+  }
+
   function handleLiveMessage(raw: string) {
     let data: any;
     try { data = JSON.parse(raw); } catch { return; }
     const sc = data.serverContent;
     if (!sc) return;
+
+    // AI interrupted by user speech — stop audio queue and discard partial response
+    if (sc.interrupted) {
+      stopPlayback();
+      pendingAsstTextRef.current = "";
+      return;
+    }
+
+    // Incremental user speech transcription
+    const inTx = sc.inputTranscription;
+    if (inTx?.text) {
+      pendingUserTextRef.current += inTx.text;
+      if (inTx.finished) {
+        const text = pendingUserTextRef.current.trim();
+        pendingUserTextRef.current = "";
+        if (text) setMessages((prev) => [...prev, { role: "user" as const, content: text }]);
+      }
+    }
+
+    // AI audio chunks
     const parts: any[] = sc.modelTurn?.parts ?? [];
     for (const p of parts) {
       if (p.inlineData?.data) playLivePcm(p.inlineData.data);
-      if (p.text) pendingAsstTextRef.current += p.text;
     }
-    if (sc.turnComplete && pendingAsstTextRef.current.trim()) {
-      const text = pendingAsstTextRef.current.trim();
+
+    // AI text transcription (outputTranscription) or plain text parts
+    const outTx = sc.outputTranscription;
+    if (outTx?.text) {
+      pendingAsstTextRef.current += outTx.text;
+      if (outTx.finished) {
+        const text = pendingAsstTextRef.current.trim();
+        pendingAsstTextRef.current = "";
+        if (text) setMessages((prev) => [...prev, { role: "assistant" as const, content: text }]);
+      }
+    }
+
+    if (sc.turnComplete) {
+      // Flush any remaining accumulated text
+      const asst = pendingAsstTextRef.current.trim();
       pendingAsstTextRef.current = "";
-      setMessages((prev) => [...prev, { role: "assistant" as const, content: text }]);
+      if (asst) setMessages((prev) => [...prev, { role: "assistant" as const, content: asst }]);
+      const user = pendingUserTextRef.current.trim();
+      pendingUserTextRef.current = "";
+      if (user) setMessages((prev) => [...prev, { role: "user" as const, content: user }]);
     }
   }
 
@@ -374,6 +419,7 @@ function ChatPage() {
     geminiWsRef.current = null;
     nextPlayTimeRef.current = 0;
     pendingAsstTextRef.current = "";
+    pendingUserTextRef.current = "";
   }
 
   async function startGeminiLive() {
@@ -410,6 +456,8 @@ function ChatPage() {
           generationConfig: {
             responseModalities: ["AUDIO"],
           },
+          inputAudioTranscription: {},
+          outputAudioTranscription: {},
           systemInstruction: {
             parts: [{ text: "You are a friendly AI homework tutor. Help students learn by walking through problems step by step. Keep answers clear and concise." }],
           },
