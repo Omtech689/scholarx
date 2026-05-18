@@ -73,13 +73,13 @@ export const Route = createRootRoute({
         httpEquiv: "Content-Security-Policy",
         content: [
           "default-src 'self'",
-          "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://challenges.cloudflare.com https://*.desmos.com",
+          "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://challenges.cloudflare.com https://static.cloudflareinsights.com https://*.desmos.com",
           "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.desmos.com",
           "font-src 'self' data: https://fonts.gstatic.com https://*.desmos.com",
           "img-src 'self' data: blob: https:",
           // Gemini endpoints are needed ONLY for the Live voice WebSocket, which
           // authenticates with a short-lived ephemeral token (never the API key).
-          "connect-src 'self' https://nozxlljeuswjxqoffrti.supabase.co wss://nozxlljeuswjxqoffrti.supabase.co https://generativelanguage.googleapis.com wss://generativelanguage.googleapis.com https://*.desmos.com",
+          "connect-src 'self' https://nozxlljeuswjxqoffrti.supabase.co wss://nozxlljeuswjxqoffrti.supabase.co https://generativelanguage.googleapis.com wss://generativelanguage.googleapis.com https://cloudflareinsights.com https://*.desmos.com",
           "worker-src 'self' blob: https://*.desmos.com",
           "frame-src 'self' https://challenges.cloudflare.com https://*.desmos.com",
           "object-src 'none'",

@@ -4,6 +4,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { askHomework, streamHomework, generateTitle, getLiveToken } from "@/api/chat.functions";
 import { useConfirm } from "@/components/ui/confirm";
+import type { TablesInsert } from "@/integrations/supabase/types";
 import { downloadMarkdown, printMarkdownAsPdf } from "@/lib/export";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -720,22 +721,43 @@ registerProcessor('mic-processor', MicProcessor);`;
     setActiveId(id);
     const c = conversations.find((x) => x.id === id);
     if (c?.subject) setSubject(c.subject as Subject);
-    const { data, error } = await supabase
+    // Try the new schema (Storage-backed images). If the migration hasn't run
+    // yet, `image_path` won't exist — fall back to the legacy columns so chat
+    // keeps working instead of failing to load any messages.
+    type MsgRow = {
+      id: string;
+      role: string;
+      content: string;
+      image: string | null;
+      image_path?: string | null;
+    };
+    let rows: MsgRow[] = [];
+    const full = await supabase
       .from("messages")
       .select("id, role, content, image, image_path")
       .eq("conversation_id", id)
       .order("created_at", { ascending: true });
-    if (error) {
-      toast.error("Couldn't load chat");
-      return;
+    if (!full.error) {
+      rows = (full.data ?? []) as MsgRow[];
+    } else {
+      const legacy = await supabase
+        .from("messages")
+        .select("id, role, content, image")
+        .eq("conversation_id", id)
+        .order("created_at", { ascending: true });
+      if (legacy.error) {
+        toast.error("Couldn't load chat");
+        return;
+      }
+      rows = (legacy.data ?? []) as unknown as MsgRow[];
     }
     const resolved = await Promise.all(
-      (data ?? []).map(async (m) => ({
+      rows.map(async (m) => ({
         id: m.id,
         role: m.role as "user" | "assistant",
         content: m.content,
         image: m.image ?? undefined,
-        imageUrl: m.image_path ? await signImage(m.image_path) : undefined,
+        imageUrl: m.image_path ? await signImage(m.image_path).catch(() => undefined) : undefined,
       })),
     );
     setMessages(resolved);
@@ -924,14 +946,18 @@ registerProcessor('mic-processor', MicProcessor);`;
       const nextMessages = [...messages, userMsg];
       setMessages(nextMessages);
 
-      await supabase.from("messages").insert({
+      // Only include image columns when there's actually an image, so a
+      // plain text message still saves even if the image_path migration
+      // hasn't been applied yet (the `image` column predates this change).
+      const userRow: Record<string, string> = {
         conversation_id: convoId,
         user_id: u.user.id,
         role: "user",
         content: text,
-        image: imagePath ? null : (imageBase64 ?? null),
-        image_path: imagePath ?? null,
-      });
+      };
+      if (imagePath) userRow.image_path = imagePath;
+      else if (imageBase64) userRow.image = imageBase64;
+      await supabase.from("messages").insert(userRow as unknown as TablesInsert<"messages">);
 
       const { data: sess } = await supabase.auth.getSession();
       const token = sess.session?.access_token;
