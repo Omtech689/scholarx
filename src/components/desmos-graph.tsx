@@ -64,7 +64,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:${T.bg};color:${T.fg
     setTimeout(function(){calc.resize();},50);
     window.parent.postMessage({type:'desmos-ready'},'*');
   }
-  document.addEventListener('DOMContentLoaded',init);
+  // Script is at end of <body> so the DOM is already parsed; call init()
+  // directly. The internal polling handles the async Desmos CDN load.
+  init();
   window.addEventListener('message',function(ev){
     if(!calc) return;
     if(ev.data&&ev.data.type==='desmos-set-expr')
@@ -99,9 +101,7 @@ export function DesmosGraph({
   // Listen for the calculator-ready signal from inside the srcdoc.
   useEffect(() => {
     function onMessage(e: MessageEvent) {
-      if (e.source === iframeRef.current?.contentWindow && e.data?.type === "desmos-ready") {
-        setReady(true);
-      }
+      if (e.data?.type === "desmos-ready") setReady(true);
     }
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
