@@ -2,7 +2,7 @@ import { createFileRoute, redirect, useNavigate, Link } from "@tanstack/react-ro
 import { RouteError } from "@/components/ui/route-error";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { askHomework } from "@/api/chat.functions";
+import { askHomework, getLiveToken } from "@/api/chat.functions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -25,6 +25,8 @@ import {
   MicOff,
   Volume2,
   Square,
+  Headphones,
+  PhoneOff,
   ListTodo,
   Layers,
   Menu,
@@ -84,6 +86,13 @@ function pickVoice(): SpeechSynthesisVoice | null {
   return voices[0] ?? null;
 }
 
+function bufToBase64(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf);
+  let s = "";
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s);
+}
+
 function stripForSpeech(s: string) {
   return s
     .replace(/```[\s\S]*?```/g, " ")
@@ -137,6 +146,22 @@ function ChatPage() {
   const [speechSupported, setSpeechSupported] = useState(false);
   const [ttsSupported, setTtsSupported] = useState(false);
 
+  // Live voice conversation (Gemini Live via ephemeral token — no API key in the browser)
+  const [convoMode, setConvoMode] = useState(false);
+  const convoModeRef = useRef(false);
+  const liveSessionRef = useRef<{ sendRealtimeInput: (p: any) => void; close: () => void } | null>(null);
+  const playbackCtxRef = useRef<AudioContext | null>(null);
+  const micCtxRef = useRef<AudioContext | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const processorRef = useRef<AudioWorkletNode | null>(null);
+  const nextPlayTimeRef = useRef(0);
+  const pendingAsstTextRef = useRef("");
+  const pendingUserTextRef = useRef("");
+  const voiceConvoIdRef = useRef<string | null>(null);
+  const userCommittedRef = useRef(false);
+  const [streamingVoiceContent, setStreamingVoiceContent] = useState<string | null>(null);
+  const [streamingUserContent, setStreamingUserContent] = useState<string | null>(null);
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [extrasOpen, setExtrasOpen] = useState(false);
   const [mobileExtrasOpen, setMobileExtrasOpen] = useState(false);
@@ -165,7 +190,10 @@ function ChatPage() {
       !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition),
     );
     setTtsSupported("speechSynthesis" in window);
+    return () => { stopGeminiLive(); };
   }, []);
+
+  useEffect(() => { convoModeRef.current = convoMode; }, [convoMode]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -301,6 +329,291 @@ function ChatPage() {
     startListening(false);
   }
 
+  // ---- Live voice conversation (Gemini Live over an ephemeral token) ----
+
+  function playLivePcm(base64: string) {
+    const ctx = playbackCtxRef.current;
+    if (!ctx) return;
+    const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+    const int16 = new Int16Array(bytes.buffer);
+    const float32 = new Float32Array(int16.length);
+    for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768;
+    const buf = ctx.createBuffer(1, float32.length, 24000);
+    buf.getChannelData(0).set(float32);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    const now = ctx.currentTime;
+    const start = Math.max(nextPlayTimeRef.current, now);
+    src.start(start);
+    nextPlayTimeRef.current = start + buf.duration;
+  }
+
+  function stopPlayback() {
+    playbackCtxRef.current?.close();
+    const fresh = new AudioContext();
+    fresh.resume();
+    playbackCtxRef.current = fresh;
+    nextPlayTimeRef.current = 0;
+  }
+
+  // Commit the user's pending utterance as a chat message (once per turn, before the AI reply)
+  function commitVoiceUser() {
+    if (userCommittedRef.current) return;
+    const user = pendingUserTextRef.current.trim();
+    if (!user) return;
+    pendingUserTextRef.current = "";
+    userCommittedRef.current = true;
+    setStreamingUserContent(null);
+    setMessages((prev) => [...prev, { role: "user" as const, content: user }]);
+    saveVoiceMessage("user", user);
+  }
+
+  function commitVoiceAssistant(interrupted: boolean) {
+    const asst = pendingAsstTextRef.current.trim();
+    pendingAsstTextRef.current = "";
+    setStreamingVoiceContent(null);
+    if (asst) {
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant" as const, content: asst, ...(interrupted ? { interrupted: true } : {}) },
+      ]);
+      saveVoiceMessage("assistant", asst);
+    }
+    userCommittedRef.current = false;
+  }
+
+  function handleLiveServerContent(sc: any) {
+    if (!sc) return;
+
+    if (sc.interrupted) {
+      stopPlayback();
+      commitVoiceUser();
+      commitVoiceAssistant(true);
+      return;
+    }
+
+    const inTx = sc.inputTranscription;
+    if (inTx?.text) {
+      pendingUserTextRef.current += inTx.text;
+      if (!userCommittedRef.current) setStreamingUserContent(pendingUserTextRef.current);
+    }
+
+    const parts: any[] = sc.modelTurn?.parts ?? [];
+    const outTx = sc.outputTranscription;
+    const modelResponding = !!outTx?.text || parts.some((p) => p.inlineData?.data);
+    if (modelResponding) commitVoiceUser();
+
+    for (const p of parts) {
+      if (p.inlineData?.data) playLivePcm(p.inlineData.data);
+    }
+
+    if (outTx?.text) {
+      pendingAsstTextRef.current += outTx.text;
+      setStreamingVoiceContent(pendingAsstTextRef.current);
+    }
+
+    if (sc.turnComplete) {
+      commitVoiceUser();
+      commitVoiceAssistant(false);
+    }
+  }
+
+  function saveVoiceMessage(role: "user" | "assistant", content: string) {
+    const convoId = voiceConvoIdRef.current;
+    if (!convoId) return;
+    supabase.auth.getUser().then(({ data: u }) => {
+      if (!u.user) return;
+      supabase.from("messages").insert({ conversation_id: convoId, user_id: u.user.id, role, content });
+      supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", convoId);
+    });
+  }
+
+  function stopGeminiLive() {
+    processorRef.current?.disconnect();
+    processorRef.current = null;
+    micCtxRef.current?.close();
+    micCtxRef.current = null;
+    micStreamRef.current?.getTracks().forEach((t) => t.stop());
+    micStreamRef.current = null;
+    playbackCtxRef.current?.close();
+    playbackCtxRef.current = null;
+    try { liveSessionRef.current?.close(); } catch {}
+    liveSessionRef.current = null;
+    nextPlayTimeRef.current = 0;
+    pendingAsstTextRef.current = "";
+    pendingUserTextRef.current = "";
+    userCommittedRef.current = false;
+    setStreamingUserContent(null);
+    setStreamingVoiceContent(null);
+  }
+
+  async function startMicCapture(stream: MediaStream) {
+    const micCtx = new AudioContext();
+    await micCtx.resume();
+    micCtxRef.current = micCtx;
+
+    const workletSrc = `
+class MicProcessor extends AudioWorkletProcessor {
+  constructor() { super(); this._buf = []; }
+  process(inputs) {
+    const ch = inputs[0]?.[0];
+    if (ch) {
+      for (let i = 0; i < ch.length; i++) this._buf.push(ch[i]);
+      if (this._buf.length >= 2048) {
+        this.port.postMessage(new Float32Array(this._buf.splice(0, 2048)));
+      }
+    }
+    return true;
+  }
+}
+registerProcessor('mic-processor', MicProcessor);`;
+    const blobUrl = URL.createObjectURL(new Blob([workletSrc], { type: "application/javascript" }));
+    await micCtx.audioWorklet.addModule(blobUrl);
+    URL.revokeObjectURL(blobUrl);
+
+    const source = micCtx.createMediaStreamSource(stream);
+    const workletNode = new AudioWorkletNode(micCtx, "mic-processor");
+    processorRef.current = workletNode;
+    workletNode.port.onmessage = (ev) => {
+      const session = liveSessionRef.current;
+      if (!session) return;
+      const float32: Float32Array = ev.data;
+      const ratio = micCtx.sampleRate / 16000;
+      const outLen = Math.floor(float32.length / ratio);
+      const int16 = new Int16Array(outLen);
+      for (let i = 0; i < outLen; i++) {
+        const s = float32[Math.floor(i * ratio)];
+        int16[i] = Math.max(-32768, Math.min(32767, s * 32768));
+      }
+      try {
+        session.sendRealtimeInput({
+          audio: { data: bufToBase64(int16.buffer), mimeType: "audio/pcm;rate=16000" },
+        });
+      } catch {
+        /* session closing */
+      }
+    };
+    source.connect(workletNode);
+    workletNode.connect(micCtx.destination);
+  }
+
+  async function startGeminiLive() {
+    const { data: sess } = await supabase.auth.getSession();
+    const token = sess.session?.access_token;
+    const { token: liveToken, model, error } = await getLiveToken({
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+    if (error || !liveToken) {
+      toast.error(error || "Voice conversation not available.");
+      return false;
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch((err: any) => {
+      const name = err?.name ?? "";
+      if (name === "NotAllowedError") toast.error("Microphone permission denied.");
+      else if (name === "NotFoundError") toast.error("No microphone found.");
+      else toast.error("Couldn't access microphone.");
+      return null;
+    });
+    if (!stream) return false;
+
+    micStreamRef.current = stream;
+    const playCtx = new AudioContext();
+    await playCtx.resume();
+    playbackCtxRef.current = playCtx;
+    nextPlayTimeRef.current = 0;
+
+    try {
+      // Lazy import: the SDK is large and only needed for voice.
+      const { GoogleGenAI, Modality } = await import("@google/genai");
+      const ai = new GoogleGenAI({ apiKey: liveToken, httpOptions: { apiVersion: "v1alpha" } });
+
+      const session = await ai.live.connect({
+        model,
+        callbacks: {
+          onopen: () => console.log("[GeminiLive] connected"),
+          onmessage: (msg: any) => {
+            if (msg?.setupComplete) {
+              startMicCapture(stream).catch((e) => {
+                console.error("[GeminiLive] mic error", e);
+                toast.error("Microphone setup failed.");
+              });
+              return;
+            }
+            handleLiveServerContent(msg?.serverContent);
+          },
+          onerror: (e: any) => {
+            console.error("[GeminiLive] error", e);
+            toast.error("Voice connection error — ending conversation.");
+            setConvoMode(false);
+            setListening(false);
+            stopGeminiLive();
+          },
+          onclose: () => {
+            if (convoModeRef.current) {
+              commitVoiceUser();
+              commitVoiceAssistant(false);
+              setConvoMode(false);
+              setListening(false);
+              stopGeminiLive();
+            }
+          },
+        },
+        config: {
+          responseModalities: [Modality.AUDIO],
+          inputAudioTranscription: {},
+          outputAudioTranscription: {},
+          systemInstruction:
+            "You are a friendly AI homework tutor. Help students learn by walking through problems step by step. Keep answers clear and concise.",
+        },
+      });
+      liveSessionRef.current = session;
+      setListening(true);
+      return true;
+    } catch (e) {
+      console.error("[GeminiLive] connect failed", e);
+      toast.error("Couldn't start the voice conversation.");
+      stopGeminiLive();
+      return false;
+    }
+  }
+
+  async function toggleConvoMode() {
+    if (convoMode) {
+      convoModeRef.current = false;
+      commitVoiceUser();
+      commitVoiceAssistant(false);
+      setConvoMode(false);
+      setListening(false);
+      stopGeminiLive();
+      voiceConvoIdRef.current = null;
+      return;
+    }
+
+    const { data: u } = await supabase.auth.getUser();
+    if (u.user) {
+      const { data } = await supabase
+        .from("conversations")
+        .insert({ user_id: u.user.id, title: "Voice Conversation", subject })
+        .select("id")
+        .single();
+      if (data) {
+        voiceConvoIdRef.current = data.id;
+        setActiveId(data.id);
+        await loadConversations();
+      }
+    }
+
+    toast.success("Connecting to voice conversation…");
+    const ok = await startGeminiLive();
+    if (ok) {
+      setConvoMode(true);
+    } else {
+      voiceConvoIdRef.current = null;
+    }
+  }
+
   // load profile + conversations
   useEffect(() => {
     (async () => {
@@ -317,10 +630,10 @@ function ChatPage() {
     })();
   }, []);
 
-  // auto scroll
+  // auto scroll — also follows live voice transcription
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, loading]);
+  }, [messages, loading, streamingVoiceContent, streamingUserContent]);
 
   async function loadConversations() {
     const { data, error } = await supabase
@@ -876,6 +1189,12 @@ function ChatPage() {
             {messages.map((m, i) => (
               <Bubble key={m.id ?? i} role={m.role} content={m.content} image={m.image} ttsSupported={ttsSupported} interrupted={m.interrupted} />
             ))}
+            {streamingUserContent !== null && (
+              <Bubble role="user" content={streamingUserContent} ttsSupported={false} streaming />
+            )}
+            {streamingVoiceContent !== null && (
+              <Bubble role="assistant" content={streamingVoiceContent} ttsSupported={false} streaming />
+            )}
             {loading && (
               <div className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground">
                 <span className="pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-primary" />
@@ -944,6 +1263,17 @@ function ChatPage() {
                   title={listening ? "Stop dictation" : "Voice input"}
                 >
                   {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                </Button>
+              )}
+              {mounted && (
+                <Button
+                  onClick={toggleConvoMode}
+                  size="icon"
+                  variant={convoMode ? "destructive" : "secondary"}
+                  className="h-10 w-10 shrink-0 rounded-xl"
+                  title={convoMode ? "End voice conversation" : "Start voice conversation"}
+                >
+                  {convoMode ? <PhoneOff className="h-4 w-4" /> : <Headphones className="h-4 w-4" />}
                 </Button>
               )}
               <Button

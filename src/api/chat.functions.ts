@@ -3,6 +3,68 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { enforceRateLimit, RATE_LIMITS } from "@/integrations/supabase/rate-limit";
 import { z } from "zod";
 
+// Live (voice) model. The ephemeral-token constraint and the client's
+// live.connect() call MUST use the same model id. Override via env if needed.
+const LIVE_MODEL = process.env.GEMINI_LIVE_MODEL || "gemini-3.1-flash-live-preview";
+
+const LIVE_SYSTEM_INSTRUCTION =
+  "You are a friendly AI homework tutor. Help students learn by walking through problems step by step. Keep answers clear and concise.";
+
+/**
+ * Mints a short-lived, single-use ephemeral token the browser uses to open the
+ * Gemini Live WebSocket. The real GEMINI_API_KEY never leaves the server. The
+ * token is locked to the Live model + audio config and expires fast, so a leak
+ * is worthless within ~a minute.
+ */
+export const getLiveToken = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const limited = await enforceRateLimit(context.supabase, RATE_LIMITS.chat);
+    if (limited) {
+      return { token: "", model: "", error: limited };
+    }
+
+    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+    if (!GEMINI_API_KEY) {
+      return { token: "", model: "", error: "Voice conversation is not configured." };
+    }
+
+    try {
+      // Lazy import keeps the heavy SDK out of the client bundle entirely.
+      const { GoogleGenAI, Modality } = await import("@google/genai");
+      const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+      const now = Date.now();
+
+      const token = await ai.authTokens.create({
+        config: {
+          uses: 1,
+          // Token itself is rejected after 30 min…
+          expireTime: new Date(now + 30 * 60_000).toISOString(),
+          // …and a NEW session must be started within 60s of minting.
+          newSessionExpireTime: new Date(now + 60_000).toISOString(),
+          liveConnectConstraints: {
+            model: LIVE_MODEL,
+            config: {
+              responseModalities: [Modality.AUDIO],
+              inputAudioTranscription: {},
+              outputAudioTranscription: {},
+              systemInstruction: LIVE_SYSTEM_INSTRUCTION,
+            },
+          },
+          httpOptions: { apiVersion: "v1alpha" },
+        },
+      });
+
+      if (!token.name) {
+        return { token: "", model: "", error: "Could not create a voice session token." };
+      }
+      return { token: token.name, model: LIVE_MODEL, error: null as string | null };
+    } catch (e) {
+      console.error("getLiveToken error", e);
+      return { token: "", model: "", error: "Could not start a voice session. Please try again." };
+    }
+  });
+
 async function fetchWithRetry(url: string, init: RequestInit, maxRetries = 2): Promise<Response> {
   let attempt = 0;
   while (true) {
