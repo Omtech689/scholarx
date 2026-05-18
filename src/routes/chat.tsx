@@ -398,7 +398,7 @@ function ChatPage() {
     nextPlayTimeRef.current = 0;
 
     const ws = new WebSocket(
-      `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${key}`,
+      `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${key}`,
     );
     geminiWsRef.current = ws;
 
