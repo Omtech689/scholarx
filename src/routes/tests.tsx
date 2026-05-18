@@ -824,7 +824,7 @@ function TestCreatorPage() {
 
                   <div className="grid gap-3 md:grid-cols-[1fr_auto]">
                     <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">Test topic / title</label>
+                      <label htmlFor="test-topic" className="text-xs text-muted-foreground mb-1 block">Test topic / title</label>
                       <Input
                         id="test-topic"
                         name="test-topic"
@@ -835,7 +835,7 @@ function TestCreatorPage() {
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">Mode</label>
+                      <label htmlFor="test-mode" className="text-xs text-muted-foreground mb-1 block">Mode</label>
                       <select
                         id="test-mode"
                         name="test-mode"

@@ -881,8 +881,10 @@ function FlashcardsPage() {
                     then send to generate cards.
                   </p>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Deck topic / title</label>
+                    <label htmlFor="deck-topic" className="text-xs text-muted-foreground mb-1 block">Deck topic / title</label>
                     <Input
+                      id="deck-topic"
+                      name="deck-topic"
                       value={topicSeed}
                       onChange={(e) => setTopicSeed(e.target.value)}
                       placeholder="e.g. Photosynthesis, AP World — Unit 4, quadratic equations"
@@ -928,6 +930,8 @@ function FlashcardsPage() {
                   </ScrollArea>
                   <form onSubmit={handleSend} className="border-t border-border p-3 flex gap-2">
                     <Input
+                      id="flashcards-draft"
+                      name="flashcards-draft"
                       value={draft}
                       onChange={(e) => setDraft(e.target.value)}
                       placeholder="Message the AI about your topic…"

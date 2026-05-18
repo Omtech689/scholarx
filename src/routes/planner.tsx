@@ -448,7 +448,7 @@ function PlannerPage() {
                 />
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Subject</label>
+                    <label htmlFor="task-subject" className="text-xs text-muted-foreground mb-1 block">Subject</label>
                     <select
                       id="task-subject"
                       name="task-subject"
@@ -460,11 +460,11 @@ function PlannerPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Due date</label>
+                    <label htmlFor="task-due-date" className="text-xs text-muted-foreground mb-1 block">Due date</label>
                     <Input id="task-due-date" name="task-due-date" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Priority</label>
+                    <span className="text-xs text-muted-foreground mb-1 block">Priority</span>
                     <div className="flex gap-1">
                       {PRIORITIES.map((p) => (
                         <button
