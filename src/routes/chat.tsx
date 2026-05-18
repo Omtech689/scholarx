@@ -393,6 +393,7 @@ function ChatPage() {
 
     micStreamRef.current = stream;
     const playCtx = new AudioContext();
+    await playCtx.resume();
     playbackCtxRef.current = playCtx;
     nextPlayTimeRef.current = 0;
 
@@ -402,6 +403,7 @@ function ChatPage() {
     geminiWsRef.current = ws;
 
     ws.onopen = () => {
+      console.log("[GeminiLive] WebSocket open, sending setup");
       ws.send(JSON.stringify({
         setup: {
           model: "models/gemini-2.0-flash-live-001",
@@ -416,13 +418,15 @@ function ChatPage() {
       }));
     };
 
-    ws.onmessage = (e) => {
+    ws.onmessage = async (e) => {
       let msg: any;
       try { msg = JSON.parse(e.data); } catch { return; }
 
-      if (msg.setupComplete) {
-        // Server confirmed setup — now safe to start streaming mic audio
+      // Gemini sends either camelCase or snake_case depending on API version
+      if (msg.setupComplete || msg.setup_complete) {
+        console.log("[GeminiLive] Setup complete, starting mic");
         const micCtx = new AudioContext();
+        await micCtx.resume();
         micCtxRef.current = micCtx;
         const source = micCtx.createMediaStreamSource(stream);
         const bufSize = 4096;
@@ -447,17 +451,20 @@ function ChatPage() {
         return;
       }
 
+      console.log("[GeminiLive] Message:", JSON.stringify(msg).slice(0, 200));
       handleLiveMessage(e.data);
     };
 
-    ws.onerror = () => {
+    ws.onerror = (ev) => {
+      console.error("[GeminiLive] WebSocket error", ev);
       toast.error("Voice connection error — ending conversation.");
       setConvoMode(false);
       setListening(false);
       stopGeminiLive();
     };
 
-    ws.onclose = () => {
+    ws.onclose = (ev) => {
+      console.log("[GeminiLive] WebSocket closed", ev.code, ev.reason);
       if (convoModeRef.current) {
         setConvoMode(false);
         setListening(false);
