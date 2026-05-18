@@ -149,6 +149,7 @@ function ChatPage() {
   const [ttsSupported, setTtsSupported] = useState(false);
   const geminiWsRef = useRef<WebSocket | null>(null);
   const playbackCtxRef = useRef<AudioContext | null>(null);
+  const micCtxRef = useRef<AudioContext | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
   const nextPlayTimeRef = useRef(0);
@@ -184,6 +185,8 @@ function ChatPage() {
     setTtsSupported("speechSynthesis" in window);
     return () => { stopGeminiLive(); };
   }, []);
+
+  useEffect(() => { convoModeRef.current = convoMode; }, [convoMode]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -361,6 +364,8 @@ function ChatPage() {
   function stopGeminiLive() {
     processorRef.current?.disconnect();
     processorRef.current = null;
+    micCtxRef.current?.close();
+    micCtxRef.current = null;
     micStreamRef.current?.getTracks().forEach((t) => t.stop());
     micStreamRef.current = null;
     playbackCtxRef.current?.close();
@@ -410,6 +415,7 @@ function ChatPage() {
 
       // Start streaming mic audio after setup
       const micCtx = new AudioContext();
+      micCtxRef.current = micCtx;
       const source = micCtx.createMediaStreamSource(stream);
       // ScriptProcessorNode: capture PCM, resample to 16 kHz, stream to Gemini
       const bufSize = 4096;
@@ -426,7 +432,7 @@ function ChatPage() {
           int16[i] = Math.max(-32768, Math.min(32767, s * 32768));
         }
         ws.send(JSON.stringify({
-          realtimeInput: { audio: { data: bufToBase64(int16.buffer), mimeType: "audio/pcm;rate=16000" } },
+          realtimeInput: { mediaChunks: [{ data: bufToBase64(int16.buffer), mimeType: "audio/pcm;rate=16000" }] },
         }));
       };
       source.connect(proc);
