@@ -398,7 +398,7 @@ function ChatPage() {
     nextPlayTimeRef.current = 0;
 
     const ws = new WebSocket(
-      `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${key}`,
+      `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${key}`,
     );
     geminiWsRef.current = ws;
 
@@ -406,7 +406,7 @@ function ChatPage() {
       console.log("[GeminiLive] WebSocket open, sending setup");
       ws.send(JSON.stringify({
         setup: {
-          model: "models/gemini-2.0-flash-live-001",
+          model: "models/gemini-3.1-flash-live-preview",
           generationConfig: {
             responseModalities: ["AUDIO"],
             speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } } },
