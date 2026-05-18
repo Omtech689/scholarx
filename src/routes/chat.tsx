@@ -377,7 +377,9 @@ function ChatPage() {
   }
 
   async function startGeminiLive() {
-    const { key } = await getGeminiKey();
+    const { data: sess } = await supabase.auth.getSession();
+    const token = sess.session?.access_token;
+    const { key } = await getGeminiKey({ headers: token ? { Authorization: `Bearer ${token}` } : undefined });
     if (!key) { toast.error("Voice conversation not configured."); return; }
 
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch((err: any) => {
