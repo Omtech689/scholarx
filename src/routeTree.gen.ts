@@ -11,7 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TestsRouteImport } from './routes/tests'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as StudyRouteImport } from './routes/study'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as ResearchRouteImport } from './routes/research'
 import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -37,9 +39,19 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StudyRoute = StudyRouteImport.update({
+  id: '/study',
+  path: '/study',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResearchRoute = ResearchRouteImport.update({
+  id: '/research',
+  path: '/research',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProgressRoute = ProgressRouteImport.update({
@@ -124,7 +136,9 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/progress': typeof ProgressRoute
+  '/research': typeof ResearchRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/study': typeof StudyRoute
   '/terms': typeof TermsRoute
   '/tests': typeof TestsRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -143,7 +157,9 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/progress': typeof ProgressRoute
+  '/research': typeof ResearchRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/study': typeof StudyRoute
   '/terms': typeof TermsRoute
   '/tests': typeof TestsRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -163,7 +179,9 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/progress': typeof ProgressRoute
+  '/research': typeof ResearchRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/study': typeof StudyRoute
   '/terms': typeof TermsRoute
   '/tests': typeof TestsRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -184,7 +202,9 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/profile'
     | '/progress'
+    | '/research'
     | '/reset-password'
+    | '/study'
     | '/terms'
     | '/tests'
     | '/auth/callback'
@@ -203,7 +223,9 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/profile'
     | '/progress'
+    | '/research'
     | '/reset-password'
+    | '/study'
     | '/terms'
     | '/tests'
     | '/auth/callback'
@@ -222,7 +244,9 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/profile'
     | '/progress'
+    | '/research'
     | '/reset-password'
+    | '/study'
     | '/terms'
     | '/tests'
     | '/auth/callback'
@@ -242,7 +266,9 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   ProfileRoute: typeof ProfileRoute
   ProgressRoute: typeof ProgressRoute
+  ResearchRoute: typeof ResearchRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  StudyRoute: typeof StudyRoute
   TermsRoute: typeof TermsRoute
   TestsRoute: typeof TestsRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
@@ -268,11 +294,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/study': {
+      id: '/study'
+      path: '/study'
+      fullPath: '/study'
+      preLoaderRoute: typeof StudyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/research': {
+      id: '/research'
+      path: '/research'
+      fullPath: '/research'
+      preLoaderRoute: typeof ResearchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/progress': {
@@ -386,7 +426,9 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   ProfileRoute: ProfileRoute,
   ProgressRoute: ProgressRoute,
+  ResearchRoute: ResearchRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  StudyRoute: StudyRoute,
   TermsRoute: TermsRoute,
   TestsRoute: TestsRoute,
   AuthCallbackRoute: AuthCallbackRoute,
@@ -398,12 +440,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

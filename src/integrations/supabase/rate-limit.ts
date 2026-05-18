@@ -57,4 +57,6 @@ export const RATE_LIMITS = {
   flashcards: [{ bucket: "flash:min", limit: 8, windowSeconds: 60 }, DAILY_AI_CAP],
   test: [{ bucket: "test:min", limit: 8, windowSeconds: 60 }, DAILY_AI_CAP],
   evaluate: [{ bucket: "eval:min", limit: 10, windowSeconds: 60 }, DAILY_AI_CAP],
+  study: [{ bucket: "study:min", limit: 6, windowSeconds: 60 }, DAILY_AI_CAP],
+  research: [{ bucket: "research:min", limit: 4, windowSeconds: 60 }, DAILY_AI_CAP],
 } satisfies Record<string, RateCheck[]>;

@@ -1,5 +1,5 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { generateTest, evaluateTest, type Evaluation } from "@/api/tests.functions";
@@ -14,6 +14,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RouteError } from "@/components/ui/route-error";
+import { useConfirm } from "@/components/ui/confirm";
+import { downloadMarkdown, printDocument, escapeHtml } from "@/lib/export";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -82,6 +84,7 @@ export const Route = createFileRoute("/tests")({
 
 function TestCreatorPage() {
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [topicSeed, setTopicSeed] = useState("");
   const [testMode, setTestMode] = useState<(typeof TEST_MODES)[number]["value"]>("mixed");
@@ -143,9 +146,61 @@ function TestCreatorPage() {
     })();
   }, []);
 
+  // Hand-off from the chat "Make a practice test" action.
+  const fromChatRan = useRef(false);
+  useEffect(() => {
+    if (fromChatRan.current) return;
+    const raw = sessionStorage.getItem("scholarx:fromChat");
+    if (!raw) return;
+    sessionStorage.removeItem("scholarx:fromChat");
+    fromChatRan.current = true;
+    let parsed: { topic?: string; messages?: ChatMsg[] };
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return;
+    }
+    const seed = parsed.messages ?? [];
+    if (!seed.length) return;
+    const topic = parsed.topic || seed.find((m) => m.role === "user")?.content.slice(0, 200) || "Practice test";
+    setTopicSeed(topic);
+    setMessages(seed);
+    setLoading(true);
+    (async () => {
+      try {
+        const { data: sess } = await supabase.auth.getSession();
+        const token = sess.session?.access_token;
+        const result = (await generateTest({
+          data: { topic, mode: testMode, messages: seed.slice(-16) },
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        })) as GenerateTestResult;
+        if (result.error || !result.questions?.length) {
+          toast.error(result.error ?? "No test generated");
+          return;
+        }
+        setPreview(result.questions.map((item, index) => ({ id: `${Date.now()}-${index}`, ...item })));
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: `Generated ${result.questions.length} questions from your chat. Answer them, then Save to keep this test.` },
+        ]);
+      } catch (err) {
+        console.error(err);
+        toast.error("Request failed");
+      } finally {
+        setLoading(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function deleteTest(id: string, e: React.MouseEvent) {
     e.stopPropagation();
-    if (!confirm("Delete this test?")) return;
+    if (!(await confirm({
+      title: "Delete this test?",
+      description: "This permanently removes the test and your answers.",
+      confirmText: "Delete",
+      destructive: true,
+    }))) return;
     const { error } = await supabase.from("tests").delete().eq("id", id);
     if (error) {
       toast.error("Delete failed");
@@ -400,27 +455,19 @@ function TestCreatorPage() {
       const correct = item.type === "mcq" ? (userAns === item.answer ? "✓ Correct" : `✗ Wrong — correct: ${item.answer}`) : "";
       return `## Q${i + 1} [${item.type.toUpperCase()}]\n\n${item.question}\n\n**Your answer:** ${userAns}\n${correct}\n\n**Model answer:** ${item.answer}`;
     });
-    const md = `# ${topic}\n\n${lines.join("\n\n---\n\n")}`;
-    const blob = new Blob([md], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${topic.replace(/[^a-z0-9]/gi, "_")}_results.md`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadMarkdown(`${topic}_results`, `# ${topic}\n\n${lines.join("\n\n---\n\n")}`);
   }
 
   function exportTestAsPdf() {
     if (!preview) return;
     const topic = topicSeed || "Test";
-    const date = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
 
     const questionsHtml = preview
       .map((item, i) => {
         const choicesHtml =
           item.type === "mcq" && item.choices
             ? `<ol type="A" style="margin:8px 0 0 0;padding-left:20px;">
-                ${item.choices.map((c) => `<li style="margin-bottom:6px;">${escHtml(c)}</li>`).join("")}
+                ${item.choices.map((c) => `<li style="margin-bottom:6px;">${escapeHtml(c)}</li>`).join("")}
                </ol>`
             : `<div style="margin-top:12px;">
                 ${Array.from({ length: 6 }).map(() => `<div style="border-bottom:1px solid #ccc;margin-bottom:10px;height:24px;"></div>`).join("")}
@@ -431,7 +478,7 @@ function TestCreatorPage() {
               <span style="color:#555;font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;">
                 ${item.type === "mcq" ? "Multiple choice" : "Essay"} · Q${i + 1}
               </span><br/>
-              ${escHtml(item.question)}
+              ${escapeHtml(item.question)}
             </p>
             ${choicesHtml}
           </div>`;
@@ -441,8 +488,8 @@ function TestCreatorPage() {
     const answerKeyHtml = preview
       .map((item, i) => {
         const answer = item.type === "mcq"
-          ? `<strong>${escHtml(item.answer)}</strong>`
-          : escHtml(item.answer);
+          ? `<strong>${escapeHtml(item.answer)}</strong>`
+          : escapeHtml(item.answer);
         return `
           <div style="margin-bottom:16px;page-break-inside:avoid;">
             <p style="margin:0;"><strong>Q${i + 1}.</strong> ${answer}</p>
@@ -450,55 +497,17 @@ function TestCreatorPage() {
       })
       .join("");
 
-    const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8"/>
-  <title>${escHtml(topic)}</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; }
-    body { font-family: Georgia, 'Times New Roman', serif; font-size: 14px; line-height: 1.6; color: #111; margin: 0; padding: 0; }
-    .page { max-width: 720px; margin: 0 auto; padding: 48px 48px 64px; }
-    h1 { font-size: 22px; margin: 0 0 4px 0; }
-    .meta { color: #666; font-size: 12px; margin-bottom: 32px; }
-    hr { border: none; border-top: 1px solid #ddd; margin: 32px 0; }
-    .section-title { font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #333; margin: 0 0 20px 0; padding-bottom: 6px; border-bottom: 2px solid #111; }
-    .answer-key { page-break-before: always; }
-    @media print {
-      body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-      .page { padding: 32px 40px 48px; }
-    }
-  </style>
-</head>
-<body>
-  <div class="page">
-    <h1>${escHtml(topic)}</h1>
-    <div class="meta">Generated by ScholarX &nbsp;·&nbsp; ${date}</div>
-    <div class="section-title">Questions</div>
-    ${questionsHtml}
-    <div class="answer-key">
-      <div class="section-title">Answer Key</div>
-      ${answerKeyHtml}
-    </div>
-  </div>
-</body>
-</html>`;
+    const body = `
+      <div class="section-title">Questions</div>
+      ${questionsHtml}
+      <div class="answer-key" style="page-break-before:always;">
+        <div class="section-title">Answer Key</div>
+        ${answerKeyHtml}
+      </div>`;
 
-    const win = window.open("", "_blank", "width=860,height=1100");
-    if (!win) {
-      alert("Pop-up blocked. Please allow pop-ups for this site and try again.");
-      return;
+    if (!printDocument(topic, body)) {
+      toast.error("Pop-up blocked. Allow pop-ups for this site and try again.");
     }
-    win.document.write(html);
-    win.document.close();
-    win.focus();
-    setTimeout(() => {
-      win.print();
-    }, 400);
-  }
-
-  function escHtml(s: string): string {
-    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
 
   const mcqScore = preview?.reduce((count, item) => {

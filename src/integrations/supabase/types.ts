@@ -48,6 +48,7 @@ export type Database = {
           created_at: string
           id: string
           image: string | null
+          image_path: string | null
           role: string
           user_id: string
         }
@@ -57,6 +58,7 @@ export type Database = {
           created_at?: string
           id?: string
           image?: string | null
+          image_path?: string | null
           role: string
           user_id: string
         }
@@ -65,6 +67,8 @@ export type Database = {
           conversation_id?: string
           created_at?: string
           id?: string
+          image?: string | null
+          image_path?: string | null
           role?: string
           user_id?: string
         }
@@ -83,22 +87,73 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           display_name: string | null
+          explanation_tone: string | null
+          grade_level: string | null
           id: string
+          interests: string | null
+          learning_style: string | null
+          study_goals: string | null
           updated_at: string
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
+          explanation_tone?: string | null
+          grade_level?: string | null
           id: string
+          interests?: string | null
+          learning_style?: string | null
+          study_goals?: string | null
           updated_at?: string
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
+          explanation_tone?: string | null
+          grade_level?: string | null
           id?: string
+          interests?: string | null
+          learning_style?: string | null
+          study_goals?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      documents: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          kind: string
+          sources: Json
+          title: string
+          topic: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          kind: string
+          sources?: Json
+          title: string
+          topic?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          sources?: Json
+          title?: string
+          topic?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -130,24 +185,39 @@ export type Database = {
         Row: {
           answer: string
           created_at: string
+          due_at: string | null
+          ease: number
           id: string
+          interval_days: number
+          last_reviewed_at: string | null
           question: string
+          repetitions: number
           set_id: string
           sort_order: number
         }
         Insert: {
           answer: string
           created_at?: string
+          due_at?: string | null
+          ease?: number
           id?: string
+          interval_days?: number
+          last_reviewed_at?: string | null
           question: string
+          repetitions?: number
           set_id: string
           sort_order?: number
         }
         Update: {
           answer?: string
           created_at?: string
+          due_at?: string | null
+          ease?: number
           id?: string
+          interval_days?: number
+          last_reviewed_at?: string | null
           question?: string
+          repetitions?: number
           set_id?: string
           sort_order?: number
         }

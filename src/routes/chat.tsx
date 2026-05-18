@@ -2,7 +2,9 @@ import { createFileRoute, redirect, useNavigate, Link } from "@tanstack/react-ro
 import { RouteError } from "@/components/ui/route-error";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { askHomework, getLiveToken } from "@/api/chat.functions";
+import { askHomework, streamHomework, generateTitle, getLiveToken } from "@/api/chat.functions";
+import { useConfirm } from "@/components/ui/confirm";
+import { downloadMarkdown, printMarkdownAsPdf } from "@/lib/export";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -37,12 +39,22 @@ import {
   ChevronDown,
   LineChart,
   Sparkles,
+  FileDown,
+  GraduationCap,
+  Microscope,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { DesmosGraph } from "@/components/desmos-graph";
 
 type Subject = "math" | "science" | "english" | "history" | "general";
-type Msg = { id?: string; role: "user" | "assistant"; content: string; image?: string; interrupted?: boolean };
+type Msg = {
+  id?: string;
+  role: "user" | "assistant";
+  content: string;
+  image?: string; // legacy base64 (older messages)
+  imageUrl?: string; // resolved signed URL for Storage-backed images
+  interrupted?: boolean;
+};
 type Convo = { id: string; title: string; subject: string | null; updated_at: string };
 
 async function compressImage(file: File, maxDim = 1024, quality = 0.75): Promise<string> {
@@ -66,6 +78,19 @@ async function compressImage(file: File, maxDim = 1024, quality = 0.75): Promise
     img.onerror = (e) => { URL.revokeObjectURL(url); reject(e); };
     img.src = url;
   });
+}
+
+function base64ToBlob(base64: string, mime = "image/jpeg"): Blob {
+  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+  return new Blob([bytes], { type: mime });
+}
+
+const CHAT_IMAGE_BUCKET = "chat-images";
+
+// Sign a Storage object path for temporary <img> display.
+async function signImage(path: string): Promise<string | undefined> {
+  const { data } = await supabase.storage.from(CHAT_IMAGE_BUCKET).createSignedUrl(path, 3600);
+  return data?.signedUrl;
 }
 
 function pickVoice(): SpeechSynthesisVoice | null {
@@ -132,6 +157,9 @@ export const Route = createFileRoute("/chat")({
 
 function ChatPage() {
   const navigate = useNavigate();
+  const confirm = useConfirm();
+  const [toolsMenuOpen, setToolsMenuOpen] = useState(false);
+  const [composerExtrasOpen, setComposerExtrasOpen] = useState(false);
   const [conversations, setConversations] = useState<Convo[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -653,21 +681,23 @@ registerProcessor('mic-processor', MicProcessor);`;
     if (c?.subject) setSubject(c.subject as Subject);
     const { data, error } = await supabase
       .from("messages")
-      .select("id, role, content, image")
+      .select("id, role, content, image, image_path")
       .eq("conversation_id", id)
       .order("created_at", { ascending: true });
     if (error) {
       toast.error("Couldn't load chat");
       return;
     }
-    setMessages(
-      (data ?? []).map((m) => ({
+    const resolved = await Promise.all(
+      (data ?? []).map(async (m) => ({
         id: m.id,
         role: m.role as "user" | "assistant",
         content: m.content,
         image: m.image ?? undefined,
+        imageUrl: m.image_path ? await signImage(m.image_path) : undefined,
       })),
     );
+    setMessages(resolved);
   }
 
   function newChat() {
@@ -682,9 +712,14 @@ registerProcessor('mic-processor', MicProcessor);`;
     // Find conversation title for better confirmation message
     const convo = conversations.find(c => c.id === id);
     const title = convo?.title || "this chat";
-    
-    if (!confirm(`Delete "${title}"? This will permanently remove all messages in this conversation.`)) return;
-    
+
+    if (!(await confirm({
+      title: `Delete "${title}"?`,
+      description: "This permanently removes all messages in this conversation.",
+      confirmText: "Delete",
+      destructive: true,
+    }))) return;
+
     try {
       const { error } = await supabase.from("conversations").delete().eq("id", id);
       if (error) {
@@ -708,8 +743,13 @@ registerProcessor('mic-processor', MicProcessor);`;
       return;
     }
     
-    if (!confirm(`Delete all ${conversations.length} conversations? This will permanently remove all your chat history and cannot be undone.`)) return;
-    
+    if (!(await confirm({
+      title: `Delete all ${conversations.length} conversations?`,
+      description: "This permanently removes all your chat history and cannot be undone.",
+      confirmText: "Delete all",
+      destructive: true,
+    }))) return;
+
     try {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) {
@@ -737,21 +777,44 @@ registerProcessor('mic-processor', MicProcessor);`;
     }
   }
 
-  function exportConversation() {
-    if (messages.length === 0) return;
+  function conversationMarkdown(): { title: string; md: string } {
     const convo = conversations.find((c) => c.id === activeId);
     const title = convo?.title ?? "conversation";
     const lines = messages.map((m) =>
       `## ${m.role === "user" ? "You" : "ScholarX"}\n\n${m.content}`,
     );
-    const md = `# ${title}\n\n${lines.join("\n\n---\n\n")}`;
-    const blob = new Blob([md], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${title.replace(/[^a-z0-9]/gi, "_")}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
+    return { title, md: `# ${title}\n\n${lines.join("\n\n---\n\n")}` };
+  }
+
+  function exportConversation() {
+    if (messages.length === 0) return;
+    const { title, md } = conversationMarkdown();
+    downloadMarkdown(title, md);
+  }
+
+  function exportConversationPdf() {
+    if (messages.length === 0) return;
+    const { title, md } = conversationMarkdown();
+    if (!printMarkdownAsPdf(title, md)) {
+      toast.error("Pop-up blocked. Allow pop-ups to export a PDF.");
+    }
+  }
+
+  // Hand the current conversation off to a study tool. The transcript is
+  // stashed in sessionStorage; the target page picks it up and auto-runs.
+  function createFromChat(target: "flashcards" | "tests" | "study" | "research") {
+    if (messages.length === 0) {
+      toast.error("Start a conversation first.");
+      return;
+    }
+    const convo = conversations.find((c) => c.id === activeId);
+    const transcript = messages.map((m) => ({ role: m.role, content: m.content }));
+    sessionStorage.setItem(
+      "scholarx:fromChat",
+      JSON.stringify({ topic: convo?.title ?? "", messages: transcript.slice(-16) }),
+    );
+    setToolsMenuOpen(false);
+    navigate({ to: `/${target}` });
   }
 
   async function logout() {
@@ -786,12 +849,27 @@ registerProcessor('mic-processor', MicProcessor);`;
         setActiveId(convoId);
       }
 
+      const isFirstExchange = messages.length === 0;
       let userMsg: Msg;
       let imageBase64: string | undefined;
+      let imagePath: string | undefined;
 
       if (imageFile) {
         imageBase64 = await compressImage(imageFile);
-        userMsg = { role: "user", content: text, image: imageBase64 };
+        // Persist the image in Storage (private bucket) instead of stuffing
+        // base64 into the messages table. The model still gets the base64.
+        const path = `${u.user.id}/${convoId}/${crypto.randomUUID()}.jpg`;
+        const { error: upErr } = await supabase.storage
+          .from(CHAT_IMAGE_BUCKET)
+          .upload(path, base64ToBlob(imageBase64), { contentType: "image/jpeg" });
+        if (!upErr) {
+          imagePath = path;
+          const signed = await signImage(path);
+          userMsg = { role: "user", content: text, imageUrl: signed };
+        } else {
+          console.error("image upload failed, falling back to inline", upErr);
+          userMsg = { role: "user", content: text, image: imageBase64 };
+        }
       } else {
         userMsg = { role: "user", content: text };
       }
@@ -804,34 +882,70 @@ registerProcessor('mic-processor', MicProcessor);`;
         user_id: u.user.id,
         role: "user",
         content: text,
-        image: imageBase64,
+        image: imagePath ? null : imageBase64 ?? null,
+        image_path: imagePath ?? null,
       });
 
       const { data: sess } = await supabase.auth.getSession();
       const token = sess.session?.access_token;
 
-      // The Gemini API key stays server-side: this server function holds the
-      // key and talks to Gemini. The browser never sees it.
       // Only send the most recent turns: keeps us under the server's 40-message
-      // cap (so long conversations don't start failing) and bounds Gemini token
-      // cost per request. ~24 messages keeps plenty of context.
-      const result = await askHomework({
-        data: {
-          messages: nextMessages.slice(-24).map((m) => ({ role: m.role, content: m.content })),
-          subject,
-          image: imageBase64,
-        },
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
-      if (result.error || !result.content) {
-        toast.error(result.error ?? "No response");
+      // cap and bounds Gemini token cost per request.
+      const payloadMessages = nextMessages.slice(-24).map((m) => ({ role: m.role, content: m.content }));
+
+      // Push an empty assistant bubble and stream tokens into it (SSE). The
+      // Gemini API key stays server-side; the browser only ever sees text.
+      let fullContent = "";
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+      const setStreamed = (txt: string) =>
+        setMessages((prev) => {
+          const copy = prev.slice();
+          for (let i = copy.length - 1; i >= 0; i--) {
+            if (copy[i].role === "assistant") {
+              copy[i] = { ...copy[i], content: txt };
+              break;
+            }
+          }
+          return copy;
+        });
+
+      try {
+        const res = await streamHomework({
+          data: { messages: payloadMessages, subject, image: imageBase64 },
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        const body = (res as unknown as Response)?.body;
+        if (!body) throw new Error("no stream body");
+        setLoading(false);
+        const reader = body.getReader();
+        const decoder = new TextDecoder();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          fullContent += decoder.decode(value, { stream: true });
+          setStreamed(fullContent);
+        }
+      } catch (streamErr) {
+        // Fall back to the non-streaming endpoint on any streaming failure.
+        console.error("stream failed, falling back", streamErr);
+        const result = await askHomework({
+          data: { messages: payloadMessages, subject, image: imageBase64 },
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        if (result.error || !result.content) {
+          setMessages((prev) => prev.filter((m, i) => !(m.role === "assistant" && i === prev.length - 1 && m.content === "")));
+          toast.error(result.error ?? "No response");
+          return;
+        }
+        fullContent = result.content;
+        setStreamed(fullContent);
+      }
+
+      if (!fullContent.trim()) {
+        setMessages((prev) => prev.filter((m, i) => !(m.role === "assistant" && i === prev.length - 1 && m.content === "")));
+        toast.error("No response from AI");
         return;
       }
-      const fullContent = result.content;
-
-      if (!fullContent) { toast.error("No response from AI"); return; }
-      const assistantMsg: Msg = { role: "assistant", content: fullContent };
-      setMessages((prev) => [...prev, assistantMsg]);
 
       await supabase.from("messages").insert({
         conversation_id: convoId,
@@ -844,6 +958,21 @@ registerProcessor('mic-processor', MicProcessor);`;
         .from("conversations")
         .update({ updated_at: new Date().toISOString() })
         .eq("id", convoId);
+
+      // Auto-title the conversation from its opening exchange.
+      if (isFirstExchange) {
+        try {
+          const { title } = await generateTitle({
+            data: { messages: [{ role: "user", content: text }, { role: "assistant", content: fullContent }] },
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          });
+          if (title && convoId) {
+            await supabase.from("conversations").update({ title }).eq("id", convoId);
+          }
+        } catch (e) {
+          console.error("auto-title failed", e);
+        }
+      }
 
       await loadConversations();
     } catch (err) {
@@ -963,6 +1092,12 @@ registerProcessor('mic-processor', MicProcessor);`;
                 </Link>
                 <Link to="/tests" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
                   <BookOpen className="h-3.5 w-3.5" /> Test creator
+                </Link>
+                <Link to="/study" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+                  <GraduationCap className="h-3.5 w-3.5" /> Study guides
+                </Link>
+                <Link to="/research" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+                  <Microscope className="h-3.5 w-3.5" /> Research mode
                 </Link>
                 <Link to="/graph" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
                   <LineChart className="h-3.5 w-3.5" /> Graphing
@@ -1111,6 +1246,12 @@ registerProcessor('mic-processor', MicProcessor);`;
               <Link to="/tests" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
                 <BookOpen className="h-3.5 w-3.5" /> Test creator
               </Link>
+              <Link to="/study" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+                <GraduationCap className="h-3.5 w-3.5" /> Study guides
+              </Link>
+              <Link to="/research" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+                <Microscope className="h-3.5 w-3.5" /> Research mode
+              </Link>
               <Link to="/graph" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
                 <LineChart className="h-3.5 w-3.5" /> Graphing
               </Link>
@@ -1139,15 +1280,70 @@ registerProcessor('mic-processor', MicProcessor);`;
             <Menu className="h-5 w-5" />
           </button>
           {messages.length > 0 && (
-            <Button
-              onClick={exportConversation}
-              size="icon"
-              variant="ghost"
-              className="shrink-0 h-8 w-8"
-              title="Export conversation as Markdown"
-            >
-              <Download className="h-4 w-4" />
-            </Button>
+            <div className="flex shrink-0 items-center gap-1">
+              <Button
+                onClick={exportConversation}
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8"
+                title="Export as Markdown"
+                aria-label="Export conversation as Markdown"
+              >
+                <Download className="h-4 w-4" />
+              </Button>
+              <Button
+                onClick={exportConversationPdf}
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8"
+                title="Export as PDF"
+                aria-label="Export conversation as PDF"
+              >
+                <FileDown className="h-4 w-4" />
+              </Button>
+              <div className="relative">
+                <Button
+                  onClick={() => setToolsMenuOpen((v) => !v)}
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8"
+                  title="Create study tools from this chat"
+                  aria-label="Create study tools from this chat"
+                  aria-haspopup="menu"
+                  aria-expanded={toolsMenuOpen}
+                >
+                  <Sparkles className="h-4 w-4" />
+                </Button>
+                {toolsMenuOpen && (
+                  <>
+                    <button
+                      type="button"
+                      className="fixed inset-0 z-40 cursor-default"
+                      aria-hidden="true"
+                      tabIndex={-1}
+                      onClick={() => setToolsMenuOpen(false)}
+                    />
+                    <div
+                      role="menu"
+                      className="absolute left-0 z-50 mt-1 w-52 overflow-hidden rounded-lg border border-border bg-popover p-1 shadow-lg"
+                    >
+                      <button role="menuitem" onClick={() => createFromChat("flashcards")} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground">
+                        <Layers className="h-4 w-4" /> Make flashcards
+                      </button>
+                      <button role="menuitem" onClick={() => createFromChat("tests")} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground">
+                        <BookOpen className="h-4 w-4" /> Make a practice test
+                      </button>
+                      <button role="menuitem" onClick={() => createFromChat("study")} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground">
+                        <GraduationCap className="h-4 w-4" /> Make a study guide
+                      </button>
+                      <button role="menuitem" onClick={() => createFromChat("research")} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground">
+                        <Microscope className="h-4 w-4" /> Use in research mode
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
           )}
           <div className="flex flex-1 items-center gap-2 overflow-x-auto min-w-0">
             <span className="shrink-0 text-sm text-muted-foreground">Subject:</span>
@@ -1187,7 +1383,7 @@ registerProcessor('mic-processor', MicProcessor);`;
           <div className="mx-auto max-w-3xl space-y-4">
             {messages.length === 0 && <EmptyState subject={subject} onPick={setInput} />}
             {messages.map((m, i) => (
-              <Bubble key={m.id ?? i} role={m.role} content={m.content} image={m.image} ttsSupported={ttsSupported} interrupted={m.interrupted} />
+              <Bubble key={m.id ?? i} role={m.role} content={m.content} image={m.image} imageUrl={m.imageUrl} ttsSupported={ttsSupported} interrupted={m.interrupted} />
             ))}
             {streamingUserContent !== null && (
               <Bubble role="user" content={streamingUserContent} ttsSupported={false} streaming />
@@ -1233,54 +1429,74 @@ registerProcessor('mic-processor', MicProcessor);`;
                 className="hidden"
                 id="image-upload"
               />
-              <label
-                htmlFor="image-upload"
-                className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-border bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                title="Upload image"
-              >
-                <Layers className="h-4 w-4" />
-              </label>
               {imageFile && (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <span>{imageFile.name}</span>
+                <div className="flex items-center gap-1 self-center text-xs text-muted-foreground">
+                  <span className="max-w-24 truncate">{imageFile.name}</span>
                   <Button
                     onClick={() => setImageFile(null)}
                     size="sm"
                     variant="ghost"
                     className="h-6 w-6 p-0"
+                    aria-label="Remove image"
                   >
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>
               )}
-              {mounted && speechSupported && (
-                <Button
-                  onClick={toggleListening}
-                  disabled={loading}
-                  size="icon"
-                  variant={listening ? "destructive" : "secondary"}
-                  className="h-10 w-10 shrink-0 rounded-xl"
-                  title={listening ? "Stop dictation" : "Voice input"}
+              {/* Mobile: collapse secondary controls behind a "+" */}
+              <Button
+                type="button"
+                onClick={() => setComposerExtrasOpen((v) => !v)}
+                size="icon"
+                variant="secondary"
+                className="h-10 w-10 shrink-0 rounded-xl sm:hidden"
+                title="More input options"
+                aria-label="More input options"
+                aria-expanded={composerExtrasOpen}
+              >
+                <Plus className={`h-4 w-4 transition-transform ${composerExtrasOpen ? "rotate-45" : ""}`} />
+              </Button>
+              <div className={`${composerExtrasOpen ? "flex" : "hidden"} items-end gap-2 sm:flex`}>
+                <label
+                  htmlFor="image-upload"
+                  className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-border bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                  title="Upload image"
+                  aria-label="Upload image"
                 >
-                  {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                </Button>
-              )}
-              {mounted && (
-                <Button
-                  onClick={toggleConvoMode}
-                  size="icon"
-                  variant={convoMode ? "destructive" : "secondary"}
-                  className="h-10 w-10 shrink-0 rounded-xl"
-                  title={convoMode ? "End voice conversation" : "Start voice conversation"}
-                >
-                  {convoMode ? <PhoneOff className="h-4 w-4" /> : <Headphones className="h-4 w-4" />}
-                </Button>
-              )}
+                  <Layers className="h-4 w-4" />
+                </label>
+                {mounted && speechSupported && (
+                  <Button
+                    onClick={toggleListening}
+                    disabled={loading}
+                    size="icon"
+                    variant={listening ? "destructive" : "secondary"}
+                    className="h-10 w-10 shrink-0 rounded-xl"
+                    title={listening ? "Stop dictation" : "Voice input"}
+                    aria-label={listening ? "Stop dictation" : "Voice input"}
+                  >
+                    {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                  </Button>
+                )}
+                {mounted && (
+                  <Button
+                    onClick={toggleConvoMode}
+                    size="icon"
+                    variant={convoMode ? "destructive" : "secondary"}
+                    className="h-10 w-10 shrink-0 rounded-xl"
+                    title={convoMode ? "End voice conversation" : "Start voice conversation"}
+                    aria-label={convoMode ? "End voice conversation" : "Start voice conversation"}
+                  >
+                    {convoMode ? <PhoneOff className="h-4 w-4" /> : <Headphones className="h-4 w-4" />}
+                  </Button>
+                )}
+              </div>
               <Button
                 onClick={() => send()}
                 disabled={loading || (!input.trim() && !imageFile)}
                 size="icon"
                 className="h-10 w-10 shrink-0 rounded-xl glow"
+                aria-label="Send message"
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
@@ -1297,7 +1513,7 @@ registerProcessor('mic-processor', MicProcessor);`;
   );
 }
 
-const Bubble = memo(function Bubble({ role, content, image, ttsSupported, interrupted, streaming }: { role: "user" | "assistant"; content: string; image?: string; ttsSupported: boolean; interrupted?: boolean; streaming?: boolean }) {
+const Bubble = memo(function Bubble({ role, content, image, imageUrl, ttsSupported, interrupted, streaming }: { role: "user" | "assistant"; content: string; image?: string; imageUrl?: string; ttsSupported: boolean; interrupted?: boolean; streaming?: boolean }) {
   const isUser = role === "user";
   const [speaking, setSpeaking] = useState(false);
 
@@ -1328,7 +1544,11 @@ const Bubble = memo(function Bubble({ role, content, image, ttsSupported, interr
             : "glass"
         }`}
       >
-        {image && <img src={`data:image/jpeg;base64,${image}`} alt="Uploaded" className="mb-2 max-w-full rounded-lg" />}
+        {imageUrl ? (
+          <img src={imageUrl} alt="Uploaded" className="mb-2 max-w-full rounded-lg" />
+        ) : image ? (
+          <img src={`data:image/jpeg;base64,${image}`} alt="Uploaded" className="mb-2 max-w-full rounded-lg" />
+        ) : null}
         <FormattedContent text={content} />
         {streaming && <span className="inline-block h-4 w-0.5 animate-pulse bg-current opacity-70 align-middle ml-0.5" />}
         {interrupted && (

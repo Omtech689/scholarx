@@ -1,5 +1,5 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { generateFlashcards } from "@/api/flashcards.functions";
@@ -9,6 +9,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RouteError } from "@/components/ui/route-error";
+import { useConfirm } from "@/components/ui/confirm";
+import { downloadCsv, printDocument, escapeHtml } from "@/lib/export";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -31,6 +33,7 @@ import {
   MessageSquare,
   TrendingUp,
   Download,
+  FileDown,
   ThumbsUp,
   ThumbsDown,
   Shuffle,
@@ -39,43 +42,53 @@ import {
 type ChatMsg = { role: "user" | "assistant"; content: string };
 type Card = { q: string; a: string };
 type DeckRow = { id: string; topic: string; created_at: string };
-type DbCard = { id: string; question: string; answer: string; sort_order: number };
+// SRS state now lives in the DB (per flashcard) so it follows the user across
+// devices instead of being trapped in one browser's localStorage.
+type DbCard = {
+  id: string;
+  question: string;
+  answer: string;
+  sort_order: number;
+  ease: number;
+  interval_days: number;
+  repetitions: number;
+  due_at: string | null;
+};
 
-type SrsState = { ease: number; interval: number; due: number };
+type SrsUpdate = {
+  ease: number;
+  interval_days: number;
+  repetitions: number;
+  due_at: string;
+  last_reviewed_at: string;
+};
 
-function getSrsKey(setId: string) { return `srs_${setId}`; }
-
-function loadSrs(setId: string): Record<string, SrsState> {
-  try { return JSON.parse(localStorage.getItem(getSrsKey(setId)) ?? "{}"); } catch { return {}; }
-}
-
-function saveSrs(setId: string, data: Record<string, SrsState>) {
-  localStorage.setItem(getSrsKey(setId), JSON.stringify(data));
-}
-
-function sm2Next(state: SrsState, quality: 0 | 3 | 5): SrsState {
-  const ease = Math.max(1.3, state.ease + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)));
-  let interval: number;
+// SM-2. quality: 0 = Again, 3 = Hard, 5 = Easy.
+function sm2Next(card: DbCard, quality: 0 | 3 | 5): SrsUpdate {
+  const ease = Math.max(1.3, card.ease + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)));
+  let repetitions = card.repetitions;
+  let intervalDays: number;
   if (quality < 3) {
-    interval = 1;
-  } else if (state.interval <= 1) {
-    interval = quality === 5 ? 4 : 1;
+    repetitions = 0;
+    intervalDays = 1;
   } else {
-    interval = Math.round(state.interval * ease);
+    repetitions += 1;
+    if (repetitions === 1) intervalDays = 1;
+    else if (repetitions === 2) intervalDays = quality === 5 ? 6 : 4;
+    else intervalDays = Math.round(Math.max(1, card.interval_days) * ease);
   }
-  return { ease, interval, due: Date.now() + interval * 24 * 60 * 60 * 1000 };
+  const now = new Date();
+  return {
+    ease,
+    interval_days: intervalDays,
+    repetitions,
+    due_at: new Date(now.getTime() + intervalDays * 24 * 60 * 60 * 1000).toISOString(),
+    last_reviewed_at: now.toISOString(),
+  };
 }
 
-function exportDeckAsCsv(cards: DbCard[], topic: string) {
-  const rows = [["Question", "Answer"], ...cards.map((c) => [c.question.replace(/,/g, ";"), c.answer.replace(/,/g, ";")])];
-  const csv = rows.map((r) => r.map((v) => `"${v.replace(/"/g, '""')}"`).join(",")).join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${topic.replace(/[^a-z0-9]/gi, "_")}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+function isDue(card: DbCard): boolean {
+  return !card.due_at || new Date(card.due_at).getTime() <= Date.now();
 }
 
 export const Route = createFileRoute("/flashcards")({
@@ -97,6 +110,7 @@ export const Route = createFileRoute("/flashcards")({
 
 function FlashcardsPage() {
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const [topicSeed, setTopicSeed] = useState("");
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [draft, setDraft] = useState("");
@@ -108,7 +122,7 @@ function FlashcardsPage() {
   const [studyIdx, setStudyIdx] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
-  const [srsData, setSrsData] = useState<Record<string, SrsState>>({});
+  const [dueOnly, setDueOnly] = useState(false);
   const [shuffled, setShuffled] = useState(false);
 
   const queryClient = useQueryClient();
@@ -153,7 +167,7 @@ function FlashcardsPage() {
       if (!selectedDeckId) return [] as DbCard[];
       const { data, error } = await supabase
         .from("flashcards")
-        .select("id, question, answer, sort_order")
+        .select("id, question, answer, sort_order, ease, interval_days, repetitions, due_at")
         .eq("set_id", selectedDeckId)
         .order("sort_order", { ascending: true });
       if (error) throw error;
@@ -172,42 +186,101 @@ function FlashcardsPage() {
   // the shuffle toggle change — never on every render (which previously made
   // the studied card jump unpredictably).
   const studyCards = useMemo(() => {
-    if (!shuffled) return rawStudyCards;
-    const pool = [...rawStudyCards];
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
+    let pool = dueOnly ? rawStudyCards.filter(isDue) : rawStudyCards;
+    if (shuffled) {
+      pool = [...pool];
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
     }
     return pool;
-  }, [rawStudyCards, shuffled]);
+  }, [rawStudyCards, shuffled, dueOnly]);
 
-  function handleRate(quality: 0 | 3 | 5) {
-    if (!selectedDeckId || !studyCards[studyIdx]) return;
-    const cardId = studyCards[studyIdx].id;
-    const prev = srsData[cardId] ?? { ease: 2.5, interval: 0, due: 0 };
-    const next = sm2Next(prev, quality);
-    const updated = { ...srsData, [cardId]: next };
-    setSrsData(updated);
-    saveSrs(selectedDeckId, updated);
+  async function handleRate(quality: 0 | 3 | 5) {
+    const card = studyCards[studyIdx];
+    if (!selectedDeckId || !card) return;
+    const update = sm2Next(card, quality);
+
+    // Optimistic cache update so the queue advances instantly.
+    queryClient.setQueryData<DbCard[]>(["flashcards", selectedDeckId], (prev) =>
+      (prev ?? []).map((c) =>
+        c.id === card.id
+          ? { ...c, ease: update.ease, interval_days: update.interval_days, repetitions: update.repetitions, due_at: update.due_at }
+          : c,
+      ),
+    );
     setShowAnswer(false);
-    setStudyIdx((i) => Math.min(studyCards.length - 1, i + 1));
+    setStudyIdx((i) => Math.min(Math.max(0, studyCards.length - 2), i + 1));
+
+    const { error } = await supabase.from("flashcards").update(update).eq("id", card.id);
+    if (error) {
+      console.error("Failed to save review", error);
+      toast.error("Couldn't save your review progress");
+      queryClient.invalidateQueries({ queryKey: ["flashcards", selectedDeckId] });
+    }
   }
 
-  function loadSrsForDeck(id: string) {
-    setSrsData(loadSrs(id));
+  function resetStudy() {
     setStudyIdx(0);
     setShowAnswer(false);
   }
 
   function getDueCount() {
-    const now = Date.now();
-    return studyCards.filter((c) => !srsData[c.id] || srsData[c.id].due <= now).length;
+    return rawStudyCards.filter(isDue).length;
   }
 
   function selectDeck(id: string) {
     setSelectedDeckId(id);
-    loadSrsForDeck(id);
+    resetStudy();
   }
+
+  // Hand-off from the chat "Make flashcards" action.
+  const fromChatRan = useRef(false);
+  useEffect(() => {
+    if (fromChatRan.current) return;
+    const raw = sessionStorage.getItem("scholarx:fromChat");
+    if (!raw) return;
+    sessionStorage.removeItem("scholarx:fromChat");
+    fromChatRan.current = true;
+    let parsed: { topic?: string; messages?: ChatMsg[] };
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return;
+    }
+    const seed = parsed.messages ?? [];
+    if (!seed.length) return;
+    const topic = parsed.topic || seed.find((m) => m.role === "user")?.content.slice(0, 200) || "Study topic";
+    setTopicSeed(topic);
+    setMessages(seed);
+    setLoading(true);
+    (async () => {
+      try {
+        const { data: sess } = await supabase.auth.getSession();
+        const token = sess.session?.access_token;
+        const result = await generateFlashcards({
+          data: { topic, messages: seed.slice(-16) },
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        if (result.error || !result.cards?.length) {
+          toast.error(result.error ?? "No flashcards generated");
+          return;
+        }
+        setPreview(result.cards);
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: `Here are ${result.cards.length} flashcards from your chat. Review them, then Save to library.` },
+        ]);
+      } catch (err) {
+        console.error(err);
+        toast.error("Request failed");
+      } finally {
+        setLoading(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -300,7 +373,7 @@ function FlashcardsPage() {
       toast.success("Deck saved");
       setPreview(null);
       setSelectedDeckId(setRow.id);
-      loadSrsForDeck(setRow.id);
+      resetStudy();
       queryClient.invalidateQueries({ queryKey: ["flashcard_sets"] });
       queryClient.invalidateQueries({ queryKey: ["flashcards", setRow.id] });
     } finally {
@@ -314,7 +387,12 @@ function FlashcardsPage() {
   }
 
   async function deleteDeck(id: string) {
-    if (!confirm("Delete this deck and all its cards?")) return;
+    if (!(await confirm({
+      title: "Delete this deck?",
+      description: "This permanently removes the deck and all its cards.",
+      confirmText: "Delete",
+      destructive: true,
+    }))) return;
     const { error } = await supabase.from("flashcard_sets").delete().eq("id", id);
     if (error) {
       toast.error("Delete failed");
@@ -989,10 +1067,22 @@ function FlashcardsPage() {
                     <span className="text-xs text-muted-foreground">{studyIdx + 1} / {studyCards.length}</span>
                     <Button
                       type="button"
+                      variant={dueOnly ? "default" : "ghost"}
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      title="Review only cards that are due"
+                      disabled={!dueOnly && getDueCount() === 0}
+                      onClick={() => { setDueOnly((v) => !v); resetStudy(); }}
+                    >
+                      Due only
+                    </Button>
+                    <Button
+                      type="button"
                       variant={shuffled ? "default" : "ghost"}
                       size="icon"
                       className="h-7 w-7"
                       title="Shuffle cards"
+                      aria-label="Shuffle cards"
                       onClick={() => setShuffled((v) => !v)}
                     >
                       <Shuffle className="h-3.5 w-3.5" />
@@ -1003,12 +1093,35 @@ function FlashcardsPage() {
                       size="icon"
                       className="h-7 w-7"
                       title="Export deck as CSV"
+                      aria-label="Export deck as CSV"
                       onClick={() => {
                         const deck = decks.find((d) => d.id === selectedDeckId);
-                        exportDeckAsCsv(studyCards, deck?.topic ?? "flashcards");
+                        const topic = deck?.topic ?? "flashcards";
+                        downloadCsv(topic, [["Question", "Answer"], ...studyCards.map((c) => [c.question, c.answer])]);
                       }}
                     >
                       <Download className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      title="Export deck as PDF"
+                      aria-label="Export deck as PDF"
+                      onClick={() => {
+                        const deck = decks.find((d) => d.id === selectedDeckId);
+                        const topic = deck?.topic ?? "Flashcards";
+                        const body = studyCards
+                          .map(
+                            (c, i) =>
+                              `<div style="margin-bottom:18px;page-break-inside:avoid;"><p style="font-weight:600;margin:0 0 4px;">${i + 1}. ${escapeHtml(c.question)}</p><p style="margin:0;color:#333;">${escapeHtml(c.answer)}</p></div>`,
+                          )
+                          .join("");
+                        if (!printDocument(topic, body)) toast.error("Allow pop-ups to export PDF.");
+                      }}
+                    >
+                      <FileDown className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>

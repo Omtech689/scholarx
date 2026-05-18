@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
   User,
@@ -14,7 +15,11 @@ import {
   ArrowLeft,
   LogOut,
   CheckCircle,
+  GraduationCap,
 } from "lucide-react";
+
+const LEARNING_STYLES = ["Visual", "Step-by-step", "Examples-first", "Conceptual / big-picture", "Practice-heavy"];
+const TONES = ["Encouraging", "Direct & concise", "Detailed", "Socratic (asks me questions)", "Playful"];
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -37,7 +42,15 @@ function ProfilePage() {
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"profile" | "security">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "learning" | "security">("profile");
+
+  // Personalization — fed into the AI tutor's system prompt server-side.
+  const [gradeLevel, setGradeLevel] = useState("");
+  const [learningStyle, setLearningStyle] = useState("");
+  const [explanationTone, setExplanationTone] = useState("");
+  const [studyGoals, setStudyGoals] = useState("");
+  const [interests, setInterests] = useState("");
+  const [personalizationLoading, setPersonalizationLoading] = useState(false);
 
   // Password change states
   const [currentPassword, setCurrentPassword] = useState("");
@@ -65,11 +78,16 @@ function ProfilePage() {
         // Load profile data
         const { data: profile } = await supabase
           .from("profiles")
-          .select("display_name")
+          .select("display_name, grade_level, learning_style, explanation_tone, study_goals, interests")
           .eq("id", userData.user.id)
           .maybeSingle();
-        
+
         setDisplayName(profile?.display_name || userData.user.email?.split("@")[0] || "");
+        setGradeLevel(profile?.grade_level ?? "");
+        setLearningStyle(profile?.learning_style ?? "");
+        setExplanationTone(profile?.explanation_tone ?? "");
+        setStudyGoals(profile?.study_goals ?? "");
+        setInterests(profile?.interests ?? "");
       }
     } catch (err) {
       toast.error("Failed to load profile");
@@ -110,6 +128,39 @@ function ProfilePage() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function savePersonalization() {
+    setPersonalizationLoading(true);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        toast.error("Please sign in again");
+        return;
+      }
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          grade_level: gradeLevel.trim() || null,
+          learning_style: learningStyle || null,
+          explanation_tone: explanationTone || null,
+          study_goals: studyGoals.trim() || null,
+          interests: interests.trim() || null,
+        })
+        .eq("id", userData.user.id);
+
+      if (error) {
+        toast.error("Failed to save personalization");
+        console.error(error);
+        return;
+      }
+      toast.success("Personalization saved — your tutor will adapt to this");
+    } catch (err) {
+      toast.error("Something went wrong");
+      console.error(err);
+    } finally {
+      setPersonalizationLoading(false);
     }
   }
 
@@ -254,6 +305,17 @@ function ProfilePage() {
                 Profile
               </button>
               <button
+                onClick={() => setActiveTab("learning")}
+                className={`w-full flex items-center gap-3 rounded-lg px-4 py-3 text-left transition-colors ${
+                  activeTab === "learning"
+                    ? "bg-primary text-primary-foreground"
+                    : "hover:bg-secondary text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <GraduationCap className="h-4 w-4" />
+                Learning
+              </button>
+              <button
                 onClick={() => setActiveTab("security")}
                 className={`w-full flex items-center gap-3 rounded-lg px-4 py-3 text-left transition-colors ${
                   activeTab === "security"
@@ -322,6 +384,97 @@ function ProfilePage() {
                       <CheckCircle className="h-4 w-4" />
                     )}
                     Update Profile
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "learning" && (
+              <div className="glass rounded-xl p-6 space-y-6">
+                <div>
+                  <h2 className="mb-1 text-xl font-semibold flex items-center gap-2">
+                    <GraduationCap className="h-5 w-5" />
+                    Personalize your tutor
+                  </h2>
+                  <p className="mb-4 text-sm text-muted-foreground">
+                    The AI tutor uses this to adapt explanations, difficulty, and examples to you.
+                    Everything here is optional.
+                  </p>
+
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="grade-level">Grade / level</Label>
+                      <Input
+                        id="grade-level"
+                        value={gradeLevel}
+                        onChange={(e) => setGradeLevel(e.target.value)}
+                        placeholder="e.g. Year 11, AP Chemistry, 2nd-year undergrad"
+                        className="mt-1"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="learning-style">Preferred learning style</Label>
+                      <select
+                        id="learning-style"
+                        value={learningStyle}
+                        onChange={(e) => setLearningStyle(e.target.value)}
+                        className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary"
+                      >
+                        <option value="">No preference</option>
+                        {LEARNING_STYLES.map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="explanation-tone">Explanation tone</Label>
+                      <select
+                        id="explanation-tone"
+                        value={explanationTone}
+                        onChange={(e) => setExplanationTone(e.target.value)}
+                        className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary"
+                      >
+                        <option value="">No preference</option>
+                        {TONES.map((t) => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="study-goals">Current goals</Label>
+                      <Textarea
+                        id="study-goals"
+                        value={studyGoals}
+                        onChange={(e) => setStudyGoals(e.target.value)}
+                        placeholder="e.g. Pass my June biology final; get comfortable with calculus before college"
+                        className="mt-1 min-h-[80px]"
+                        maxLength={600}
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="interests">Interests (used for analogies & examples)</Label>
+                      <Input
+                        id="interests"
+                        value={interests}
+                        onChange={(e) => setInterests(e.target.value)}
+                        placeholder="e.g. football, video games, music production"
+                        className="mt-1"
+                        maxLength={300}
+                      />
+                    </div>
+                  </div>
+
+                  <Button onClick={savePersonalization} disabled={personalizationLoading} className="w-full mt-6">
+                    {personalizationLoading ? (
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    ) : (
+                      <CheckCircle className="h-4 w-4" />
+                    )}
+                    Save personalization
                   </Button>
                 </div>
               </div>
