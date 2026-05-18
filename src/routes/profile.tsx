@@ -18,14 +18,30 @@ import {
   GraduationCap,
 } from "lucide-react";
 
-const LEARNING_STYLES = ["Visual", "Step-by-step", "Examples-first", "Conceptual / big-picture", "Practice-heavy"];
-const TONES = ["Encouraging", "Direct & concise", "Detailed", "Socratic (asks me questions)", "Playful"];
+const LEARNING_STYLES = [
+  "Visual",
+  "Step-by-step",
+  "Examples-first",
+  "Conceptual / big-picture",
+  "Practice-heavy",
+];
+const TONES = [
+  "Encouraging",
+  "Direct & concise",
+  "Detailed",
+  "Socratic (asks me questions)",
+  "Playful",
+];
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
     meta: [
       { title: "Profile — ScholarX" },
-      { name: "description", content: "Manage your ScholarX account settings, email, password, and two-factor authentication." },
+      {
+        name: "description",
+        content:
+          "Manage your ScholarX account settings, email, password, and two-factor authentication.",
+      },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
@@ -74,11 +90,13 @@ function ProfilePage() {
       const { data: userData } = await supabase.auth.getUser();
       if (userData.user) {
         setEmail(userData.user.email || "");
-        
+
         // Load profile data
         const { data: profile } = await supabase
           .from("profiles")
-          .select("display_name, grade_level, learning_style, explanation_tone, study_goals, interests")
+          .select(
+            "display_name, grade_level, learning_style, explanation_tone, study_goals, interests",
+          )
           .eq("id", userData.user.id)
           .maybeSingle();
 
@@ -346,7 +364,7 @@ function ProfilePage() {
                     <User className="h-5 w-5" />
                     Profile Information
                   </h2>
-                  
+
                   <div className="space-y-4">
                     <div>
                       <Label htmlFor="display-name">Display Name</Label>
@@ -358,26 +376,17 @@ function ProfilePage() {
                         className="mt-1"
                       />
                     </div>
-                    
+
                     <div>
                       <Label htmlFor="email">Email Address</Label>
-                      <Input
-                        id="email"
-                        value={email}
-                        disabled
-                        className="mt-1 bg-muted/30"
-                      />
+                      <Input id="email" value={email} disabled className="mt-1 bg-muted/30" />
                       <p className="mt-1 text-xs text-muted-foreground">
                         Email changes are handled in the Security tab
                       </p>
                     </div>
                   </div>
 
-                  <Button
-                    onClick={updateDisplayName}
-                    disabled={loading}
-                    className="w-full mt-6"
-                  >
+                  <Button onClick={updateDisplayName} disabled={loading} className="w-full mt-6">
                     {loading ? (
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                     ) : (
@@ -423,7 +432,9 @@ function ProfilePage() {
                       >
                         <option value="">No preference</option>
                         {LEARNING_STYLES.map((s) => (
-                          <option key={s} value={s}>{s}</option>
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -438,7 +449,9 @@ function ProfilePage() {
                       >
                         <option value="">No preference</option>
                         {TONES.map((t) => (
-                          <option key={t} value={t}>{t}</option>
+                          <option key={t} value={t}>
+                            {t}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -468,7 +481,11 @@ function ProfilePage() {
                     </div>
                   </div>
 
-                  <Button onClick={savePersonalization} disabled={personalizationLoading} className="w-full mt-6">
+                  <Button
+                    onClick={savePersonalization}
+                    disabled={personalizationLoading}
+                    className="w-full mt-6"
+                  >
                     {personalizationLoading ? (
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                     ) : (
@@ -488,7 +505,7 @@ function ProfilePage() {
                     <Lock className="h-5 w-5" />
                     Change Password
                   </h2>
-                  
+
                   <div className="space-y-4">
                     <div>
                       <Label htmlFor="current-password">Current Password</Label>
@@ -501,7 +518,7 @@ function ProfilePage() {
                         className="mt-1"
                       />
                     </div>
-                    
+
                     <div>
                       <Label htmlFor="new-password">New Password</Label>
                       <Input
@@ -513,7 +530,7 @@ function ProfilePage() {
                         className="mt-1"
                       />
                     </div>
-                    
+
                     <div>
                       <Label htmlFor="confirm-password">Confirm New Password</Label>
                       <Input
@@ -547,7 +564,7 @@ function ProfilePage() {
                     <Mail className="h-5 w-5" />
                     Change Email
                   </h2>
-                  
+
                   <div className="space-y-4">
                     <div>
                       <Label htmlFor="new-email">New Email Address</Label>
@@ -560,18 +577,14 @@ function ProfilePage() {
                         className="mt-1"
                       />
                     </div>
-                    
+
                     <p className="text-xs text-muted-foreground">
-                      We'll send a confirmation link to both your old and new
-                      address. The change only takes effect once confirmed.
+                      We'll send a confirmation link to both your old and new address. The change
+                      only takes effect once confirmed.
                     </p>
                   </div>
 
-                  <Button
-                    onClick={changeEmail}
-                    disabled={emailLoading}
-                    className="w-full mt-6"
-                  >
+                  <Button onClick={changeEmail} disabled={emailLoading} className="w-full mt-6">
                     {emailLoading ? (
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                     ) : (

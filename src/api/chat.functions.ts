@@ -80,9 +80,12 @@ async function fetchWithRetry(url: string, init: RequestInit, maxRetries = 2): P
 
 const SUBJECT_GUIDANCE: Record<string, string> = {
   math: "Focus on step-by-step problem solving. Show every step clearly. Use LaTeX-style notation when helpful (e.g. x^2). Never just give the final answer — walk through reasoning.",
-  science: "Explain underlying concepts and the 'why'. Use real-world analogies. Cover physics, chemistry and biology.",
-  english: "Help with grammar, writing structure, literary analysis, vocabulary. Provide examples and revisions, but encourage the student to write in their own voice.",
-  history: "Provide context, dates, causes and consequences. Encourage critical thinking about sources and perspectives.",
+  science:
+    "Explain underlying concepts and the 'why'. Use real-world analogies. Cover physics, chemistry and biology.",
+  english:
+    "Help with grammar, writing structure, literary analysis, vocabulary. Provide examples and revisions, but encourage the student to write in their own voice.",
+  history:
+    "Provide context, dates, causes and consequences. Encourage critical thinking about sources and perspectives.",
   general: "Help with any school subject. Encourage the student's own thinking.",
 };
 
@@ -113,11 +116,15 @@ async function fetchPersonalization(
 function personalizationBlock(p: Personalization | null): string {
   if (!p) return "";
   const lines: string[] = [];
-  if (p.display_name) lines.push(`- The student's name is ${p.display_name}. Address them by name occasionally.`);
-  if (p.grade_level) lines.push(`- Grade / level: ${p.grade_level}. Pitch difficulty and vocabulary accordingly.`);
-  if (p.learning_style) lines.push(`- Preferred learning style: ${p.learning_style}. Lean into this when explaining.`);
+  if (p.display_name)
+    lines.push(`- The student's name is ${p.display_name}. Address them by name occasionally.`);
+  if (p.grade_level)
+    lines.push(`- Grade / level: ${p.grade_level}. Pitch difficulty and vocabulary accordingly.`);
+  if (p.learning_style)
+    lines.push(`- Preferred learning style: ${p.learning_style}. Lean into this when explaining.`);
   if (p.explanation_tone) lines.push(`- Preferred tone: ${p.explanation_tone}.`);
-  if (p.study_goals) lines.push(`- Current goals: ${p.study_goals}. Tie explanations back to these where natural.`);
+  if (p.study_goals)
+    lines.push(`- Current goals: ${p.study_goals}. Tie explanations back to these where natural.`);
   if (p.interests) lines.push(`- Interests (use for analogies/examples): ${p.interests}.`);
   if (lines.length === 0) return "";
   return `\n\nPERSONALIZATION — adapt to this student:\n${lines.join("\n")}`;
@@ -187,12 +194,22 @@ export const askHomework = createServerFn({ method: "POST" })
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            contents: [{
-              parts: [
-                { text: systemPrompt + "\n\n" + data.messages.map(m => `${m.role}: ${m.content}`).join('\n') + "\nAssistant: " },
-                ...(data.image ? [{ inline_data: { mime_type: "image/jpeg", data: data.image } }] : [])
-              ]
-            }]
+            contents: [
+              {
+                parts: [
+                  {
+                    text:
+                      systemPrompt +
+                      "\n\n" +
+                      data.messages.map((m) => `${m.role}: ${m.content}`).join("\n") +
+                      "\nAssistant: ",
+                  },
+                  ...(data.image
+                    ? [{ inline_data: { mime_type: "image/jpeg", data: data.image } }]
+                    : []),
+                ],
+              },
+            ],
           }),
         },
       );
@@ -223,21 +240,18 @@ export const askHomework = createServerFn({ method: "POST" })
 // On any error we still return a stream (containing a short error sentence)
 // rather than throwing, so the client has one simple code path.
 
-export const streamHomework = createServerFn({ method: "POST", response: "raw" })
+export const streamHomework = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => inputSchema.parse(input))
-  .handler(async ({ data, context }) => {
+  .handler(async ({ data, context }): Promise<ReadableStream<Uint8Array>> => {
     const enc = new TextEncoder();
     const errStream = (msg: string) =>
-      new Response(
-        new ReadableStream({
-          start(c) {
-            c.enqueue(enc.encode(msg));
-            c.close();
-          },
-        }),
-        { headers: { "Content-Type": "text/plain; charset=utf-8" } },
-      );
+      new ReadableStream<Uint8Array>({
+        start(c) {
+          c.enqueue(enc.encode(msg));
+          c.close();
+        },
+      });
 
     const limited = await enforceRateLimit(context.supabase, RATE_LIMITS.chat);
     if (limited) return errStream(limited);
@@ -256,12 +270,22 @@ export const streamHomework = createServerFn({ method: "POST", response: "raw" }
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            contents: [{
-              parts: [
-                { text: systemPrompt + "\n\n" + data.messages.map((m) => `${m.role}: ${m.content}`).join("\n") + "\nAssistant: " },
-                ...(data.image ? [{ inline_data: { mime_type: "image/jpeg", data: data.image } }] : []),
-              ],
-            }],
+            contents: [
+              {
+                parts: [
+                  {
+                    text:
+                      systemPrompt +
+                      "\n\n" +
+                      data.messages.map((m) => `${m.role}: ${m.content}`).join("\n") +
+                      "\nAssistant: ",
+                  },
+                  ...(data.image
+                    ? [{ inline_data: { mime_type: "image/jpeg", data: data.image } }]
+                    : []),
+                ],
+              },
+            ],
           }),
         },
       );
@@ -270,7 +294,8 @@ export const streamHomework = createServerFn({ method: "POST", response: "raw" }
       return errStream("Network error talking to the AI tutor.");
     }
 
-    if (upstream.status === 429) return errStream("Too many requests right now. Please try again in a moment.");
+    if (upstream.status === 429)
+      return errStream("Too many requests right now. Please try again in a moment.");
     if (!upstream.ok || !upstream.body) {
       console.error("Gemini stream error", upstream.status, await upstream.text().catch(() => ""));
       return errStream("The AI tutor couldn't respond. Please try again.");
@@ -281,7 +306,7 @@ export const streamHomework = createServerFn({ method: "POST", response: "raw" }
     const decoder = new TextDecoder();
     let buffer = "";
 
-    const out = new ReadableStream({
+    const out = new ReadableStream<Uint8Array>({
       async pull(controller) {
         try {
           const { done, value } = await reader.read();
@@ -315,7 +340,7 @@ export const streamHomework = createServerFn({ method: "POST", response: "raw" }
       },
     });
 
-    return new Response(out, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
+    return out;
   });
 
 // ---- Auto-title -----------------------------------------------------------
@@ -344,7 +369,10 @@ export const generateTitle = createServerFn({ method: "POST" })
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
     if (!GEMINI_API_KEY) return { title: "", error: "AI is not configured." };
 
-    const transcript = data.messages.map((m) => `${m.role}: ${m.content}`).join("\n").slice(0, 2000);
+    const transcript = data.messages
+      .map((m) => `${m.role}: ${m.content}`)
+      .join("\n")
+      .slice(0, 2000);
     try {
       const res = await fetchWithRetry(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
@@ -352,13 +380,17 @@ export const generateTitle = createServerFn({ method: "POST" })
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            contents: [{
-              parts: [{
-                text:
-                  "Give a concise 3–6 word title (no quotes, no punctuation at the end, Title Case) for this tutoring conversation:\n\n" +
-                  transcript,
-              }],
-            }],
+            contents: [
+              {
+                parts: [
+                  {
+                    text:
+                      "Give a concise 3–6 word title (no quotes, no punctuation at the end, Title Case) for this tutoring conversation:\n\n" +
+                      transcript,
+                  },
+                ],
+              },
+            ],
             generationConfig: { temperature: 0.2, maxOutputTokens: 20 },
           }),
         },
@@ -366,7 +398,11 @@ export const generateTitle = createServerFn({ method: "POST" })
       if (!res.ok) return { title: "", error: "Could not generate a title." };
       const json = await res.json();
       const raw: string = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-      const title = raw.replace(/["'\n]/g, "").replace(/[.!?]+$/, "").trim().slice(0, 80);
+      const title = raw
+        .replace(/["'\n]/g, "")
+        .replace(/[.!?]+$/, "")
+        .trim()
+        .slice(0, 80);
       return { title, error: null as string | null };
     } catch (e) {
       console.error("generateTitle error", e);

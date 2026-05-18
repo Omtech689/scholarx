@@ -6,7 +6,12 @@
 // a styled window and calling print() gives the best fidelity with zero deps.
 
 export function safeFileName(name: string): string {
-  return (name || "scholarx").replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "").slice(0, 80) || "scholarx";
+  return (
+    (name || "scholarx")
+      .replace(/[^a-z0-9]+/gi, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 80) || "scholarx"
+  );
 }
 
 function triggerDownload(blob: Blob, filename: string) {
@@ -26,7 +31,10 @@ export function downloadCsv(title: string, rows: string[][]) {
   const csv = rows
     .map((r) => r.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(","))
     .join("\r\n");
-  triggerDownload(new Blob([csv], { type: "text/csv;charset=utf-8" }), `${safeFileName(title)}.csv`);
+  triggerDownload(
+    new Blob([csv], { type: "text/csv;charset=utf-8" }),
+    `${safeFileName(title)}.csv`,
+  );
 }
 
 export function escapeHtml(s: string): string {
@@ -48,18 +56,36 @@ export function markdownToHtml(md: string): string {
     const block = raw.trim();
     if (!block) continue;
 
-    if (/^###\s+/.test(block)) { out.push(`<h3>${inline(block.replace(/^###\s+/, ""))}</h3>`); continue; }
-    if (/^##\s+/.test(block)) { out.push(`<h2>${inline(block.replace(/^##\s+/, ""))}</h2>`); continue; }
-    if (/^#\s+/.test(block)) { out.push(`<h1>${inline(block.replace(/^#\s+/, ""))}</h1>`); continue; }
-    if (/^(-{3,}|\*{3,}|_{3,})$/.test(block)) { out.push("<hr/>"); continue; }
+    if (/^###\s+/.test(block)) {
+      out.push(`<h3>${inline(block.replace(/^###\s+/, ""))}</h3>`);
+      continue;
+    }
+    if (/^##\s+/.test(block)) {
+      out.push(`<h2>${inline(block.replace(/^##\s+/, ""))}</h2>`);
+      continue;
+    }
+    if (/^#\s+/.test(block)) {
+      out.push(`<h1>${inline(block.replace(/^#\s+/, ""))}</h1>`);
+      continue;
+    }
+    if (/^(-{3,}|\*{3,}|_{3,})$/.test(block)) {
+      out.push("<hr/>");
+      continue;
+    }
 
     if (/^\s*([-*])\s+/.test(block)) {
-      const items = block.split("\n").map((l) => l.replace(/^\s*[-*]\s+/, "").trim()).filter(Boolean);
+      const items = block
+        .split("\n")
+        .map((l) => l.replace(/^\s*[-*]\s+/, "").trim())
+        .filter(Boolean);
       out.push(`<ul>${items.map((i) => `<li>${inline(i)}</li>`).join("")}</ul>`);
       continue;
     }
     if (/^\s*\d+\.\s+/.test(block)) {
-      const items = block.split("\n").map((l) => l.replace(/^\s*\d+\.\s+/, "").trim()).filter(Boolean);
+      const items = block
+        .split("\n")
+        .map((l) => l.replace(/^\s*\d+\.\s+/, "").trim())
+        .filter(Boolean);
       out.push(`<ol>${items.map((i) => `<li>${inline(i)}</li>`).join("")}</ol>`);
       continue;
     }
@@ -106,7 +132,11 @@ hr { border: none; border-top: 1px solid #ddd; margin: 28px 0; }
 // `bodyHtml` is inserted verbatim — callers must pass already-safe HTML
 // (use markdownToHtml() / escapeHtml()).
 export function printDocument(title: string, bodyHtml: string): boolean {
-  const date = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+  const date = new Date().toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"/><title>${escapeHtml(title)}</title><style>${PRINT_CSS}</style></head>

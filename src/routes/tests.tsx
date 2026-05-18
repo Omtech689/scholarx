@@ -69,7 +69,10 @@ export const Route = createFileRoute("/tests")({
   head: () => ({
     meta: [
       { title: "Test Creator — ScholarX" },
-      { name: "description", content: "Generate interactive AI practice tests and answer them inside ScholarX." },
+      {
+        name: "description",
+        content: "Generate interactive AI practice tests and answer them inside ScholarX.",
+      },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
@@ -162,7 +165,8 @@ function TestCreatorPage() {
     }
     const seed = parsed.messages ?? [];
     if (!seed.length) return;
-    const topic = parsed.topic || seed.find((m) => m.role === "user")?.content.slice(0, 200) || "Practice test";
+    const topic =
+      parsed.topic || seed.find((m) => m.role === "user")?.content.slice(0, 200) || "Practice test";
     setTopicSeed(topic);
     setMessages(seed);
     setLoading(true);
@@ -178,10 +182,15 @@ function TestCreatorPage() {
           toast.error(result.error ?? "No test generated");
           return;
         }
-        setPreview(result.questions.map((item, index) => ({ id: `${Date.now()}-${index}`, ...item })));
+        setPreview(
+          result.questions.map((item, index) => ({ id: `${Date.now()}-${index}`, ...item })),
+        );
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: `Generated ${result.questions.length} questions from your chat. Answer them, then Save to keep this test.` },
+          {
+            role: "assistant",
+            content: `Generated ${result.questions.length} questions from your chat. Answer them, then Save to keep this test.`,
+          },
         ]);
       } catch (err) {
         console.error(err);
@@ -195,12 +204,15 @@ function TestCreatorPage() {
 
   async function deleteTest(id: string, e: React.MouseEvent) {
     e.stopPropagation();
-    if (!(await confirm({
-      title: "Delete this test?",
-      description: "This permanently removes the test and your answers.",
-      confirmText: "Delete",
-      destructive: true,
-    }))) return;
+    if (
+      !(await confirm({
+        title: "Delete this test?",
+        description: "This permanently removes the test and your answers.",
+        confirmText: "Delete",
+        destructive: true,
+      }))
+    )
+      return;
     const { error } = await supabase.from("tests").delete().eq("id", id);
     if (error) {
       toast.error("Delete failed");
@@ -275,11 +287,13 @@ function TestCreatorPage() {
 
     try {
       const topic =
-        topicSeed.trim() || nextMessages.find((m) => m.role === "user")?.content.slice(0, 400) || "Practice test";
+        topicSeed.trim() ||
+        nextMessages.find((m) => m.role === "user")?.content.slice(0, 400) ||
+        "Practice test";
 
       const { data: sess } = await supabase.auth.getSession();
       const token = sess.session?.access_token;
-      const result = await generateTest({
+      const result = (await generateTest({
         data: {
           topic,
           mode: testMode,
@@ -288,13 +302,16 @@ function TestCreatorPage() {
           messages: nextMessages.slice(-16),
         },
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      }) as GenerateTestResult;
+      })) as GenerateTestResult;
 
       if (result.error || !result.questions?.length) {
         toast.error(result.error ?? "No test generated");
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: result.error ?? "Something went wrong. Try rephrasing your topic." },
+          {
+            role: "assistant",
+            content: result.error ?? "Something went wrong. Try rephrasing your topic.",
+          },
         ]);
         return;
       }
@@ -317,7 +334,10 @@ function TestCreatorPage() {
     } catch (err) {
       console.error(err);
       toast.error("Request failed");
-      setMessages((prev) => [...prev, { role: "assistant", content: "Request failed. Please try again." }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "Request failed. Please try again." },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -422,7 +442,13 @@ function TestCreatorPage() {
           topic: topicSeed.trim() || "Practice test",
           questions: preview.map((q) =>
             q.type === "mcq"
-              ? { id: q.id, type: "mcq" as const, question: q.question, choices: q.choices ?? [], answer: q.answer }
+              ? {
+                  id: q.id,
+                  type: "mcq" as const,
+                  question: q.question,
+                  choices: q.choices ?? [],
+                  answer: q.answer,
+                }
               : { id: q.id, type: "essay" as const, question: q.question, answer: q.answer },
           ),
           answers: essayQuestions.map((q) => ({ questionId: q.id, answer: answers[q.id] ?? "" })),
@@ -452,7 +478,12 @@ function TestCreatorPage() {
     const topic = topicSeed || "Test";
     const lines = preview.map((item, i) => {
       const userAns = answers[item.id] ?? "(no answer)";
-      const correct = item.type === "mcq" ? (userAns === item.answer ? "✓ Correct" : `✗ Wrong — correct: ${item.answer}`) : "";
+      const correct =
+        item.type === "mcq"
+          ? userAns === item.answer
+            ? "✓ Correct"
+            : `✗ Wrong — correct: ${item.answer}`
+          : "";
       return `## Q${i + 1} [${item.type.toUpperCase()}]\n\n${item.question}\n\n**Your answer:** ${userAns}\n${correct}\n\n**Model answer:** ${item.answer}`;
     });
     downloadMarkdown(`${topic}_results`, `# ${topic}\n\n${lines.join("\n\n---\n\n")}`);
@@ -470,7 +501,12 @@ function TestCreatorPage() {
                 ${item.choices.map((c) => `<li style="margin-bottom:6px;">${escapeHtml(c)}</li>`).join("")}
                </ol>`
             : `<div style="margin-top:12px;">
-                ${Array.from({ length: 6 }).map(() => `<div style="border-bottom:1px solid #ccc;margin-bottom:10px;height:24px;"></div>`).join("")}
+                ${Array.from({ length: 6 })
+                  .map(
+                    () =>
+                      `<div style="border-bottom:1px solid #ccc;margin-bottom:10px;height:24px;"></div>`,
+                  )
+                  .join("")}
                </div>`;
         return `
           <div style="margin-bottom:28px;page-break-inside:avoid;">
@@ -487,9 +523,10 @@ function TestCreatorPage() {
 
     const answerKeyHtml = preview
       .map((item, i) => {
-        const answer = item.type === "mcq"
-          ? `<strong>${escapeHtml(item.answer)}</strong>`
-          : escapeHtml(item.answer);
+        const answer =
+          item.type === "mcq"
+            ? `<strong>${escapeHtml(item.answer)}</strong>`
+            : escapeHtml(item.answer);
         return `
           <div style="margin-bottom:16px;page-break-inside:avoid;">
             <p style="margin:0;"><strong>Q${i + 1}.</strong> ${answer}</p>
@@ -527,7 +564,11 @@ function TestCreatorPage() {
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <SheetContent side="left" className="w-80 p-0 flex flex-col">
           <div className="flex items-center gap-2 px-5 py-5 font-display text-lg font-semibold">
-            <img src="/logo-removebg-preview.png" className="h-8 w-8 object-contain" alt="ScholarX" />
+            <img
+              src="/logo-removebg-preview.png"
+              className="h-8 w-8 object-contain"
+              alt="ScholarX"
+            />
             ScholarX
           </div>
           <div className="px-3">
@@ -581,7 +622,8 @@ function TestCreatorPage() {
                       <div className="flex-1 min-w-0">
                         <p className="truncate font-medium text-sm">{test.topic}</p>
                         <p className="text-xs text-muted-foreground">
-                          {test.mode.replace("all_", "").replace("mixed", "mixed")} • {new Date(test.createdAt).toLocaleDateString()}
+                          {test.mode.replace("all_", "").replace("mixed", "mixed")} •{" "}
+                          {new Date(test.createdAt).toLocaleDateString()}
                         </p>
                       </div>
                     </button>
@@ -625,29 +667,50 @@ function TestCreatorPage() {
             >
               <Sparkles className="h-4 w-4" />
               Extra functions
-              <ChevronDown className={`ml-auto h-3.5 w-3.5 transition-transform duration-200 ${mobileExtrasOpen ? "rotate-180" : ""}`} />
+              <ChevronDown
+                className={`ml-auto h-3.5 w-3.5 transition-transform duration-200 ${mobileExtrasOpen ? "rotate-180" : ""}`}
+              />
             </button>
             {mobileExtrasOpen && (
               <div className="ml-4 space-y-0.5 border-l border-border pl-2">
-                <Link to="/flashcards" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+                <Link
+                  to="/flashcards"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+                >
                   <Layers className="h-3.5 w-3.5" /> Flashcards
                 </Link>
-                <Link to="/tests" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-primary font-medium hover:bg-accent hover:text-accent-foreground transition">
+                <Link
+                  to="/tests"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-primary font-medium hover:bg-accent hover:text-accent-foreground transition"
+                >
                   <BookOpen className="h-3.5 w-3.5" /> Test creator
                 </Link>
-                <Link to="/graph" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+                <Link
+                  to="/graph"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+                >
                   <LineChart className="h-3.5 w-3.5" /> Graphing
                 </Link>
               </div>
             )}
             <div className="flex items-center justify-between gap-2 px-2 pt-1 text-sm">
-              <Link to="/profile" onClick={() => setMobileMenuOpen(false)} className="min-w-0 truncate text-muted-foreground hover:text-foreground transition">
+              <Link
+                to="/profile"
+                onClick={() => setMobileMenuOpen(false)}
+                className="min-w-0 truncate text-muted-foreground hover:text-foreground transition"
+              >
                 {displayName}
               </Link>
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={async () => { await supabase.auth.signOut(); navigate({ to: "/" }); }}
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  navigate({ to: "/" });
+                }}
                 title="Sign out"
                 className="shrink-0"
               >
@@ -670,7 +733,9 @@ function TestCreatorPage() {
             <BookOpen className="h-4 w-4" /> New test
           </Button>
         </div>
-        <div className="mt-4 px-5 text-xs uppercase tracking-wider text-muted-foreground">Saved tests</div>
+        <div className="mt-4 px-5 text-xs uppercase tracking-wider text-muted-foreground">
+          Saved tests
+        </div>
         <ScrollArea className="mt-2 flex-1 px-2">
           <ul className="space-y-1 pb-4">
             {savedTestsQuery.isLoading &&
@@ -704,7 +769,8 @@ function TestCreatorPage() {
                     <div className="flex-1 min-w-0">
                       <p className="truncate font-medium">{test.topic}</p>
                       <p className="text-xs text-muted-foreground">
-                        {test.mode.replace("all_", "").replace("mixed", "mixed")} • {new Date(test.createdAt).toLocaleDateString()}
+                        {test.mode.replace("all_", "").replace("mixed", "mixed")} •{" "}
+                        {new Date(test.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                   </button>
@@ -747,29 +813,46 @@ function TestCreatorPage() {
           >
             <Sparkles className="h-4 w-4" />
             Extra functions
-            <ChevronDown className={`ml-auto h-3.5 w-3.5 transition-transform duration-200 ${extrasOpen ? "rotate-180" : ""}`} />
+            <ChevronDown
+              className={`ml-auto h-3.5 w-3.5 transition-transform duration-200 ${extrasOpen ? "rotate-180" : ""}`}
+            />
           </button>
           {extrasOpen && (
             <div className="ml-4 space-y-0.5 border-l border-border pl-2">
-              <Link to="/flashcards" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+              <Link
+                to="/flashcards"
+                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+              >
                 <Layers className="h-3.5 w-3.5" /> Flashcards
               </Link>
-              <Link to="/tests" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-primary font-medium hover:bg-accent hover:text-accent-foreground transition">
+              <Link
+                to="/tests"
+                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-primary font-medium hover:bg-accent hover:text-accent-foreground transition"
+              >
                 <BookOpen className="h-3.5 w-3.5" /> Test creator
               </Link>
-              <Link to="/graph" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+              <Link
+                to="/graph"
+                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+              >
                 <LineChart className="h-3.5 w-3.5" /> Graphing
               </Link>
             </div>
           )}
           <div className="flex items-center justify-between gap-2 px-2 pt-1 text-sm">
-            <Link to="/profile" className="min-w-0 truncate text-muted-foreground hover:text-foreground transition">
+            <Link
+              to="/profile"
+              className="min-w-0 truncate text-muted-foreground hover:text-foreground transition"
+            >
               {displayName}
             </Link>
             <Button
               variant="ghost"
               size="icon"
-              onClick={async () => { await supabase.auth.signOut(); navigate({ to: "/" }); }}
+              onClick={async () => {
+                await supabase.auth.signOut();
+                navigate({ to: "/" });
+              }}
               title="Sign out"
               className="shrink-0"
             >
@@ -796,11 +879,16 @@ function TestCreatorPage() {
               <BookOpen className="h-4 w-4" />
             </span>
             <div className="min-w-0">
-              <h1 className="text-base font-semibold leading-none truncate" style={{ fontFamily: "var(--font-display)" }}>
+              <h1
+                className="text-base font-semibold leading-none truncate"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
                 {selectedTestId ? "Test Review" : "Test creator"}
               </h1>
               <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                {selectedTestId ? "Review and practice your saved test" : "Create interactive practice tests with MCQ, essay, or mixed mode."}
+                {selectedTestId
+                  ? "Review and practice your saved test"
+                  : "Create interactive practice tests with MCQ, essay, or mixed mode."}
               </p>
             </div>
           </div>
@@ -810,7 +898,10 @@ function TestCreatorPage() {
                 Back to create
               </Button>
             )}
-            <Link to="/planner" className="text-xs font-medium text-muted-foreground hover:text-foreground transition shrink-0">
+            <Link
+              to="/planner"
+              className="text-xs font-medium text-muted-foreground hover:text-foreground transition shrink-0"
+            >
               Study planner
             </Link>
           </div>
@@ -828,12 +919,18 @@ function TestCreatorPage() {
                     </h2>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Choose the test type, set a topic, and optionally chat with the AI to narrow the focus before generating.
+                    Choose the test type, set a topic, and optionally chat with the AI to narrow the
+                    focus before generating.
                   </p>
 
                   <div className="grid gap-3 md:grid-cols-[1fr_auto]">
                     <div>
-                      <label htmlFor="test-topic" className="text-xs text-muted-foreground mb-1 block">Test topic / title</label>
+                      <label
+                        htmlFor="test-topic"
+                        className="text-xs text-muted-foreground mb-1 block"
+                      >
+                        Test topic / title
+                      </label>
                       <Input
                         id="test-topic"
                         name="test-topic"
@@ -844,7 +941,12 @@ function TestCreatorPage() {
                       />
                     </div>
                     <div>
-                      <label htmlFor="test-mode" className="text-xs text-muted-foreground mb-1 block">Mode</label>
+                      <label
+                        htmlFor="test-mode"
+                        className="text-xs text-muted-foreground mb-1 block"
+                      >
+                        Mode
+                      </label>
                       <select
                         id="test-mode"
                         name="test-mode"
@@ -870,11 +972,15 @@ function TestCreatorPage() {
                     <ul className="space-y-3 py-4 pr-2">
                       {messages.length === 0 && (
                         <li className="text-sm text-muted-foreground text-center py-8">
-                          Describe the topic or test focus. Example: "Make a short biology quiz on photosynthesis with a mix of questions."
+                          Describe the topic or test focus. Example: "Make a short biology quiz on
+                          photosynthesis with a mix of questions."
                         </li>
                       )}
                       {messages.map((m, i) => (
-                        <li key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                        <li
+                          key={i}
+                          className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+                        >
                           <div
                             className={`max-w-[92%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
                               m.role === "user"
@@ -943,8 +1049,18 @@ function TestCreatorPage() {
                         Saved
                       </span>
                     ) : (
-                      <Button size="sm" variant="secondary" onClick={saveTest} disabled={saving} className="gap-1">
-                        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={saveTest}
+                        disabled={saving}
+                        className="gap-1"
+                      >
+                        {saving ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Save className="h-3.5 w-3.5" />
+                        )}
                         {saving ? "Saving…" : "Save test"}
                       </Button>
                     )}
@@ -955,7 +1071,12 @@ function TestCreatorPage() {
                       <Download className="h-3.5 w-3.5" />
                       Export (.md)
                     </Button>
-                    <Button variant="secondary" size="sm" onClick={exportTestAsPdf} className="gap-1">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={exportTestAsPdf}
+                      className="gap-1"
+                    >
                       <Download className="h-3.5 w-3.5" />
                       Export PDF
                     </Button>
@@ -966,21 +1087,46 @@ function TestCreatorPage() {
                 </div>
                 {(() => {
                   const mcqItems = preview.filter((item) => item.type === "mcq");
-                  const allMcqAnswered = mcqItems.length > 0 && mcqItems.every((item) => answers[item.id]);
-                  const pct = mcqItems.length > 0 ? Math.round(((mcqScore ?? 0) / mcqItems.length) * 100) : null;
-                  const scoreColor = pct == null ? "var(--muted-foreground)" : pct >= 80 ? "var(--science)" : pct >= 60 ? "var(--english)" : "var(--history)";
+                  const allMcqAnswered =
+                    mcqItems.length > 0 && mcqItems.every((item) => answers[item.id]);
+                  const pct =
+                    mcqItems.length > 0
+                      ? Math.round(((mcqScore ?? 0) / mcqItems.length) * 100)
+                      : null;
+                  const scoreColor =
+                    pct == null
+                      ? "var(--muted-foreground)"
+                      : pct >= 80
+                        ? "var(--science)"
+                        : pct >= 60
+                          ? "var(--english)"
+                          : "var(--history)";
                   return allMcqAnswered && pct != null ? (
-                    <div className="rounded-2xl border border-border p-4 text-sm" style={{ background: `color-mix(in oklab, ${scoreColor} 10%, var(--card))` }}>
+                    <div
+                      className="rounded-2xl border border-border p-4 text-sm"
+                      style={{ background: `color-mix(in oklab, ${scoreColor} 10%, var(--card))` }}
+                    >
                       <div className="flex flex-wrap items-center gap-4">
                         <div className="text-center">
-                          <div className="text-3xl font-bold" style={{ fontFamily: "var(--font-display)", color: scoreColor }}>{pct}%</div>
+                          <div
+                            className="text-3xl font-bold"
+                            style={{ fontFamily: "var(--font-display)", color: scoreColor }}
+                          >
+                            {pct}%
+                          </div>
                           <div className="text-xs text-muted-foreground mt-0.5">MCQ score</div>
                         </div>
                         <div className="text-muted-foreground text-sm">
-                          <span className="font-medium text-foreground">{mcqScore}</span> of <span className="font-medium text-foreground">{mcqItems.length}</span> correct
+                          <span className="font-medium text-foreground">{mcqScore}</span> of{" "}
+                          <span className="font-medium text-foreground">{mcqItems.length}</span>{" "}
+                          correct
                           {pct >= 80 && <span className="ml-2 text-xs">🎉 Great job!</span>}
-                          {pct >= 60 && pct < 80 && <span className="ml-2 text-xs">Keep it up!</span>}
-                          {pct < 60 && <span className="ml-2 text-xs">Review the material and try again.</span>}
+                          {pct >= 60 && pct < 80 && (
+                            <span className="ml-2 text-xs">Keep it up!</span>
+                          )}
+                          {pct < 60 && (
+                            <span className="ml-2 text-xs">Review the material and try again.</span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -988,9 +1134,13 @@ function TestCreatorPage() {
                     <div className="rounded-2xl border border-border bg-muted/50 p-3 text-sm text-muted-foreground">
                       <div className="flex flex-wrap gap-3">
                         <span>{preview.length} questions</span>
-                        <span className="capitalize">Mode: {testMode.replace("all_", "").replace("mixed", "mixed")}</span>
+                        <span className="capitalize">
+                          Mode: {testMode.replace("all_", "").replace("mixed", "mixed")}
+                        </span>
                         {mcqItems.length > 0 && (
-                          <span>MCQ: {mcqScore ?? 0}/{mcqItems.length} correct so far</span>
+                          <span>
+                            MCQ: {mcqScore ?? 0}/{mcqItems.length} correct so far
+                          </span>
                         )}
                       </div>
                     </div>
@@ -1004,34 +1154,43 @@ function TestCreatorPage() {
                         essayCorrect / essayCount >= 0.8
                           ? "var(--science)"
                           : essayCorrect / essayCount >= 0.5
-                          ? "var(--english)"
-                          : "var(--history)"
+                            ? "var(--english)"
+                            : "var(--history)"
                       } 10%, var(--card))`,
                     }}
                   >
                     <div className="flex flex-wrap items-center gap-4">
                       <div className="text-center">
-                        <div className="text-3xl font-bold" style={{ fontFamily: "var(--font-display)" }}>
+                        <div
+                          className="text-3xl font-bold"
+                          style={{ fontFamily: "var(--font-display)" }}
+                        >
                           {essayCorrect}/{essayCount}
                         </div>
                         <div className="text-xs text-muted-foreground mt-0.5">Essays correct</div>
                       </div>
                       <p className="text-muted-foreground">
-                        AI-graded against the model answers. Open each essay below for specific feedback.
+                        AI-graded against the model answers. Open each essay below for specific
+                        feedback.
                       </p>
                     </div>
                   </div>
                 )}
                 <div className="space-y-4">
                   {preview.map((item, index) => (
-                    <div key={item.id} className="rounded-3xl border border-border bg-background/70 p-4 shadow-sm">
+                    <div
+                      key={item.id}
+                      className="rounded-3xl border border-border bg-background/70 p-4 shadow-sm"
+                    >
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <span className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
                           {item.type === "mcq" ? "Multiple choice" : "Essay"}
                         </span>
                         <span className="text-xs text-muted-foreground">Question {index + 1}</span>
                       </div>
-                      <p className="mt-3 whitespace-pre-wrap text-sm text-foreground">{item.question}</p>
+                      <p className="mt-3 whitespace-pre-wrap text-sm text-foreground">
+                        {item.question}
+                      </p>
                       {item.type === "mcq" ? (
                         <div className="mt-4 space-y-3">
                           {item.choices?.map((choice) => (
@@ -1055,7 +1214,11 @@ function TestCreatorPage() {
                             </label>
                           ))}
                           <div className="flex flex-wrap items-center gap-2 mt-2">
-                            <Button size="sm" variant="outline" onClick={() => revealAnswer(item.id)}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => revealAnswer(item.id)}
+                            >
                               Reveal answer
                             </Button>
                             {revealed[item.id] && (
@@ -1076,7 +1239,11 @@ function TestCreatorPage() {
                             className="min-h-[140px] bg-background/50"
                           />
                           <div className="flex flex-wrap items-center gap-2">
-                            <Button size="sm" variant="outline" onClick={() => revealAnswer(item.id)}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => revealAnswer(item.id)}
+                            >
                               Reveal sample answer
                             </Button>
                             {revealed[item.id] && (
@@ -1089,7 +1256,9 @@ function TestCreatorPage() {
                             <div
                               className="rounded-2xl border p-3 text-sm"
                               style={{
-                                borderColor: evalById[item.id].correct ? "var(--science)" : "var(--history)",
+                                borderColor: evalById[item.id].correct
+                                  ? "var(--science)"
+                                  : "var(--history)",
                                 background: `color-mix(in oklab, ${
                                   evalById[item.id].correct ? "var(--science)" : "var(--history)"
                                 } 10%, var(--card))`,
@@ -1097,7 +1266,11 @@ function TestCreatorPage() {
                             >
                               <p
                                 className="flex items-center gap-1.5 font-semibold"
-                                style={{ color: evalById[item.id].correct ? "var(--science)" : "var(--history)" }}
+                                style={{
+                                  color: evalById[item.id].correct
+                                    ? "var(--science)"
+                                    : "var(--history)",
+                                }}
                               >
                                 {evalById[item.id].correct ? (
                                   <CheckCircle2 className="h-4 w-4" />
@@ -1106,7 +1279,9 @@ function TestCreatorPage() {
                                 )}
                                 {evalById[item.id].correct ? "Correct" : "Needs work"}
                               </p>
-                              <p className="mt-2 whitespace-pre-wrap text-foreground">{evalById[item.id].feedback}</p>
+                              <p className="mt-2 whitespace-pre-wrap text-foreground">
+                                {evalById[item.id].feedback}
+                              </p>
                             </div>
                           )}
                           {revealed[item.id] && (
@@ -1121,14 +1296,13 @@ function TestCreatorPage() {
                   ))}
                 </div>
               </div>
-          ) : (
-            <div className="rounded-xl border border-border bg-card/70 backdrop-blur-md p-6 text-center text-sm text-muted-foreground">
-              Generate a test to see interactive questions here.
-            </div>
-          )}
-
+            ) : (
+              <div className="rounded-xl border border-border bg-card/70 backdrop-blur-md p-6 text-center text-sm text-muted-foreground">
+                Generate a test to see interactive questions here.
+              </div>
+            )}
+          </div>
         </div>
-      </div>
       </main>
     </div>
   );

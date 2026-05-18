@@ -39,7 +39,10 @@ export const Route = createFileRoute("/research")({
   head: () => ({
     meta: [
       { title: "Research Mode — ScholarX" },
-      { name: "description", content: "Synthesize a cited research report from sources you provide." },
+      {
+        name: "description",
+        content: "Synthesize a cited research report from sources you provide.",
+      },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
@@ -87,7 +90,10 @@ function ResearchPage() {
     ranFromChat.current = true;
     try {
       const parsed = JSON.parse(raw) as { topic?: string; messages?: ChatMsg[] };
-      if (parsed.topic) setBrief(`Summarize and analyze the following tutoring conversation about "${parsed.topic}".`);
+      if (parsed.topic)
+        setBrief(
+          `Summarize and analyze the following tutoring conversation about "${parsed.topic}".`,
+        );
       if (parsed.messages?.length) {
         setSources([
           {
@@ -158,7 +164,8 @@ function ResearchPage() {
         toast.error("Sign in required");
         return;
       }
-      const title = (content.split("\n")[0].replace(/^#\s*/, "") || brief).slice(0, 120) || "Research report";
+      const title =
+        (content.split("\n")[0].replace(/^#\s*/, "") || brief).slice(0, 120) || "Research report";
       const { data, error } = await supabase
         .from("documents")
         .insert({
@@ -167,7 +174,9 @@ function ResearchPage() {
           title,
           topic: brief.slice(0, 200),
           content,
-          sources: sources.filter((s) => s.text.trim()).map((s) => ({ label: s.label, text: s.text.slice(0, 4000) })),
+          sources: sources
+            .filter((s) => s.text.trim())
+            .map((s) => ({ label: s.label, text: s.text.slice(0, 4000) })),
         })
         .select("id")
         .single();
@@ -184,7 +193,10 @@ function ResearchPage() {
   }
 
   async function deleteReport(id: string) {
-    if (!(await confirm({ title: "Delete this report?", confirmText: "Delete", destructive: true }))) return;
+    if (
+      !(await confirm({ title: "Delete this report?", confirmText: "Delete", destructive: true }))
+    )
+      return;
     const { error } = await supabase.from("documents").delete().eq("id", id);
     if (error) {
       toast.error("Delete failed");
@@ -221,15 +233,21 @@ function ResearchPage() {
             </Link>
           </Button>
         </div>
-        <div className="mt-4 px-5 text-xs uppercase tracking-wider text-muted-foreground">Saved reports</div>
+        <div className="mt-4 px-5 text-xs uppercase tracking-wider text-muted-foreground">
+          Saved reports
+        </div>
         <ScrollArea className="mt-2 flex-1 px-2">
           <ul className="space-y-1 pb-4">
             {docsQuery.isLoading &&
               Array.from({ length: 4 }).map((_, i) => (
-                <li key={i}><Skeleton className="h-10 rounded-lg" /></li>
+                <li key={i}>
+                  <Skeleton className="h-10 rounded-lg" />
+                </li>
               ))}
             {!docsQuery.isLoading && (docsQuery.data ?? []).length === 0 && (
-              <li className="px-3 py-6 text-center text-sm text-muted-foreground">No saved reports yet.</li>
+              <li className="px-3 py-6 text-center text-sm text-muted-foreground">
+                No saved reports yet.
+              </li>
             )}
             {(docsQuery.data ?? []).map((d) => (
               <li key={d.id}>
@@ -237,12 +255,20 @@ function ResearchPage() {
                   <button
                     onClick={() => openSaved(d)}
                     className={`flex-1 truncate rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                      selectedId === d.id ? "bg-primary/15 text-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                      selectedId === d.id
+                        ? "bg-primary/15 text-foreground"
+                        : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                     }`}
                   >
                     {d.title}
                   </button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => void deleteReport(d.id)} aria-label="Delete report">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                    onClick={() => void deleteReport(d.id)}
+                    aria-label="Delete report"
+                  >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
@@ -254,12 +280,27 @@ function ResearchPage() {
 
       <main className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center gap-2 border-b border-border px-4 py-3 md:px-6">
-          <Button asChild variant="ghost" size="icon" className="h-8 w-8 md:hidden" aria-label="Back to chat">
-            <Link to="/chat"><ArrowLeft className="h-4 w-4" /></Link>
+          <Button
+            asChild
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 md:hidden"
+            aria-label="Back to chat"
+          >
+            <Link to="/chat">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
           </Button>
           <div>
-            <h1 className="text-base font-semibold leading-none" style={{ fontFamily: "var(--font-display)" }}>Research mode</h1>
-            <p className="mt-0.5 text-xs text-muted-foreground">Synthesizes a cited report from sources you provide — grounded, no outside facts.</p>
+            <h1
+              className="text-base font-semibold leading-none"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
+              Research mode
+            </h1>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Synthesizes a cited report from sources you provide — grounded, no outside facts.
+            </p>
           </div>
         </header>
 
@@ -267,7 +308,9 @@ function ResearchPage() {
           <div className="mx-auto max-w-3xl space-y-4 px-4 py-6 md:px-6">
             <div className="rounded-xl border border-border bg-card/70 p-4 space-y-4 backdrop-blur-md">
               <div>
-                <label htmlFor="brief" className="mb-1 block text-xs text-muted-foreground">Research brief / question</label>
+                <label htmlFor="brief" className="mb-1 block text-xs text-muted-foreground">
+                  Research brief / question
+                </label>
                 <Textarea
                   id="brief"
                   value={brief}
@@ -288,9 +331,14 @@ function ResearchPage() {
                   </Button>
                 </div>
                 {sources.map((s, i) => (
-                  <div key={i} className="rounded-lg border border-border/80 bg-background/40 p-3 space-y-2">
+                  <div
+                    key={i}
+                    className="rounded-lg border border-border/80 bg-background/40 p-3 space-y-2"
+                  >
                     <div className="flex items-center gap-2">
-                      <span className="shrink-0 rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">[{i + 1}]</span>
+                      <span className="shrink-0 rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                        [{i + 1}]
+                      </span>
                       <Input
                         value={s.label}
                         onChange={(e) => updateSource(i, { label: e.target.value })}
@@ -321,7 +369,9 @@ function ResearchPage() {
 
               <div className="flex flex-wrap items-end gap-3">
                 <div>
-                  <label htmlFor="style" className="mb-1 block text-xs text-muted-foreground">Output style</label>
+                  <label htmlFor="style" className="mb-1 block text-xs text-muted-foreground">
+                    Output style
+                  </label>
                   <select
                     id="style"
                     value={style}
@@ -334,7 +384,11 @@ function ResearchPage() {
                   </select>
                 </div>
                 <Button onClick={run} disabled={loading} className="gap-2">
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" />
+                  )}
                   {loading ? "Synthesizing…" : "Generate report"}
                 </Button>
               </div>
@@ -343,18 +397,43 @@ function ResearchPage() {
             {content && (
               <div className="rounded-xl border border-border bg-card/70 p-5 backdrop-blur-md">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="font-semibold" style={{ fontFamily: "var(--font-display)" }}>Report</h3>
+                  <h3 className="font-semibold" style={{ fontFamily: "var(--font-display)" }}>
+                    Report
+                  </h3>
                   <div className="flex flex-wrap gap-2">
                     {!selectedId && (
-                      <Button size="sm" variant="secondary" onClick={saveReport} disabled={saving} className="gap-1">
-                        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={saveReport}
+                        disabled={saving}
+                        className="gap-1"
+                      >
+                        {saving ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Save className="h-3.5 w-3.5" />
+                        )}
                         Save
                       </Button>
                     )}
-                    <Button size="sm" variant="secondary" className="gap-1" onClick={() => downloadMarkdown(title, content)}>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="gap-1"
+                      onClick={() => downloadMarkdown(title, content)}
+                    >
                       <Download className="h-3.5 w-3.5" /> .md
                     </Button>
-                    <Button size="sm" variant="secondary" className="gap-1" onClick={() => { if (!printMarkdownAsPdf(title, content)) toast.error("Allow pop-ups to export PDF."); }}>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="gap-1"
+                      onClick={() => {
+                        if (!printMarkdownAsPdf(title, content))
+                          toast.error("Allow pop-ups to export PDF.");
+                      }}
+                    >
                       <FileDown className="h-3.5 w-3.5" /> PDF
                     </Button>
                   </div>

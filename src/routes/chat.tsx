@@ -65,8 +65,13 @@ async function compressImage(file: File, maxDim = 1024, quality = 0.75): Promise
       URL.revokeObjectURL(url);
       let { width, height } = img;
       if (width > maxDim || height > maxDim) {
-        if (width >= height) { height = Math.round((height * maxDim) / width); width = maxDim; }
-        else { width = Math.round((width * maxDim) / height); height = maxDim; }
+        if (width >= height) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
       }
       const canvas = document.createElement("canvas");
       canvas.width = width;
@@ -75,7 +80,10 @@ async function compressImage(file: File, maxDim = 1024, quality = 0.75): Promise
       const base64 = canvas.toDataURL("image/jpeg", quality).split(",")[1];
       resolve(base64);
     };
-    img.onerror = (e) => { URL.revokeObjectURL(url); reject(e); };
+    img.onerror = (e) => {
+      URL.revokeObjectURL(url);
+      reject(e);
+    };
     img.src = url;
   });
 }
@@ -142,7 +150,11 @@ export const Route = createFileRoute("/chat")({
   head: () => ({
     meta: [
       { title: "AI Tutor — ScholarX" },
-      { name: "description", content: "Ask your AI tutor anything — Math, Science, English, or History. Instant explanations with full math rendering." },
+      {
+        name: "description",
+        content:
+          "Ask your AI tutor anything — Math, Science, English, or History. Instant explanations with full math rendering.",
+      },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
@@ -177,7 +189,9 @@ function ChatPage() {
   // Live voice conversation (Gemini Live via ephemeral token — no API key in the browser)
   const [convoMode, setConvoMode] = useState(false);
   const convoModeRef = useRef(false);
-  const liveSessionRef = useRef<{ sendRealtimeInput: (p: any) => void; close: () => void } | null>(null);
+  const liveSessionRef = useRef<{ sendRealtimeInput: (p: any) => void; close: () => void } | null>(
+    null,
+  );
   const playbackCtxRef = useRef<AudioContext | null>(null);
   const micCtxRef = useRef<AudioContext | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
@@ -218,10 +232,14 @@ function ChatPage() {
       !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition),
     );
     setTtsSupported("speechSynthesis" in window);
-    return () => { stopGeminiLive(); };
+    return () => {
+      stopGeminiLive();
+    };
   }, []);
 
-  useEffect(() => { convoModeRef.current = convoMode; }, [convoMode]);
+  useEffect(() => {
+    convoModeRef.current = convoMode;
+  }, [convoMode]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -268,8 +286,12 @@ function ChatPage() {
       return;
     }
     if (recognitionRef.current) {
-      try { recognitionRef.current.stop(); } catch {}
-      try { recognitionRef.current.abort?.(); } catch {}
+      try {
+        recognitionRef.current.stop();
+      } catch {}
+      try {
+        recognitionRef.current.abort?.();
+      } catch {}
       recognitionRef.current = null;
     }
     const rec = new SR();
@@ -311,7 +333,9 @@ function ChatPage() {
       // In conversation mode, auto-send shortly after a final result
       if (autoSend && finalText.trim() && !sent) {
         sent = true;
-        try { rec.stop(); } catch {}
+        try {
+          rec.stop();
+        } catch {}
       }
     };
     recognitionRef.current = rec;
@@ -350,7 +374,9 @@ function ChatPage() {
       return;
     }
     if (listening) {
-      try { recognitionRef.current?.stop(); } catch {}
+      try {
+        recognitionRef.current?.stop();
+      } catch {}
       return;
     }
     // Start synchronously to preserve user-gesture context
@@ -404,7 +430,11 @@ function ChatPage() {
     if (asst) {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant" as const, content: asst, ...(interrupted ? { interrupted: true } : {}) },
+        {
+          role: "assistant" as const,
+          content: asst,
+          ...(interrupted ? { interrupted: true } : {}),
+        },
       ]);
       saveVoiceMessage("assistant", asst);
     }
@@ -452,8 +482,13 @@ function ChatPage() {
     if (!convoId) return;
     supabase.auth.getUser().then(({ data: u }) => {
       if (!u.user) return;
-      supabase.from("messages").insert({ conversation_id: convoId, user_id: u.user.id, role, content });
-      supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", convoId);
+      supabase
+        .from("messages")
+        .insert({ conversation_id: convoId, user_id: u.user.id, role, content });
+      supabase
+        .from("conversations")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", convoId);
     });
   }
 
@@ -466,7 +501,9 @@ function ChatPage() {
     micStreamRef.current = null;
     playbackCtxRef.current?.close();
     playbackCtxRef.current = null;
-    try { liveSessionRef.current?.close(); } catch {}
+    try {
+      liveSessionRef.current?.close();
+    } catch {}
     liveSessionRef.current = null;
     nextPlayTimeRef.current = 0;
     pendingAsstTextRef.current = "";
@@ -529,7 +566,11 @@ registerProcessor('mic-processor', MicProcessor);`;
   async function startGeminiLive() {
     const { data: sess } = await supabase.auth.getSession();
     const token = sess.session?.access_token;
-    const { token: liveToken, model, error } = await getLiveToken({
+    const {
+      token: liveToken,
+      model,
+      error,
+    } = await getLiveToken({
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     });
     if (error || !liveToken) {
@@ -708,17 +749,20 @@ registerProcessor('mic-processor', MicProcessor);`;
 
   async function deleteConversation(id: string, e: React.MouseEvent) {
     e.stopPropagation();
-    
+
     // Find conversation title for better confirmation message
-    const convo = conversations.find(c => c.id === id);
+    const convo = conversations.find((c) => c.id === id);
     const title = convo?.title || "this chat";
 
-    if (!(await confirm({
-      title: `Delete "${title}"?`,
-      description: "This permanently removes all messages in this conversation.",
-      confirmText: "Delete",
-      destructive: true,
-    }))) return;
+    if (
+      !(await confirm({
+        title: `Delete "${title}"?`,
+        description: "This permanently removes all messages in this conversation.",
+        confirmText: "Delete",
+        destructive: true,
+      }))
+    )
+      return;
 
     try {
       const { error } = await supabase.from("conversations").delete().eq("id", id);
@@ -727,7 +771,7 @@ registerProcessor('mic-processor', MicProcessor);`;
         console.error("Delete error:", error);
         return;
       }
-      
+
       toast.success("Conversation deleted");
       if (activeId === id) newChat();
       await loadConversations();
@@ -742,13 +786,16 @@ registerProcessor('mic-processor', MicProcessor);`;
       toast.error("No conversations to delete");
       return;
     }
-    
-    if (!(await confirm({
-      title: `Delete all ${conversations.length} conversations?`,
-      description: "This permanently removes all your chat history and cannot be undone.",
-      confirmText: "Delete all",
-      destructive: true,
-    }))) return;
+
+    if (
+      !(await confirm({
+        title: `Delete all ${conversations.length} conversations?`,
+        description: "This permanently removes all your chat history and cannot be undone.",
+        confirmText: "Delete all",
+        destructive: true,
+      }))
+    )
+      return;
 
     try {
       const { data: userData } = await supabase.auth.getUser();
@@ -756,18 +803,18 @@ registerProcessor('mic-processor', MicProcessor);`;
         toast.error("Please sign in again");
         return;
       }
-      
+
       const { error } = await supabase
         .from("conversations")
         .delete()
         .eq("user_id", userData.user.id);
-        
+
       if (error) {
         toast.error("Failed to delete conversations");
         console.error("Delete all error:", error);
         return;
       }
-      
+
       toast.success(`Deleted ${conversations.length} conversations`);
       newChat();
       await loadConversations();
@@ -780,8 +827,8 @@ registerProcessor('mic-processor', MicProcessor);`;
   function conversationMarkdown(): { title: string; md: string } {
     const convo = conversations.find((c) => c.id === activeId);
     const title = convo?.title ?? "conversation";
-    const lines = messages.map((m) =>
-      `## ${m.role === "user" ? "You" : "ScholarX"}\n\n${m.content}`,
+    const lines = messages.map(
+      (m) => `## ${m.role === "user" ? "You" : "ScholarX"}\n\n${m.content}`,
     );
     return { title, md: `# ${title}\n\n${lines.join("\n\n---\n\n")}` };
   }
@@ -882,7 +929,7 @@ registerProcessor('mic-processor', MicProcessor);`;
         user_id: u.user.id,
         role: "user",
         content: text,
-        image: imagePath ? null : imageBase64 ?? null,
+        image: imagePath ? null : (imageBase64 ?? null),
         image_path: imagePath ?? null,
       });
 
@@ -891,7 +938,9 @@ registerProcessor('mic-processor', MicProcessor);`;
 
       // Only send the most recent turns: keeps us under the server's 40-message
       // cap and bounds Gemini token cost per request.
-      const payloadMessages = nextMessages.slice(-24).map((m) => ({ role: m.role, content: m.content }));
+      const payloadMessages = nextMessages
+        .slice(-24)
+        .map((m) => ({ role: m.role, content: m.content }));
 
       // Push an empty assistant bubble and stream tokens into it (SSE). The
       // Gemini API key stays server-side; the browser only ever sees text.
@@ -910,20 +959,31 @@ registerProcessor('mic-processor', MicProcessor);`;
         });
 
       try {
-        const res = await streamHomework({
+        const res = (await streamHomework({
           data: { messages: payloadMessages, subject, image: imageBase64 },
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
-        const body = (res as unknown as Response)?.body;
-        if (!body) throw new Error("no stream body");
+        })) as unknown;
         setLoading(false);
-        const reader = body.getReader();
         const decoder = new TextDecoder();
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          fullContent += decoder.decode(value, { stream: true });
+        const append = (chunk: Uint8Array | string) => {
+          fullContent +=
+            typeof chunk === "string" ? chunk : decoder.decode(chunk, { stream: true });
           setStreamed(fullContent);
+        };
+        if (res && typeof (res as ReadableStream).getReader === "function") {
+          const reader = (res as ReadableStream<Uint8Array>).getReader();
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (value) append(value);
+          }
+        } else if (
+          res &&
+          typeof (res as AsyncIterable<unknown>)[Symbol.asyncIterator] === "function"
+        ) {
+          for await (const part of res as AsyncIterable<Uint8Array | string>) append(part);
+        } else {
+          throw new Error("unrecognized stream response");
         }
       } catch (streamErr) {
         // Fall back to the non-streaming endpoint on any streaming failure.
@@ -933,7 +993,11 @@ registerProcessor('mic-processor', MicProcessor);`;
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
         if (result.error || !result.content) {
-          setMessages((prev) => prev.filter((m, i) => !(m.role === "assistant" && i === prev.length - 1 && m.content === "")));
+          setMessages((prev) =>
+            prev.filter(
+              (m, i) => !(m.role === "assistant" && i === prev.length - 1 && m.content === ""),
+            ),
+          );
           toast.error(result.error ?? "No response");
           return;
         }
@@ -942,7 +1006,11 @@ registerProcessor('mic-processor', MicProcessor);`;
       }
 
       if (!fullContent.trim()) {
-        setMessages((prev) => prev.filter((m, i) => !(m.role === "assistant" && i === prev.length - 1 && m.content === "")));
+        setMessages((prev) =>
+          prev.filter(
+            (m, i) => !(m.role === "assistant" && i === prev.length - 1 && m.content === ""),
+          ),
+        );
         toast.error("No response from AI");
         return;
       }
@@ -963,7 +1031,12 @@ registerProcessor('mic-processor', MicProcessor);`;
       if (isFirstExchange) {
         try {
           const { title } = await generateTitle({
-            data: { messages: [{ role: "user", content: text }, { role: "assistant", content: fullContent }] },
+            data: {
+              messages: [
+                { role: "user", content: text },
+                { role: "assistant", content: fullContent },
+              ],
+            },
             headers: token ? { Authorization: `Bearer ${token}` } : undefined,
           });
           if (title && convoId) {
@@ -994,12 +1067,19 @@ registerProcessor('mic-processor', MicProcessor);`;
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <SheetContent side="left" className="w-80 p-0 flex flex-col">
           <div className="flex items-center gap-2 px-5 py-5 font-display text-lg font-semibold">
-            <img src="/logo-removebg-preview.png" className="h-8 w-8 object-contain" alt="ScholarX" />
+            <img
+              src="/logo-removebg-preview.png"
+              className="h-8 w-8 object-contain"
+              alt="ScholarX"
+            />
             ScholarX
           </div>
           <div className="px-3">
             <Button
-              onClick={() => { newChat(); setMobileMenuOpen(false); }}
+              onClick={() => {
+                newChat();
+                setMobileMenuOpen(false);
+              }}
               className="w-full justify-start gap-2"
               variant="secondary"
             >
@@ -1039,7 +1119,10 @@ registerProcessor('mic-processor', MicProcessor);`;
                   <div className="group flex items-center gap-1">
                     <button
                       type="button"
-                      onClick={() => { selectConversation(c.id); setMobileMenuOpen(false); }}
+                      onClick={() => {
+                        selectConversation(c.id);
+                        setMobileMenuOpen(false);
+                      }}
                       className={`flex-1 flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
                         activeId === c.id
                           ? "bg-primary/15 text-foreground"
@@ -1083,32 +1166,64 @@ registerProcessor('mic-processor', MicProcessor);`;
             >
               <Sparkles className="h-4 w-4" />
               Extra functions
-              <ChevronDown className={`ml-auto h-3.5 w-3.5 transition-transform duration-200 ${mobileExtrasOpen ? "rotate-180" : ""}`} />
+              <ChevronDown
+                className={`ml-auto h-3.5 w-3.5 transition-transform duration-200 ${mobileExtrasOpen ? "rotate-180" : ""}`}
+              />
             </button>
             {mobileExtrasOpen && (
               <div className="ml-4 space-y-0.5 border-l border-border pl-2">
-                <Link to="/flashcards" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+                <Link
+                  to="/flashcards"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+                >
                   <Layers className="h-3.5 w-3.5" /> Flashcards
                 </Link>
-                <Link to="/tests" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+                <Link
+                  to="/tests"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+                >
                   <BookOpen className="h-3.5 w-3.5" /> Test creator
                 </Link>
-                <Link to="/study" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+                <Link
+                  to="/study"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+                >
                   <GraduationCap className="h-3.5 w-3.5" /> Study guides
                 </Link>
-                <Link to="/research" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+                <Link
+                  to="/research"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+                >
                   <Microscope className="h-3.5 w-3.5" /> Research mode
                 </Link>
-                <Link to="/graph" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+                <Link
+                  to="/graph"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+                >
                   <LineChart className="h-3.5 w-3.5" /> Graphing
                 </Link>
               </div>
             )}
             <div className="flex items-center justify-between gap-2 px-2 pt-1 text-sm">
-              <Link to="/profile" onClick={() => setMobileMenuOpen(false)} className="min-w-0 truncate text-muted-foreground hover:text-foreground transition">
+              <Link
+                to="/profile"
+                onClick={() => setMobileMenuOpen(false)}
+                className="min-w-0 truncate text-muted-foreground hover:text-foreground transition"
+              >
                 {displayName}
               </Link>
-              <Button variant="ghost" size="icon" onClick={logout} title="Sign out" className="shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={logout}
+                title="Sign out"
+                className="shrink-0"
+              >
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
@@ -1236,32 +1351,58 @@ registerProcessor('mic-processor', MicProcessor);`;
           >
             <Sparkles className="h-4 w-4" />
             Extra functions
-            <ChevronDown className={`ml-auto h-3.5 w-3.5 transition-transform duration-200 ${extrasOpen ? "rotate-180" : ""}`} />
+            <ChevronDown
+              className={`ml-auto h-3.5 w-3.5 transition-transform duration-200 ${extrasOpen ? "rotate-180" : ""}`}
+            />
           </button>
           {extrasOpen && (
             <div className="ml-4 space-y-0.5 border-l border-border pl-2">
-              <Link to="/flashcards" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+              <Link
+                to="/flashcards"
+                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+              >
                 <Layers className="h-3.5 w-3.5" /> Flashcards
               </Link>
-              <Link to="/tests" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+              <Link
+                to="/tests"
+                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+              >
                 <BookOpen className="h-3.5 w-3.5" /> Test creator
               </Link>
-              <Link to="/study" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+              <Link
+                to="/study"
+                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+              >
                 <GraduationCap className="h-3.5 w-3.5" /> Study guides
               </Link>
-              <Link to="/research" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+              <Link
+                to="/research"
+                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+              >
                 <Microscope className="h-3.5 w-3.5" /> Research mode
               </Link>
-              <Link to="/graph" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+              <Link
+                to="/graph"
+                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+              >
                 <LineChart className="h-3.5 w-3.5" /> Graphing
               </Link>
             </div>
           )}
           <div className="flex items-center justify-between gap-2 px-2 pt-1 text-sm">
-            <Link to="/profile" className="min-w-0 truncate text-muted-foreground hover:text-foreground transition">
+            <Link
+              to="/profile"
+              className="min-w-0 truncate text-muted-foreground hover:text-foreground transition"
+            >
               {displayName}
             </Link>
-            <Button variant="ghost" size="icon" onClick={logout} title="Sign out" className="shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={logout}
+              title="Sign out"
+              className="shrink-0"
+            >
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
@@ -1327,16 +1468,32 @@ registerProcessor('mic-processor', MicProcessor);`;
                       role="menu"
                       className="absolute left-0 z-50 mt-1 w-52 overflow-hidden rounded-lg border border-border bg-popover p-1 shadow-lg"
                     >
-                      <button role="menuitem" onClick={() => createFromChat("flashcards")} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground">
+                      <button
+                        role="menuitem"
+                        onClick={() => createFromChat("flashcards")}
+                        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                      >
                         <Layers className="h-4 w-4" /> Make flashcards
                       </button>
-                      <button role="menuitem" onClick={() => createFromChat("tests")} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground">
+                      <button
+                        role="menuitem"
+                        onClick={() => createFromChat("tests")}
+                        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                      >
                         <BookOpen className="h-4 w-4" /> Make a practice test
                       </button>
-                      <button role="menuitem" onClick={() => createFromChat("study")} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground">
+                      <button
+                        role="menuitem"
+                        onClick={() => createFromChat("study")}
+                        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                      >
                         <GraduationCap className="h-4 w-4" /> Make a study guide
                       </button>
-                      <button role="menuitem" onClick={() => createFromChat("research")} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground">
+                      <button
+                        role="menuitem"
+                        onClick={() => createFromChat("research")}
+                        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                      >
                         <Microscope className="h-4 w-4" /> Use in research mode
                       </button>
                     </div>
@@ -1383,13 +1540,26 @@ registerProcessor('mic-processor', MicProcessor);`;
           <div className="mx-auto max-w-3xl space-y-4">
             {messages.length === 0 && <EmptyState subject={subject} onPick={setInput} />}
             {messages.map((m, i) => (
-              <Bubble key={m.id ?? i} role={m.role} content={m.content} image={m.image} imageUrl={m.imageUrl} ttsSupported={ttsSupported} interrupted={m.interrupted} />
+              <Bubble
+                key={m.id ?? i}
+                role={m.role}
+                content={m.content}
+                image={m.image}
+                imageUrl={m.imageUrl}
+                ttsSupported={ttsSupported}
+                interrupted={m.interrupted}
+              />
             ))}
             {streamingUserContent !== null && (
               <Bubble role="user" content={streamingUserContent} ttsSupported={false} streaming />
             )}
             {streamingVoiceContent !== null && (
-              <Bubble role="assistant" content={streamingVoiceContent} ttsSupported={false} streaming />
+              <Bubble
+                role="assistant"
+                content={streamingVoiceContent}
+                ttsSupported={false}
+                streaming
+              />
             )}
             {loading && (
               <div className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground">
@@ -1454,7 +1624,9 @@ registerProcessor('mic-processor', MicProcessor);`;
                 aria-label="More input options"
                 aria-expanded={composerExtrasOpen}
               >
-                <Plus className={`h-4 w-4 transition-transform ${composerExtrasOpen ? "rotate-45" : ""}`} />
+                <Plus
+                  className={`h-4 w-4 transition-transform ${composerExtrasOpen ? "rotate-45" : ""}`}
+                />
               </Button>
               <div className={`${composerExtrasOpen ? "flex" : "hidden"} items-end gap-2 sm:flex`}>
                 <label
@@ -1487,7 +1659,11 @@ registerProcessor('mic-processor', MicProcessor);`;
                     title={convoMode ? "End voice conversation" : "Start voice conversation"}
                     aria-label={convoMode ? "End voice conversation" : "Start voice conversation"}
                   >
-                    {convoMode ? <PhoneOff className="h-4 w-4" /> : <Headphones className="h-4 w-4" />}
+                    {convoMode ? (
+                      <PhoneOff className="h-4 w-4" />
+                    ) : (
+                      <Headphones className="h-4 w-4" />
+                    )}
                   </Button>
                 )}
               </div>
@@ -1498,7 +1674,11 @@ registerProcessor('mic-processor', MicProcessor);`;
                 className="h-10 w-10 shrink-0 rounded-xl glow"
                 aria-label="Send message"
               >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
               </Button>
             </div>
             <div className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
@@ -1513,7 +1693,23 @@ registerProcessor('mic-processor', MicProcessor);`;
   );
 }
 
-const Bubble = memo(function Bubble({ role, content, image, imageUrl, ttsSupported, interrupted, streaming }: { role: "user" | "assistant"; content: string; image?: string; imageUrl?: string; ttsSupported: boolean; interrupted?: boolean; streaming?: boolean }) {
+const Bubble = memo(function Bubble({
+  role,
+  content,
+  image,
+  imageUrl,
+  ttsSupported,
+  interrupted,
+  streaming,
+}: {
+  role: "user" | "assistant";
+  content: string;
+  image?: string;
+  imageUrl?: string;
+  ttsSupported: boolean;
+  interrupted?: boolean;
+  streaming?: boolean;
+}) {
   const isUser = role === "user";
   const [speaking, setSpeaking] = useState(false);
 
@@ -1547,10 +1743,16 @@ const Bubble = memo(function Bubble({ role, content, image, imageUrl, ttsSupport
         {imageUrl ? (
           <img src={imageUrl} alt="Uploaded" className="mb-2 max-w-full rounded-lg" />
         ) : image ? (
-          <img src={`data:image/jpeg;base64,${image}`} alt="Uploaded" className="mb-2 max-w-full rounded-lg" />
+          <img
+            src={`data:image/jpeg;base64,${image}`}
+            alt="Uploaded"
+            className="mb-2 max-w-full rounded-lg"
+          />
         ) : null}
         <FormattedContent text={content} />
-        {streaming && <span className="inline-block h-4 w-0.5 animate-pulse bg-current opacity-70 align-middle ml-0.5" />}
+        {streaming && (
+          <span className="inline-block h-4 w-0.5 animate-pulse bg-current opacity-70 align-middle ml-0.5" />
+        )}
         {interrupted && (
           <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground opacity-70">
             <Square className="h-2.5 w-2.5" />
@@ -1575,7 +1777,7 @@ const Bubble = memo(function Bubble({ role, content, image, imageUrl, ttsSupport
 // Markdown + KaTeX renderer. Display math blocks are pre-tokenized so the
 // paragraph splitter never fragments a $$...$$ or \[...\] spanning blank lines.
 function FormattedContent({ text }: { text: string }) {
-  type Seg = { kind: 'math'; src: string } | { kind: 'text'; src: string };
+  type Seg = { kind: "math"; src: string } | { kind: "text"; src: string };
 
   // Step 1: extract all display-math blocks before splitting on blank lines.
   const segs: Seg[] = [];
@@ -1583,20 +1785,20 @@ function FormattedContent({ text }: { text: string }) {
   let cur = 0;
   let dm: RegExpExecArray | null;
   while ((dm = displayRe.exec(text)) !== null) {
-    if (dm.index > cur) segs.push({ kind: 'text', src: text.slice(cur, dm.index) });
+    if (dm.index > cur) segs.push({ kind: "text", src: text.slice(cur, dm.index) });
     const raw = dm[0];
     // Both $$ and \[ delimiters are 2 chars; slice off the delimiters on both sides.
-    segs.push({ kind: 'math', src: raw.slice(2, -2) });
+    segs.push({ kind: "math", src: raw.slice(2, -2) });
     cur = dm.index + raw.length;
   }
-  if (cur < text.length) segs.push({ kind: 'text', src: text.slice(cur) });
+  if (cur < text.length) segs.push({ kind: "text", src: text.slice(cur) });
 
   // Step 2: render each segment.
   let keyIdx = 0;
   const nodes: React.ReactNode[] = [];
 
   for (const seg of segs) {
-    if (seg.kind === 'math') {
+    if (seg.kind === "math") {
       nodes.push(renderMath(seg.src, true, keyIdx++));
       continue;
     }
@@ -1608,45 +1810,68 @@ function FormattedContent({ text }: { text: string }) {
       if (!blk) continue;
       const k = keyIdx++;
 
-      if (blk.startsWith('### ')) {
-        nodes.push(<h3 key={k} className="text-lg font-semibold mt-4 mb-2">{renderInline(blk.slice(4))}</h3>);
-        continue;
-      }
-      if (blk.startsWith('## ')) {
-        nodes.push(<h2 key={k} className="text-xl font-semibold mt-5 mb-3">{renderInline(blk.slice(3))}</h2>);
-        continue;
-      }
-      if (blk.startsWith('# ')) {
-        nodes.push(<h1 key={k} className="text-2xl font-bold mt-6 mb-4">{renderInline(blk.slice(2))}</h1>);
-        continue;
-      }
-      if (/^```/.test(blk)) {
-        const code = blk.replace(/^```\w*\n?|```$/g, '');
+      if (blk.startsWith("### ")) {
         nodes.push(
-          <pre key={k} className="overflow-x-auto rounded-lg bg-background/60 p-3 font-mono text-xs">
-            {code}
-          </pre>
+          <h3 key={k} className="text-lg font-semibold mt-4 mb-2">
+            {renderInline(blk.slice(4))}
+          </h3>,
         );
         continue;
       }
-      if (/^\|.*\|$/.test(blk) && blk.includes('|')) {
-        const rows = blk.split('\n').filter(r => r.trim());
+      if (blk.startsWith("## ")) {
+        nodes.push(
+          <h2 key={k} className="text-xl font-semibold mt-5 mb-3">
+            {renderInline(blk.slice(3))}
+          </h2>,
+        );
+        continue;
+      }
+      if (blk.startsWith("# ")) {
+        nodes.push(
+          <h1 key={k} className="text-2xl font-bold mt-6 mb-4">
+            {renderInline(blk.slice(2))}
+          </h1>,
+        );
+        continue;
+      }
+      if (/^```/.test(blk)) {
+        const code = blk.replace(/^```\w*\n?|```$/g, "");
+        nodes.push(
+          <pre
+            key={k}
+            className="overflow-x-auto rounded-lg bg-background/60 p-3 font-mono text-xs"
+          >
+            {code}
+          </pre>,
+        );
+        continue;
+      }
+      if (/^\|.*\|$/.test(blk) && blk.includes("|")) {
+        const rows = blk.split("\n").filter((r) => r.trim());
         if (rows.length >= 2) {
           nodes.push(
-            <table key={k} className="border-collapse border border-border rounded-lg overflow-hidden my-2">
+            <table
+              key={k}
+              className="border-collapse border border-border rounded-lg overflow-hidden my-2"
+            >
               <tbody>
                 {rows.map((row, ri) => {
-                  const cells = row.split('|').filter(c => c !== '').map(c => c.trim());
+                  const cells = row
+                    .split("|")
+                    .filter((c) => c !== "")
+                    .map((c) => c.trim());
                   return (
                     <tr key={ri}>
                       {cells.map((cell, ci) => (
-                        <td key={ci} className="border border-border px-3 py-2 text-sm">{renderInline(cell)}</td>
+                        <td key={ci} className="border border-border px-3 py-2 text-sm">
+                          {renderInline(cell)}
+                        </td>
                       ))}
                     </tr>
                   );
                 })}
               </tbody>
-            </table>
+            </table>,
           );
           continue;
         }
@@ -1654,20 +1879,20 @@ function FormattedContent({ text }: { text: string }) {
       if (/^(\s*[-*]\s)/m.test(blk)) {
         nodes.push(
           <ul key={k} className="list-disc space-y-1 pl-5">
-            {blk.split('\n').map((line, j) => (
-              <li key={j}>{renderInline(line.replace(/^\s*[-*]\s/, ''))}</li>
+            {blk.split("\n").map((line, j) => (
+              <li key={j}>{renderInline(line.replace(/^\s*[-*]\s/, ""))}</li>
             ))}
-          </ul>
+          </ul>,
         );
         continue;
       }
       if (/^\s*\d+\.\s/.test(blk)) {
         nodes.push(
           <ol key={k} className="list-decimal space-y-1 pl-5">
-            {blk.split('\n').map((line, j) => (
-              <li key={j}>{renderInline(line.replace(/^\s*\d+\.\s/, ''))}</li>
+            {blk.split("\n").map((line, j) => (
+              <li key={j}>{renderInline(line.replace(/^\s*\d+\.\s/, ""))}</li>
             ))}
-          </ol>
+          </ol>,
         );
         continue;
       }
@@ -1847,7 +2072,11 @@ function EmptyState({ subject, onPick }: { subject: Subject; onPick: (s: string)
 
   return (
     <div className="mt-12 text-center">
-      <img src="/logo-removebg-preview.png" className="mx-auto h-14 w-14 object-contain" alt="ScholarX" />
+      <img
+        src="/logo-removebg-preview.png"
+        className="mx-auto h-14 w-14 object-contain"
+        alt="ScholarX"
+      />
       <h2 className="mt-5 text-2xl font-bold">What are you studying today?</h2>
       <p className="mt-2 text-sm text-muted-foreground">
         Pick a subject above and ask anything. I'll explain step by step.
@@ -1866,4 +2095,3 @@ function EmptyState({ subject, onPick }: { subject: Subject; onPick: (s: string)
     </div>
   );
 }
-

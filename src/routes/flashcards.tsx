@@ -95,7 +95,10 @@ export const Route = createFileRoute("/flashcards")({
   head: () => ({
     meta: [
       { title: "Flashcards — ScholarX" },
-      { name: "description", content: "Generate AI flashcards from any topic and save them to your library." },
+      {
+        name: "description",
+        content: "Generate AI flashcards from any topic and save them to your library.",
+      },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
@@ -206,7 +209,13 @@ function FlashcardsPage() {
     queryClient.setQueryData<DbCard[]>(["flashcards", selectedDeckId], (prev) =>
       (prev ?? []).map((c) =>
         c.id === card.id
-          ? { ...c, ease: update.ease, interval_days: update.interval_days, repetitions: update.repetitions, due_at: update.due_at }
+          ? {
+              ...c,
+              ease: update.ease,
+              interval_days: update.interval_days,
+              repetitions: update.repetitions,
+              due_at: update.due_at,
+            }
           : c,
       ),
     );
@@ -251,7 +260,8 @@ function FlashcardsPage() {
     }
     const seed = parsed.messages ?? [];
     if (!seed.length) return;
-    const topic = parsed.topic || seed.find((m) => m.role === "user")?.content.slice(0, 200) || "Study topic";
+    const topic =
+      parsed.topic || seed.find((m) => m.role === "user")?.content.slice(0, 200) || "Study topic";
     setTopicSeed(topic);
     setMessages(seed);
     setLoading(true);
@@ -270,7 +280,10 @@ function FlashcardsPage() {
         setPreview(result.cards);
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: `Here are ${result.cards.length} flashcards from your chat. Review them, then Save to library.` },
+          {
+            role: "assistant",
+            content: `Here are ${result.cards.length} flashcards from your chat. Review them, then Save to library.`,
+          },
         ]);
       } catch (err) {
         console.error(err);
@@ -315,7 +328,10 @@ function FlashcardsPage() {
         toast.error(result.error ?? "No flashcards generated");
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: result.error ?? "Something went wrong. Try rephrasing your topic." },
+          {
+            role: "assistant",
+            content: result.error ?? "Something went wrong. Try rephrasing your topic.",
+          },
         ]);
         return;
       }
@@ -331,7 +347,10 @@ function FlashcardsPage() {
     } catch (err) {
       console.error(err);
       toast.error("Request failed");
-      setMessages((prev) => [...prev, { role: "assistant", content: "Request failed. Please try again." }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "Request failed. Please try again." },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -346,7 +365,10 @@ function FlashcardsPage() {
         toast.error("Sign in required");
         return;
       }
-      const topic = topicSeed.trim() || messages.find((m) => m.role === "user")?.content.slice(0, 200) || "Deck";
+      const topic =
+        topicSeed.trim() ||
+        messages.find((m) => m.role === "user")?.content.slice(0, 200) ||
+        "Deck";
       const { data: setRow, error: e1 } = await supabase
         .from("flashcard_sets")
         .insert({ user_id: u.user.id, topic: topic.slice(0, 500) })
@@ -387,12 +409,15 @@ function FlashcardsPage() {
   }
 
   async function deleteDeck(id: string) {
-    if (!(await confirm({
-      title: "Delete this deck?",
-      description: "This permanently removes the deck and all its cards.",
-      confirmText: "Delete",
-      destructive: true,
-    }))) return;
+    if (
+      !(await confirm({
+        title: "Delete this deck?",
+        description: "This permanently removes the deck and all its cards.",
+        confirmText: "Delete",
+        destructive: true,
+      }))
+    )
+      return;
     const { error } = await supabase.from("flashcard_sets").delete().eq("id", id);
     if (error) {
       toast.error("Delete failed");
@@ -414,7 +439,11 @@ function FlashcardsPage() {
         <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
           <SheetContent side="left" className="w-80 p-0 flex flex-col">
             <div className="flex items-center gap-2 px-5 py-5 font-display text-lg font-semibold">
-              <img src="/logo-removebg-preview.png" className="h-8 w-8 object-contain" alt="ScholarX" />
+              <img
+                src="/logo-removebg-preview.png"
+                className="h-8 w-8 object-contain"
+                alt="ScholarX"
+              />
               ScholarX
             </div>
             <div className="px-3">
@@ -501,26 +530,50 @@ function FlashcardsPage() {
               >
                 <Sparkles className="h-4 w-4" />
                 Extra functions
-                <ChevronDown className={`ml-auto h-3.5 w-3.5 transition-transform duration-200 ${mobileExtrasOpen ? "rotate-180" : ""}`} />
+                <ChevronDown
+                  className={`ml-auto h-3.5 w-3.5 transition-transform duration-200 ${mobileExtrasOpen ? "rotate-180" : ""}`}
+                />
               </button>
               {mobileExtrasOpen && (
                 <div className="ml-4 space-y-0.5 border-l border-border pl-2">
-                  <Link to="/flashcards" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-primary font-medium hover:bg-accent hover:text-accent-foreground transition">
+                  <Link
+                    to="/flashcards"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-primary font-medium hover:bg-accent hover:text-accent-foreground transition"
+                  >
                     <Layers className="h-3.5 w-3.5" /> Flashcards
                   </Link>
-                  <Link to="/tests" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+                  <Link
+                    to="/tests"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+                  >
                     <BookOpen className="h-3.5 w-3.5" /> Test creator
                   </Link>
-                  <Link to="/graph" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+                  <Link
+                    to="/graph"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+                  >
                     <LineChart className="h-3.5 w-3.5" /> Graphing
                   </Link>
                 </div>
               )}
               <div className="flex items-center justify-between gap-2 px-2 pt-1 text-sm">
-                <Link to="/profile" onClick={() => setMobileMenuOpen(false)} className="min-w-0 truncate text-muted-foreground hover:text-foreground transition">
+                <Link
+                  to="/profile"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="min-w-0 truncate text-muted-foreground hover:text-foreground transition"
+                >
                   {displayName}
                 </Link>
-                <Button variant="ghost" size="icon" onClick={logout} title="Sign out" className="shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={logout}
+                  title="Sign out"
+                  className="shrink-0"
+                >
                   <LogOut className="h-4 w-4" />
                 </Button>
               </div>
@@ -615,26 +668,46 @@ function FlashcardsPage() {
             >
               <Sparkles className="h-4 w-4" />
               Extra functions
-              <ChevronDown className={`ml-auto h-3.5 w-3.5 transition-transform duration-200 ${extrasOpen ? "rotate-180" : ""}`} />
+              <ChevronDown
+                className={`ml-auto h-3.5 w-3.5 transition-transform duration-200 ${extrasOpen ? "rotate-180" : ""}`}
+              />
             </button>
             {extrasOpen && (
               <div className="ml-4 space-y-0.5 border-l border-border pl-2">
-                <Link to="/flashcards" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-primary font-medium hover:bg-accent hover:text-accent-foreground transition">
+                <Link
+                  to="/flashcards"
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-primary font-medium hover:bg-accent hover:text-accent-foreground transition"
+                >
                   <Layers className="h-3.5 w-3.5" /> Flashcards
                 </Link>
-                <Link to="/tests" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+                <Link
+                  to="/tests"
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+                >
                   <BookOpen className="h-3.5 w-3.5" /> Test creator
                 </Link>
-                <Link to="/graph" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+                <Link
+                  to="/graph"
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+                >
                   <LineChart className="h-3.5 w-3.5" /> Graphing
                 </Link>
               </div>
             )}
             <div className="flex items-center justify-between gap-2 px-2 pt-1 text-sm">
-              <Link to="/profile" className="min-w-0 truncate text-muted-foreground hover:text-foreground transition">
+              <Link
+                to="/profile"
+                className="min-w-0 truncate text-muted-foreground hover:text-foreground transition"
+              >
                 {displayName}
               </Link>
-              <Button variant="ghost" size="icon" onClick={logout} title="Sign out" className="shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={logout}
+                title="Sign out"
+                className="shrink-0"
+              >
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
@@ -775,26 +848,50 @@ function FlashcardsPage() {
             >
               <Sparkles className="h-4 w-4" />
               Extra functions
-              <ChevronDown className={`ml-auto h-3.5 w-3.5 transition-transform duration-200 ${mobileExtrasOpen ? "rotate-180" : ""}`} />
+              <ChevronDown
+                className={`ml-auto h-3.5 w-3.5 transition-transform duration-200 ${mobileExtrasOpen ? "rotate-180" : ""}`}
+              />
             </button>
             {mobileExtrasOpen && (
               <div className="ml-4 space-y-0.5 border-l border-border pl-2">
-                <Link to="/flashcards" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-primary font-medium hover:bg-accent hover:text-accent-foreground transition">
+                <Link
+                  to="/flashcards"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-primary font-medium hover:bg-accent hover:text-accent-foreground transition"
+                >
                   <Layers className="h-3.5 w-3.5" /> Flashcards
                 </Link>
-                <Link to="/tests" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+                <Link
+                  to="/tests"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+                >
                   <BookOpen className="h-3.5 w-3.5" /> Test creator
                 </Link>
-                <Link to="/graph" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+                <Link
+                  to="/graph"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+                >
                   <LineChart className="h-3.5 w-3.5" /> Graphing
                 </Link>
               </div>
             )}
             <div className="flex items-center justify-between gap-2 px-2 pt-1 text-sm">
-              <Link to="/profile" onClick={() => setMobileMenuOpen(false)} className="min-w-0 truncate text-muted-foreground hover:text-foreground transition">
+              <Link
+                to="/profile"
+                onClick={() => setMobileMenuOpen(false)}
+                className="min-w-0 truncate text-muted-foreground hover:text-foreground transition"
+              >
                 {displayName}
               </Link>
-              <Button variant="ghost" size="icon" onClick={logout} title="Sign out" className="shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={logout}
+                title="Sign out"
+                className="shrink-0"
+              >
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
@@ -811,7 +908,11 @@ function FlashcardsPage() {
           ScholarX
         </div>
         <div className="px-3">
-          <Button onClick={() => navigate({ to: "/chat" })} className="w-full justify-start gap-2" variant="secondary">
+          <Button
+            onClick={() => navigate({ to: "/chat" })}
+            className="w-full justify-start gap-2"
+            variant="secondary"
+          >
             <Plus className="h-4 w-4" /> New chat
           </Button>
         </div>
@@ -878,26 +979,46 @@ function FlashcardsPage() {
           >
             <Sparkles className="h-4 w-4" />
             Extra functions
-            <ChevronDown className={`ml-auto h-3.5 w-3.5 transition-transform duration-200 ${extrasOpen ? "rotate-180" : ""}`} />
+            <ChevronDown
+              className={`ml-auto h-3.5 w-3.5 transition-transform duration-200 ${extrasOpen ? "rotate-180" : ""}`}
+            />
           </button>
           {extrasOpen && (
             <div className="ml-4 space-y-0.5 border-l border-border pl-2">
-              <Link to="/flashcards" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-primary font-medium hover:bg-accent hover:text-accent-foreground transition">
+              <Link
+                to="/flashcards"
+                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-primary font-medium hover:bg-accent hover:text-accent-foreground transition"
+              >
                 <Layers className="h-3.5 w-3.5" /> Flashcards
               </Link>
-              <Link to="/tests" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+              <Link
+                to="/tests"
+                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+              >
                 <BookOpen className="h-3.5 w-3.5" /> Test creator
               </Link>
-              <Link to="/graph" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+              <Link
+                to="/graph"
+                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
+              >
                 <LineChart className="h-3.5 w-3.5" /> Graphing
               </Link>
             </div>
           )}
           <div className="flex items-center justify-between gap-2 px-2 pt-1 text-sm">
-            <Link to="/profile" className="min-w-0 truncate text-muted-foreground hover:text-foreground transition">
+            <Link
+              to="/profile"
+              className="min-w-0 truncate text-muted-foreground hover:text-foreground transition"
+            >
               {displayName}
             </Link>
-            <Button variant="ghost" size="icon" onClick={logout} title="Sign out" className="shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={logout}
+              title="Sign out"
+              className="shrink-0"
+            >
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
@@ -923,10 +1044,15 @@ function FlashcardsPage() {
               <Layers className="h-4 w-4" />
             </span>
             <div className="min-w-0">
-              <h1 className="text-base font-semibold leading-none truncate" style={{ fontFamily: "var(--font-display)" }}>
+              <h1
+                className="text-base font-semibold leading-none truncate"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
                 Flashcards
               </h1>
-              <p className="text-xs text-muted-foreground mt-0.5 truncate">AI Q&amp;A → your library</p>
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                AI Q&amp;A → your library
+              </p>
             </div>
           </div>
           <Link
@@ -955,11 +1081,16 @@ function FlashcardsPage() {
                     </h2>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Set a topic label (used as the deck title), chat with the AI to narrow or extend what you want,
-                    then send to generate cards.
+                    Set a topic label (used as the deck title), chat with the AI to narrow or extend
+                    what you want, then send to generate cards.
                   </p>
                   <div>
-                    <label htmlFor="deck-topic" className="text-xs text-muted-foreground mb-1 block">Deck topic / title</label>
+                    <label
+                      htmlFor="deck-topic"
+                      className="text-xs text-muted-foreground mb-1 block"
+                    >
+                      Deck topic / title
+                    </label>
                     <Input
                       id="deck-topic"
                       name="deck-topic"
@@ -979,12 +1110,15 @@ function FlashcardsPage() {
                     <ul className="space-y-3 py-4 pr-2">
                       {messages.length === 0 && (
                         <li className="text-sm text-muted-foreground text-center py-8">
-                          Describe what you want to study. Example: "Cellular respiration — focus on Krebs vs electron
-                          transport."
+                          Describe what you want to study. Example: "Cellular respiration — focus on
+                          Krebs vs electron transport."
                         </li>
                       )}
                       {messages.map((m, i) => (
-                        <li key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                        <li
+                          key={i}
+                          className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+                        >
                           <div
                             className={`max-w-[92%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
                               m.role === "user"
@@ -1016,7 +1150,11 @@ function FlashcardsPage() {
                       className="bg-background/50"
                       disabled={loading}
                     />
-                    <Button type="submit" disabled={loading || !draft.trim()} className="shrink-0 gap-1">
+                    <Button
+                      type="submit"
+                      disabled={loading || !draft.trim()}
+                      className="shrink-0 gap-1"
+                    >
                       <Send className="h-4 w-4" />
                       Send
                     </Button>
@@ -1026,19 +1164,29 @@ function FlashcardsPage() {
                 {preview && preview.length > 0 && (
                   <div className="rounded-xl border border-border bg-card/70 backdrop-blur-md p-4 sm:p-5 space-y-4 animate-in fade-in duration-200">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <h3 className="font-semibold flex items-center gap-2" style={{ fontFamily: "var(--font-display)" }}>
+                      <h3
+                        className="font-semibold flex items-center gap-2"
+                        style={{ fontFamily: "var(--font-display)" }}
+                      >
                         <Layers className="h-4 w-4 text-primary" />
                         Preview ({preview.length} cards)
                       </h3>
                       <Button onClick={saveDeck} disabled={saving} className="gap-2">
-                        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookmarkPlus className="h-4 w-4" />}
+                        {saving ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <BookmarkPlus className="h-4 w-4" />
+                        )}
                         Save to library
                       </Button>
                     </div>
                     <ScrollArea className="h-[min(40vh,320px)] pr-2">
                       <ol className="space-y-3 list-decimal list-inside text-sm">
                         {preview.map((c, i) => (
-                          <li key={i} className="rounded-lg border border-border/80 bg-background/40 p-3">
+                          <li
+                            key={i}
+                            className="rounded-lg border border-border/80 bg-background/40 p-3"
+                          >
                             <p className="font-medium text-foreground mb-1">{c.q}</p>
                             <p className="text-muted-foreground pl-0">{c.a}</p>
                           </li>
@@ -1054,7 +1202,10 @@ function FlashcardsPage() {
             {selectedDeckId && studyCards.length > 0 && currentStudy && (
               <div className="rounded-xl border border-border bg-card/70 backdrop-blur-md p-4 sm:p-5 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="font-semibold flex items-center gap-2" style={{ fontFamily: "var(--font-display)" }}>
+                  <h3
+                    className="font-semibold flex items-center gap-2"
+                    style={{ fontFamily: "var(--font-display)" }}
+                  >
                     <Layers className="h-4 w-4 text-primary" />
                     Study
                     {getDueCount() > 0 && (
@@ -1064,7 +1215,9 @@ function FlashcardsPage() {
                     )}
                   </h3>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-muted-foreground">{studyIdx + 1} / {studyCards.length}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {studyIdx + 1} / {studyCards.length}
+                    </span>
                     <Button
                       type="button"
                       variant={dueOnly ? "default" : "ghost"}
@@ -1072,7 +1225,10 @@ function FlashcardsPage() {
                       className="h-7 px-2 text-xs"
                       title="Review only cards that are due"
                       disabled={!dueOnly && getDueCount() === 0}
-                      onClick={() => { setDueOnly((v) => !v); resetStudy(); }}
+                      onClick={() => {
+                        setDueOnly((v) => !v);
+                        resetStudy();
+                      }}
                     >
                       Due only
                     </Button>
@@ -1097,7 +1253,10 @@ function FlashcardsPage() {
                       onClick={() => {
                         const deck = decks.find((d) => d.id === selectedDeckId);
                         const topic = deck?.topic ?? "flashcards";
-                        downloadCsv(topic, [["Question", "Answer"], ...studyCards.map((c) => [c.question, c.answer])]);
+                        downloadCsv(topic, [
+                          ["Question", "Answer"],
+                          ...studyCards.map((c) => [c.question, c.answer]),
+                        ]);
                       }}
                     >
                       <Download className="h-3.5 w-3.5" />
@@ -1118,7 +1277,8 @@ function FlashcardsPage() {
                               `<div style="margin-bottom:18px;page-break-inside:avoid;"><p style="font-weight:600;margin:0 0 4px;">${i + 1}. ${escapeHtml(c.question)}</p><p style="margin:0;color:#333;">${escapeHtml(c.answer)}</p></div>`,
                           )
                           .join("");
-                        if (!printDocument(topic, body)) toast.error("Allow pop-ups to export PDF.");
+                        if (!printDocument(topic, body))
+                          toast.error("Allow pop-ups to export PDF.");
                       }}
                     >
                       <FileDown className="h-3.5 w-3.5" />
@@ -1134,13 +1294,17 @@ function FlashcardsPage() {
                     <p className="font-medium text-foreground">{currentStudy.question}</p>
                   ) : (
                     <div>
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Answer</p>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
+                        Answer
+                      </p>
                       <p className="text-foreground whitespace-pre-wrap">{currentStudy.answer}</p>
                     </div>
                   )}
                 </button>
                 <p className="text-xs text-muted-foreground text-center">
-                  {showAnswer ? "Rate your recall, or tap card to see question" : "Tap card to reveal answer"}
+                  {showAnswer
+                    ? "Rate your recall, or tap card to see question"
+                    : "Tap card to reveal answer"}
                 </p>
 
                 {/* SRS rating buttons — only shown after answer is revealed */}

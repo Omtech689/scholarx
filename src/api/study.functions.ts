@@ -16,22 +16,27 @@ async function fetchWithRetry(url: string, init: RequestInit, maxRetries = 2): P
 
 async function callGemini(systemPrompt: string, userPrompt: string, temperature: number) {
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-  if (!GEMINI_API_KEY) return { content: "", error: "AI is not configured. Please contact support." };
+  if (!GEMINI_API_KEY)
+    return { content: "", error: "AI is not configured. Please contact support." };
 
-  const res = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "gemini-3.1-flash-lite",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      temperature,
-    }),
-  });
+  const res = await fetchWithRetry(
+    `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "gemini-3.1-flash-lite",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        temperature,
+      }),
+    },
+  );
 
-  if (res.status === 429) return { content: "", error: "Too many requests right now. Please try again in a moment." };
+  if (res.status === 429)
+    return { content: "", error: "Too many requests right now. Please try again in a moment." };
   if (!res.ok) {
     console.error("Gemini study/research error", res.status, await res.text().catch(() => ""));
     return { content: "", error: "The AI could not generate this. Please try again." };
@@ -70,8 +75,8 @@ export const generateStudyGuide = createServerFn({ method: "POST" })
       data.detail === "concise"
         ? "Keep it tight — a one-page revision sheet a student can skim before an exam."
         : data.detail === "in_depth"
-        ? "Be thorough — explain mechanisms and the 'why', with worked examples."
-        : "Balanced depth — enough to learn from, not overwhelming.";
+          ? "Be thorough — explain mechanisms and the 'why', with worked examples."
+          : "Balanced depth — enough to learn from, not overwhelming.";
 
     const systemPrompt = `You are ScholarX's study-guide writer for students (learning, not cheating).
 Produce a well-structured study guide in GitHub-flavored Markdown ONLY (no preamble, no closing remarks).
@@ -129,15 +134,18 @@ export const generateResearchReport = createServerFn({ method: "POST" })
     // combined prompt reasonable so we stay within model + Worker limits.
     const totalChars = data.sources.reduce((n, s) => n + s.text.length, 0);
     if (totalChars > 120_000) {
-      return { content: "", error: "Sources are too long combined. Trim them to ~120k characters total." };
+      return {
+        content: "",
+        error: "Sources are too long combined. Trim them to ~120k characters total.",
+      };
     }
 
     const styleLine =
       data.style === "literature_review"
         ? "Write it as a literature review: compare and contrast what the sources say, note agreements and disagreements."
         : data.style === "summary"
-        ? "Write it as a structured executive summary: concise, decision-oriented."
-        : "Write it as a research report with clear sections and analysis.";
+          ? "Write it as a structured executive summary: concise, decision-oriented."
+          : "Write it as a research report with clear sections and analysis.";
 
     const systemPrompt = `You are ScholarX's research assistant. You are given a research brief and a set of NUMBERED sources provided by the student. Synthesize a well-organized document in GitHub-flavored Markdown ONLY.
 

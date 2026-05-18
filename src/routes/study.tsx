@@ -23,13 +23,22 @@ import {
 } from "lucide-react";
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
-type DocRow = { id: string; title: string; topic: string | null; content: string; created_at: string };
+type DocRow = {
+  id: string;
+  title: string;
+  topic: string | null;
+  content: string;
+  created_at: string;
+};
 
 export const Route = createFileRoute("/study")({
   head: () => ({
     meta: [
       { title: "Study Guides — ScholarX" },
-      { name: "description", content: "Generate AI study guides from any topic or chat and save them." },
+      {
+        name: "description",
+        content: "Generate AI study guides from any topic or chat and save them.",
+      },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
@@ -129,10 +138,18 @@ function StudyPage() {
         toast.error("Sign in required");
         return;
       }
-      const title = (topic.trim() || content.split("\n")[0].replace(/^#\s*/, "")).slice(0, 120) || "Study guide";
+      const title =
+        (topic.trim() || content.split("\n")[0].replace(/^#\s*/, "")).slice(0, 120) ||
+        "Study guide";
       const { data, error } = await supabase
         .from("documents")
-        .insert({ user_id: u.user.id, kind: "study_guide", title, topic: topic.trim() || null, content })
+        .insert({
+          user_id: u.user.id,
+          kind: "study_guide",
+          title,
+          topic: topic.trim() || null,
+          content,
+        })
         .select("id")
         .single();
       if (error || !data) {
@@ -148,7 +165,14 @@ function StudyPage() {
   }
 
   async function deleteGuide(id: string) {
-    if (!(await confirm({ title: "Delete this study guide?", confirmText: "Delete", destructive: true }))) return;
+    if (
+      !(await confirm({
+        title: "Delete this study guide?",
+        confirmText: "Delete",
+        destructive: true,
+      }))
+    )
+      return;
     const { error } = await supabase.from("documents").delete().eq("id", id);
     if (error) {
       toast.error("Delete failed");
@@ -183,15 +207,21 @@ function StudyPage() {
             </Link>
           </Button>
         </div>
-        <div className="mt-4 px-5 text-xs uppercase tracking-wider text-muted-foreground">Saved</div>
+        <div className="mt-4 px-5 text-xs uppercase tracking-wider text-muted-foreground">
+          Saved
+        </div>
         <ScrollArea className="mt-2 flex-1 px-2">
           <ul className="space-y-1 pb-4">
             {docsQuery.isLoading &&
               Array.from({ length: 4 }).map((_, i) => (
-                <li key={i}><Skeleton className="h-10 rounded-lg" /></li>
+                <li key={i}>
+                  <Skeleton className="h-10 rounded-lg" />
+                </li>
               ))}
             {!docsQuery.isLoading && (docsQuery.data ?? []).length === 0 && (
-              <li className="px-3 py-6 text-center text-sm text-muted-foreground">No saved guides yet.</li>
+              <li className="px-3 py-6 text-center text-sm text-muted-foreground">
+                No saved guides yet.
+              </li>
             )}
             {(docsQuery.data ?? []).map((d) => (
               <li key={d.id}>
@@ -199,12 +229,20 @@ function StudyPage() {
                   <button
                     onClick={() => openSaved(d)}
                     className={`flex-1 truncate rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                      selectedId === d.id ? "bg-primary/15 text-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                      selectedId === d.id
+                        ? "bg-primary/15 text-foreground"
+                        : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                     }`}
                   >
                     {d.title}
                   </button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => void deleteGuide(d.id)} aria-label="Delete study guide">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                    onClick={() => void deleteGuide(d.id)}
+                    aria-label="Delete study guide"
+                  >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
@@ -216,10 +254,20 @@ function StudyPage() {
 
       <main className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center gap-2 border-b border-border px-4 py-3 md:px-6">
-          <Button asChild variant="ghost" size="icon" className="h-8 w-8 md:hidden" aria-label="Back to chat">
-            <Link to="/chat"><ArrowLeft className="h-4 w-4" /></Link>
+          <Button
+            asChild
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 md:hidden"
+            aria-label="Back to chat"
+          >
+            <Link to="/chat">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
           </Button>
-          <h1 className="text-base font-semibold" style={{ fontFamily: "var(--font-display)" }}>Study guide generator</h1>
+          <h1 className="text-base font-semibold" style={{ fontFamily: "var(--font-display)" }}>
+            Study guide generator
+          </h1>
         </header>
 
         <div className="flex-1 overflow-y-auto">
@@ -227,7 +275,9 @@ function StudyPage() {
             <div className="rounded-xl border border-border bg-card/70 p-4 space-y-3 backdrop-blur-md">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-primary" />
-                <h2 className="font-semibold" style={{ fontFamily: "var(--font-display)" }}>Generate a study guide</h2>
+                <h2 className="font-semibold" style={{ fontFamily: "var(--font-display)" }}>
+                  Generate a study guide
+                </h2>
               </div>
               {seedMessages && (
                 <p className="rounded-md bg-primary/10 px-3 py-2 text-xs text-primary">
@@ -236,7 +286,9 @@ function StudyPage() {
               )}
               <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
                 <div>
-                  <label htmlFor="study-topic" className="mb-1 block text-xs text-muted-foreground">Topic</label>
+                  <label htmlFor="study-topic" className="mb-1 block text-xs text-muted-foreground">
+                    Topic
+                  </label>
                   <Input
                     id="study-topic"
                     value={topic}
@@ -246,7 +298,12 @@ function StudyPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="study-detail" className="mb-1 block text-xs text-muted-foreground">Depth</label>
+                  <label
+                    htmlFor="study-detail"
+                    className="mb-1 block text-xs text-muted-foreground"
+                  >
+                    Depth
+                  </label>
                   <select
                     id="study-detail"
                     value={detail}
@@ -259,8 +316,16 @@ function StudyPage() {
                   </select>
                 </div>
               </div>
-              <Button onClick={() => run(seedMessages ?? undefined)} disabled={loading} className="gap-2">
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              <Button
+                onClick={() => run(seedMessages ?? undefined)}
+                disabled={loading}
+                className="gap-2"
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
                 {loading ? "Generating…" : "Generate"}
               </Button>
             </div>
@@ -268,18 +333,43 @@ function StudyPage() {
             {content && (
               <div className="rounded-xl border border-border bg-card/70 p-5 backdrop-blur-md">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="font-semibold" style={{ fontFamily: "var(--font-display)" }}>Preview</h3>
+                  <h3 className="font-semibold" style={{ fontFamily: "var(--font-display)" }}>
+                    Preview
+                  </h3>
                   <div className="flex flex-wrap gap-2">
                     {!selectedId && (
-                      <Button size="sm" variant="secondary" onClick={saveGuide} disabled={saving} className="gap-1">
-                        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={saveGuide}
+                        disabled={saving}
+                        className="gap-1"
+                      >
+                        {saving ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Save className="h-3.5 w-3.5" />
+                        )}
                         Save
                       </Button>
                     )}
-                    <Button size="sm" variant="secondary" className="gap-1" onClick={() => downloadMarkdown(title, content)}>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="gap-1"
+                      onClick={() => downloadMarkdown(title, content)}
+                    >
                       <Download className="h-3.5 w-3.5" /> .md
                     </Button>
-                    <Button size="sm" variant="secondary" className="gap-1" onClick={() => { if (!printMarkdownAsPdf(title, content)) toast.error("Allow pop-ups to export PDF."); }}>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="gap-1"
+                      onClick={() => {
+                        if (!printMarkdownAsPdf(title, content))
+                          toast.error("Allow pop-ups to export PDF.");
+                      }}
+                    >
                       <FileDown className="h-3.5 w-3.5" /> PDF
                     </Button>
                   </div>
