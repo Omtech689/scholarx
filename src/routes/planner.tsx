@@ -430,6 +430,8 @@ function PlannerPage() {
                   <h2 className="font-semibold" style={{ fontFamily: "var(--font-display)" }}>Add a task</h2>
                 </div>
                 <Input
+                  id="task-title"
+                  name="task-title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Finish chapter 4 problem set"
@@ -437,6 +439,8 @@ function PlannerPage() {
                   autoFocus
                 />
                 <Textarea
+                  id="task-notes"
+                  name="task-notes"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Optional notes…"
@@ -446,6 +450,8 @@ function PlannerPage() {
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">Subject</label>
                     <select
+                      id="task-subject"
+                      name="task-subject"
                       value={subject}
                       onChange={(e) => setSubject(e.target.value)}
                       className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
@@ -455,7 +461,7 @@ function PlannerPage() {
                   </div>
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">Due date</label>
-                    <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                    <Input id="task-due-date" name="task-due-date" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
                   </div>
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">Priority</label>

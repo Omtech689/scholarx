@@ -747,6 +747,8 @@ function TestCreatorPage() {
                     <div>
                       <label className="text-xs text-muted-foreground mb-1 block">Test topic / title</label>
                       <Input
+                        id="test-topic"
+                        name="test-topic"
                         value={topicSeed}
                         onChange={(e) => setTopicSeed(e.target.value)}
                         placeholder="e.g. Cellular respiration, Shakespeare Sonnets, algebra review"
@@ -756,6 +758,8 @@ function TestCreatorPage() {
                     <div>
                       <label className="text-xs text-muted-foreground mb-1 block">Mode</label>
                       <select
+                        id="test-mode"
+                        name="test-mode"
                         value={testMode}
                         onChange={(e) => setTestMode(e.target.value as typeof testMode)}
                         className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary"
@@ -807,6 +811,8 @@ function TestCreatorPage() {
                   <form onSubmit={handleSend} className="border-t border-border px-3 py-3">
                     <div className="flex gap-2">
                       <Input
+                        id="test-draft"
+                        name="test-draft"
                         value={draft}
                         onChange={(e) => setDraft(e.target.value)}
                         placeholder="Refine the test request or ask for a narrower focus"
@@ -927,6 +933,8 @@ function TestCreatorPage() {
                       ) : (
                         <div className="mt-4 space-y-3">
                           <Textarea
+                            id={`answer-${item.id}`}
+                            name={`answer-${item.id}`}
                             value={answers[item.id] ?? ""}
                             onChange={(e) => setAnswer(item.id, e.target.value)}
                             placeholder="Write your answer here..."

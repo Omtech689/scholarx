@@ -737,6 +737,8 @@ function ChatPage() {
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <input
+                id="mobile-convo-search"
+                name="mobile-convo-search"
                 value={convoSearch}
                 onChange={(e) => setConvoSearch(e.target.value)}
                 placeholder="Search chats…"
@@ -871,6 +873,8 @@ function ChatPage() {
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <input
+              id="convo-search"
+              name="convo-search"
               value={convoSearch}
               onChange={(e) => setConvoSearch(e.target.value)}
               placeholder="Search chats…"
