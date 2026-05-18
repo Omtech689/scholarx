@@ -155,6 +155,8 @@ function ChatPage() {
   const nextPlayTimeRef = useRef(0);
   const pendingAsstTextRef = useRef("");
   const pendingUserTextRef = useRef("");
+  const [streamingContent, setStreamingContent] = useState<string | null>(null);
+  const [streamingVoiceContent, setStreamingVoiceContent] = useState<string | null>(null);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [extrasOpen, setExtrasOpen] = useState(false);
@@ -365,6 +367,7 @@ function ChatPage() {
       stopPlayback();
       const partial = pendingAsstTextRef.current.trim();
       pendingAsstTextRef.current = "";
+      setStreamingVoiceContent(null);
       if (partial) setMessages((prev) => [...prev, { role: "assistant" as const, content: partial, interrupted: true }]);
       return;
     }
@@ -386,21 +389,23 @@ function ChatPage() {
       if (p.inlineData?.data) playLivePcm(p.inlineData.data);
     }
 
-    // AI text transcription (outputTranscription) or plain text parts
+    // AI text transcription — stream into bubble as it arrives
     const outTx = sc.outputTranscription;
     if (outTx?.text) {
       pendingAsstTextRef.current += outTx.text;
+      setStreamingVoiceContent(pendingAsstTextRef.current);
       if (outTx.finished) {
         const text = pendingAsstTextRef.current.trim();
         pendingAsstTextRef.current = "";
+        setStreamingVoiceContent(null);
         if (text) setMessages((prev) => [...prev, { role: "assistant" as const, content: text }]);
       }
     }
 
     if (sc.turnComplete) {
-      // Flush any remaining accumulated text
       const asst = pendingAsstTextRef.current.trim();
       pendingAsstTextRef.current = "";
+      setStreamingVoiceContent(null);
       if (asst) setMessages((prev) => [...prev, { role: "assistant" as const, content: asst }]);
       const user = pendingUserTextRef.current.trim();
       pendingUserTextRef.current = "";
@@ -731,21 +736,79 @@ function ChatPage() {
 
       const { data: sess } = await supabase.auth.getSession();
       const token = sess.session?.access_token;
-      const result = await askHomework({
-        data: {
-          messages: nextMessages.map((m) => ({ role: m.role, content: m.content })),
-          subject,
-          image: imageBase64,
-        },
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      const { key } = await getGeminiKey({ headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+
+      const subjectGuidance: Record<string, string> = {
+        math: "Focus on step-by-step problem solving. Show every step clearly. Use LaTeX-style notation when helpful (e.g. x^2). Never just give the final answer — walk through reasoning.",
+        science: "Explain underlying concepts and the 'why'. Use real-world analogies. Cover physics, chemistry and biology.",
+        english: "Help with grammar, writing structure, literary analysis, vocabulary. Provide examples and revisions, but encourage the student to write in their own voice.",
+        history: "Provide context, dates, causes and consequences. Encourage critical thinking about sources and perspectives.",
+        general: "Help with any school subject. Encourage the student's own thinking.",
+      };
+      const baseMission = `Your mission: help students LEARN, not cheat. You always:
+- Break problems into clear, numbered steps so the student understands the reasoning.
+- Ask a quick clarifying question if the request is ambiguous.
+- Encourage the student to attempt the next step themselves when appropriate.
+- Refuse to write entire essays, full take-home exams, or do graded assessments for the student. Instead, offer outlines, examples, feedback, and explanations.
+- Keep answers concise, age-appropriate, and use Markdown (headings, lists, **bold**) for readability.`;
+      const systemPrompt = subject === "general"
+        ? `You are a friendly AI homework tutor for students.\n\n${baseMission}\n\nYou can help with any school subject.`
+        : `You are a friendly AI homework tutor specializing in ${subject.toUpperCase()}.\n\n${baseMission}\n\n${subjectGuidance[subject]}`;
+
+      const contents = nextMessages.map((m, i) => {
+        const isLast = i === nextMessages.length - 1;
+        const p: any[] = [{ text: m.content || " " }];
+        if (isLast && imageBase64) p.push({ inline_data: { mime_type: "image/jpeg", data: imageBase64 } });
+        return { role: m.role === "assistant" ? "model" : "user", parts: p };
       });
 
-      if (result.error || !result.content) {
-        toast.error(result.error ?? "No response");
-        return;
+      let fullContent = "";
+
+      if (key) {
+        const resp = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:streamGenerateContent?key=${key}&alt=sse`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ system_instruction: { parts: [{ text: systemPrompt }] }, contents }),
+          },
+        );
+        if (!resp.ok) throw new Error(`Gemini error ${resp.status}`);
+
+        setStreamingContent("");
+        const reader = resp.body!.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split("\n");
+          buf = lines.pop() ?? "";
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            const jsonStr = line.slice(6).trim();
+            if (!jsonStr) continue;
+            try {
+              const chunk = JSON.parse(jsonStr);
+              const t = chunk.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+              if (t) { fullContent += t; setStreamingContent(fullContent); }
+            } catch { /* incomplete chunk */ }
+          }
+        }
+        setStreamingContent(null);
+      } else {
+        // Fallback to server function if key unavailable
+        const result = await askHomework({
+          data: { messages: nextMessages.map((m) => ({ role: m.role, content: m.content })), subject, image: imageBase64 },
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        if (result.error || !result.content) { toast.error(result.error ?? "No response"); return; }
+        fullContent = result.content;
       }
 
-      const assistantMsg: Msg = { role: "assistant", content: result.content };
+      if (!fullContent) { toast.error("No response from AI"); return; }
+      const assistantMsg: Msg = { role: "assistant", content: fullContent };
       setMessages((prev) => [...prev, assistantMsg]);
 
       await supabase.from("messages").insert({
@@ -764,6 +827,7 @@ function ChatPage() {
     } catch (err) {
       console.error(err);
       toast.error(err instanceof Error ? err.message : "Failed to send");
+      setStreamingContent(null);
     } finally {
       setLoading(false);
       setImageFile(null);
@@ -1104,7 +1168,13 @@ function ChatPage() {
             {messages.map((m, i) => (
               <Bubble key={m.id ?? i} role={m.role} content={m.content} image={m.image} ttsSupported={ttsSupported} interrupted={m.interrupted} />
             ))}
-            {loading && (
+            {streamingContent !== null && (
+              <Bubble role="assistant" content={streamingContent} ttsSupported={false} streaming />
+            )}
+            {streamingVoiceContent !== null && (
+              <Bubble role="assistant" content={streamingVoiceContent} ttsSupported={false} streaming />
+            )}
+            {loading && streamingContent === null && (
               <div className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground">
                 <span className="pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-primary" />
                 <span className="pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-primary [animation-delay:120ms]" />
@@ -1206,7 +1276,7 @@ function ChatPage() {
   );
 }
 
-function Bubble({ role, content, image, ttsSupported, interrupted }: { role: "user" | "assistant"; content: string; image?: string; ttsSupported: boolean; interrupted?: boolean }) {
+function Bubble({ role, content, image, ttsSupported, interrupted, streaming }: { role: "user" | "assistant"; content: string; image?: string; ttsSupported: boolean; interrupted?: boolean; streaming?: boolean }) {
   const isUser = role === "user";
   const [speaking, setSpeaking] = useState(false);
 
@@ -1239,6 +1309,7 @@ function Bubble({ role, content, image, ttsSupported, interrupted }: { role: "us
       >
         {image && <img src={`data:image/jpeg;base64,${image}`} alt="Uploaded" className="mb-2 max-w-full rounded-lg" />}
         <FormattedContent text={content} />
+        {streaming && <span className="inline-block h-4 w-0.5 animate-pulse bg-current opacity-70 align-middle ml-0.5" />}
         {interrupted && (
           <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground opacity-70">
             <Square className="h-2.5 w-2.5" />
