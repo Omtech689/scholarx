@@ -405,12 +405,10 @@ function ChatPage() {
     ws.onopen = () => {
       console.log("[GeminiLive] WebSocket open, sending setup");
       ws.send(JSON.stringify({
-        setup: {
+        config: {
           model: "models/gemini-3.1-flash-live-preview",
-          generationConfig: {
-            responseModalities: ["AUDIO"],
-            speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } } },
-          },
+          responseModalities: ["AUDIO"],
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } } },
           systemInstruction: {
             parts: [{ text: "You are a friendly AI homework tutor. Help students learn by walking through problems step by step. Keep answers clear and concise." }],
           },
@@ -443,7 +441,7 @@ function ChatPage() {
             int16[i] = Math.max(-32768, Math.min(32767, s * 32768));
           }
           ws.send(JSON.stringify({
-            realtimeInput: { mediaChunks: [{ data: bufToBase64(int16.buffer), mimeType: "audio/pcm;rate=16000" }] },
+            realtimeInput: { audio: { data: bufToBase64(int16.buffer), mimeType: "audio/pcm;rate=16000" } },
           }));
         };
         source.connect(proc);
