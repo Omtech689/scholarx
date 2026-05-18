@@ -14,7 +14,6 @@ import {
   ArrowLeft,
   LogOut,
   CheckCircle,
-  AlertCircle,
 } from "lucide-react";
 
 export const Route = createFileRoute("/profile")({
@@ -48,12 +47,8 @@ function ProfilePage() {
 
   // Email change states
   const [newEmail, setNewEmail] = useState("");
-  const [emailPassword, setEmailPassword] = useState("");
   const [emailLoading, setEmailLoading] = useState(false);
 
-  // 2FA states
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
-  const [twoFactorLoading, setTwoFactorLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -178,8 +173,8 @@ function ProfilePage() {
   }
 
   async function changeEmail() {
-    if (!newEmail || !emailPassword) {
-      toast.error("Please fill in all email fields");
+    if (!newEmail) {
+      toast.error("Please enter a new email address");
       return;
     }
 
@@ -203,30 +198,11 @@ function ProfilePage() {
 
       toast.success("Email update initiated. Please check your inbox to confirm.");
       setNewEmail("");
-      setEmailPassword("");
     } catch (err) {
       toast.error("Something went wrong");
       console.error(err);
     } finally {
       setEmailLoading(false);
-    }
-  }
-
-  async function toggleTwoFactor() {
-    setTwoFactorLoading(true);
-    try {
-      if (twoFactorEnabled) {
-        // Disable 2FA (this would require additional Supabase configuration)
-        toast.info("2FA disable feature coming soon");
-      } else {
-        // Enable 2FA (this would require additional Supabase configuration)
-        toast.info("2FA setup feature coming soon");
-      }
-    } catch (err) {
-      toast.error("Something went wrong");
-      console.error(err);
-    } finally {
-      setTwoFactorLoading(false);
     }
   }
 
@@ -432,17 +408,10 @@ function ProfilePage() {
                       />
                     </div>
                     
-                    <div>
-                      <Label htmlFor="email-password">Current Password</Label>
-                      <Input
-                        id="email-password"
-                        type="password"
-                        value={emailPassword}
-                        onChange={(e) => setEmailPassword(e.target.value)}
-                        placeholder="Enter current password"
-                        className="mt-1"
-                      />
-                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      We'll send a confirmation link to both your old and new
+                      address. The change only takes effect once confirmed.
+                    </p>
                   </div>
 
                   <Button
@@ -457,55 +426,6 @@ function ProfilePage() {
                     )}
                     Update Email
                   </Button>
-                </div>
-
-                {/* 2FA/MFA */}
-                <div className="glass rounded-xl p-6">
-                  <h2 className="mb-4 text-xl font-semibold flex items-center gap-2">
-                    <Shield className="h-5 w-5" />
-                    Two-Factor Authentication
-                  </h2>
-                  
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between rounded-lg border p-4">
-                      <div>
-                        <p className="font-medium">Two-Factor Authentication</p>
-                        <p className="text-sm text-muted-foreground">
-                          Add an extra layer of security to your account
-                        </p>
-                      </div>
-                      <Button
-                        variant={twoFactorEnabled ? "destructive" : "default"}
-                        onClick={toggleTwoFactor}
-                        disabled={twoFactorLoading}
-                      >
-                        {twoFactorLoading ? (
-                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                        ) : twoFactorEnabled ? (
-                          "Disable"
-                        ) : (
-                          "Enable"
-                        )}
-                      </Button>
-                    </div>
-                    
-                    {!twoFactorEnabled && (
-                      <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-900/20">
-                        <div className="flex items-start gap-2">
-                          <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
-                          <div>
-                            <p className="font-medium text-yellow-800 dark:text-yellow-200">
-                              2FA Setup Coming Soon
-                            </p>
-                            <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                              We're working on bringing two-factor authentication to ScholarX. 
-                              This will include authenticator apps and backup codes.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
                 </div>
               </div>
             )}

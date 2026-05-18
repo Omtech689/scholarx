@@ -231,7 +231,9 @@ function FlashcardsPage() {
       const result = await generateFlashcards({
         data: {
           topic,
-          messages: nextMessages,
+          // Cap history: stays under the server's 24-message limit and bounds
+          // Gemini token cost per request.
+          messages: nextMessages.slice(-16),
         },
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });

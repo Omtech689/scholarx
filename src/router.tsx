@@ -59,8 +59,14 @@ export const getRouter = () => {
     routeTree,
     context: {},
     scrollRestoration: true,
-    defaultPreload: "intent",
-    defaultPreloadStaleTime: 0,
+    // Preloading is disabled deliberately: every route guards with a
+    // redirect()-throwing `beforeLoad` and none define a route `loader`
+    // (all data is fetched in-component via React Query). Intent preload
+    // therefore did no useful work — it only re-ran auth checks on hover
+    // and crashed inside preloadRoute ("Cannot read properties of
+    // undefined (reading '_nonReactive')") when the preloaded route
+    // immediately redirected.
+    defaultPreload: false,
     defaultPendingMs: 200,
     defaultPendingMinMs: 500,
     defaultErrorComponent: DefaultErrorComponent,

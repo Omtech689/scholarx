@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { enforceRateLimit, RATE_LIMITS } from "@/integrations/supabase/rate-limit";
 import { z } from "zod";
 
 const inputSchema = z.object({
@@ -49,7 +50,12 @@ function extractJsonArray(raw: string): unknown {
 export const generateFlashcards = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => inputSchema.parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const limited = await enforceRateLimit(context.supabase, RATE_LIMITS.flashcards);
+    if (limited) {
+      return { cards: [] as { q: string; a: string }[], error: limited };
+    }
+
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
     if (!GEMINI_API_KEY) {
       return { cards: [] as { q: string; a: string }[], error: "AI is not configured. Please contact support." };

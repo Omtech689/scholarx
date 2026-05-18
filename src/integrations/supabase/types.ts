@@ -244,7 +244,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      consume_ai_rate_limit: {
+        Args: {
+          p_bucket: string
+          p_limit: number
+          p_window_seconds: number
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

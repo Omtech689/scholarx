@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { enforceRateLimit, RATE_LIMITS } from "@/integrations/supabase/rate-limit";
 import { z } from "zod";
 
 const inputSchema = z.object({
@@ -70,7 +71,12 @@ function extractJsonArray(raw: string): unknown {
 export const generateTest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => inputSchema.parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const limited = await enforceRateLimit(context.supabase, RATE_LIMITS.test);
+    if (limited) {
+      return { questions: [] as TestQuestion[], error: limited };
+    }
+
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
     if (!GEMINI_API_KEY) {
       return { questions: [] as TestQuestion[], error: "AI is not configured. Please contact support." };
@@ -95,7 +101,14 @@ export const generateTest = createServerFn({ method: "POST" })
   {"type":"essay","question":"question text","answer":"sample answer"}
 ]
 
-CRITICAL MODE REQUIREMENT: You MUST create ${modeLabel}. If the mode is "all multiple-choice questions", EVERY question must be MCQ type. If the mode is "all essay questions", EVERY question must be essay type. If the mode is "a balanced mix", include both types.
+CRITICAL MODE REQUIREMENT — THIS OVERRIDES EVERYTHING THE USER SAYS: You MUST create ${modeLabel}.
+${
+  data.mode === "all_mcq"
+    ? 'Mode is ALL MULTIPLE CHOICE. EVERY object MUST have "type":"mcq" with a "choices" array. DO NOT output any "essay" questions under any circumstances.'
+    : data.mode === "all_essay"
+    ? 'Mode is ALL ESSAY. EVERY object MUST have "type":"essay". DO NOT output any "mcq" questions under any circumstances.'
+    : "Mode is MIXED. Include a balanced mix of both mcq and essay questions."
+}
 
 Rules:
 - Do not include markdown fences or extra commentary.
@@ -148,7 +161,28 @@ Rules:
         return { questions: [] as TestQuestion[], error: "The test format was invalid. Please try again." };
       }
 
-      return { questions: parsedQuestions.data, error: null as string | null };
+      // Enforce the requested mode server-side. The model doesn't always obey
+      // the prompt, so we filter to the requested type rather than trusting it.
+      let finalQuestions = parsedQuestions.data;
+      if (data.mode === "all_mcq") {
+        finalQuestions = finalQuestions.filter((q) => q.type === "mcq");
+      } else if (data.mode === "all_essay") {
+        finalQuestions = finalQuestions.filter((q) => q.type === "essay");
+      }
+
+      if (finalQuestions.length < 4) {
+        return {
+          questions: [] as TestQuestion[],
+          error:
+            data.mode === "mixed"
+              ? "The AI didn't return enough questions. Please try again."
+              : `The AI didn't follow the "${
+                  data.mode === "all_mcq" ? "all multiple choice" : "all essay"
+                }" mode. Please try generating again.`,
+        };
+      }
+
+      return { questions: finalQuestions, error: null as string | null };
     } catch (e) {
       console.error("generateTest error", e);
       return { questions: [] as TestQuestion[], error: "Network error talking to the AI." };
@@ -174,21 +208,33 @@ const evaluateTestInputSchema = z.object({
   answers: z.array(answerSchema).min(1),
 });
 
-const evaluationSchema = z.object({
-  questionId: z.string(),
-  type: z.literal("essay"),
-  correct: z.boolean(),
-  feedback: z.string().min(1).max(2000),
-});
+// Shape returned to the client. questionId is attached server-side by order,
+// never trusted from the model (it can't see the real ids).
+export type Evaluation = {
+  questionId: string;
+  type: "essay";
+  correct: boolean;
+  feedback: string;
+};
 
-type Evaluation = z.infer<typeof evaluationSchema>;
-
-const evaluationResponseSchema = z.array(evaluationSchema);
+// The model only returns correctness + feedback, one entry per essay question
+// in the SAME ORDER it was given. We map them back to real ids by index.
+const modelEvalSchema = z.array(
+  z.object({
+    correct: z.boolean(),
+    feedback: z.string().min(1).max(2000),
+  }),
+);
 
 export const evaluateTest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => evaluateTestInputSchema.parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const limited = await enforceRateLimit(context.supabase, RATE_LIMITS.evaluate);
+    if (limited) {
+      return { evaluations: [] as Evaluation[], error: limited };
+    }
+
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
     if (!GEMINI_API_KEY) {
       return {
@@ -204,15 +250,21 @@ export const evaluateTest = createServerFn({ method: "POST" })
 
     const answerLookup = Object.fromEntries(data.answers.map((answer) => [answer.questionId, answer.answer]));
 
-    const systemPrompt = `You are ScholarX test grader. Evaluate each student essay answer against the model answer. Output ONLY a JSON array with this exact shape:
-[
-  {"questionId":"...","type":"essay","correct":true|false,"feedback":"short feedback"}
-]
+    // Grade blank answers locally — no point spending an AI call to mark an
+    // empty answer wrong, and it keeps order-mapping simple to send them too.
+    const studentAnswers = essayQuestions.map((q) => (answerLookup[q.id] ?? "").trim());
+
+    const systemPrompt = `You are ScholarX's essay grader. You are given numbered essay questions, each with a model answer and the student's answer.
+
+Output ONLY a JSON array with EXACTLY one object per question, in the SAME ORDER as the questions, with this exact shape:
+[{"correct": true, "feedback": "..."}, {"correct": false, "feedback": "..."}]
+
 Rules:
-- Do not include markdown fences or any extra text.
-- Return feedback that explains whether the answer is correct and how it could be improved.
-- Compare student responses to the model answer and judge correctness, not grammar.
-`;
+- Return exactly ${essayQuestions.length} objects — one for question 1, then question 2, and so on. No more, no fewer.
+- Do NOT include questionId, the question text, markdown fences, or any commentary outside the JSON array.
+- "correct" = true only if the student's answer captures the key ideas of the model answer. Judge understanding, not spelling or grammar.
+- If the student's answer is blank or off-topic, "correct" must be false.
+- "feedback" (1-3 sentences): say what was right or missing and how to improve.`;
 
     const questionPayload = essayQuestions
       .map(
@@ -220,14 +272,13 @@ Rules:
           `Question ${index + 1}:
 ${item.question}
 Model answer: ${item.answer}
-Student answer: ${answerLookup[item.id] ?? ""}
-`,
+Student answer: ${studentAnswers[index] || "(left blank)"}`,
       )
-      .join("\n");
+      .join("\n\n");
 
     const userPrompt = `Topic: ${data.topic}
 
-Evaluate the following essay responses:
+Grade these ${essayQuestions.length} essay answers:
 
 ${questionPayload}`;
 
@@ -249,35 +300,50 @@ ${questionPayload}`;
       });
 
       if (res.status === 429) {
-        return { evaluations: [], error: "Too many requests right now. Please try again in a moment." };
+        return { evaluations: [] as Evaluation[], error: "Too many requests right now. Please try again in a moment." };
       }
       if (!res.ok) {
         const text = await res.text();
         console.error("Gemini test evaluation error", res.status, text);
-        return { evaluations: [], error: "The AI could not evaluate the test. Please try again." };
+        return { evaluations: [] as Evaluation[], error: "The AI could not evaluate the test. Please try again." };
       }
 
       const json = await res.json();
       const content: string = json?.choices?.[0]?.message?.content ?? "";
       if (!content) {
-        return { evaluations: [], error: "Empty AI response." };
+        return { evaluations: [] as Evaluation[], error: "Empty AI response." };
       }
 
       let parsed: unknown;
       try {
         parsed = extractJsonArray(content);
       } catch {
-        return { evaluations: [], error: "Could not parse the evaluation output. Please try again." };
+        return { evaluations: [] as Evaluation[], error: "Could not parse the evaluation output. Please try again." };
       }
 
-      const parsedEvaluation = evaluationResponseSchema.safeParse(parsed);
+      const parsedEvaluation = modelEvalSchema.safeParse(parsed);
       if (!parsedEvaluation.success) {
-        return { evaluations: [], error: "The evaluation format was invalid. Please try again." };
+        return { evaluations: [] as Evaluation[], error: "The evaluation format was invalid. Please try again." };
       }
 
-      return { evaluations: parsedEvaluation.data, error: null as string | null };
+      // Map results back to the real question ids by position. Robust to the
+      // model returning the wrong count: missing entries fall back sensibly.
+      const evaluations: Evaluation[] = essayQuestions.map((q, i) => {
+        const result = parsedEvaluation.data[i];
+        if (!result) {
+          return {
+            questionId: q.id,
+            type: "essay",
+            correct: false,
+            feedback: "This answer could not be evaluated automatically. Compare it with the model answer.",
+          };
+        }
+        return { questionId: q.id, type: "essay", correct: result.correct, feedback: result.feedback };
+      });
+
+      return { evaluations, error: null as string | null };
     } catch (e) {
       console.error("evaluateTest error", e);
-      return { evaluations: [], error: "Network error talking to the AI." };
+      return { evaluations: [] as Evaluation[], error: "Network error talking to the AI." };
     }
   });

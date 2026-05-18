@@ -2,7 +2,7 @@ import { createFileRoute, redirect, useNavigate, Link } from "@tanstack/react-ro
 import { RouteError } from "@/components/ui/route-error";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { askHomework, getGeminiKey } from "@/api/chat.functions";
+import { askHomework } from "@/api/chat.functions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -25,8 +25,6 @@ import {
   MicOff,
   Volume2,
   Square,
-  Headphones,
-  PhoneOff,
   ListTodo,
   Layers,
   Menu,
@@ -63,7 +61,7 @@ async function compressImage(file: File, maxDim = 1024, quality = 0.75): Promise
       const base64 = canvas.toDataURL("image/jpeg", quality).split(",")[1];
       resolve(base64);
     };
-    img.onerror = reject;
+    img.onerror = (e) => { URL.revokeObjectURL(url); reject(e); };
     img.src = url;
   });
 }
@@ -84,13 +82,6 @@ function pickVoice(): SpeechSynthesisVoice | null {
     if (match) return match;
   }
   return voices[0] ?? null;
-}
-
-function bufToBase64(buf: ArrayBuffer): string {
-  const bytes = new Uint8Array(buf);
-  let s = "";
-  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
-  return btoa(s);
 }
 
 function stripForSpeech(s: string) {
@@ -140,26 +131,11 @@ function ChatPage() {
   const [loading, setLoading] = useState(false);
   const [displayName, setDisplayName] = useState<string>("");
   const [listening, setListening] = useState(false);
-  const [convoMode, setConvoMode] = useState(false);
   const recognitionRef = useRef<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sendRef = useRef<(text?: string) => Promise<void>>(() => Promise.resolve());
-  const convoModeRef = useRef(false);
   const [speechSupported, setSpeechSupported] = useState(false);
   const [ttsSupported, setTtsSupported] = useState(false);
-  const geminiWsRef = useRef<WebSocket | null>(null);
-  const playbackCtxRef = useRef<AudioContext | null>(null);
-  const micCtxRef = useRef<AudioContext | null>(null);
-  const micStreamRef = useRef<MediaStream | null>(null);
-  const processorRef = useRef<AudioWorkletNode | null>(null);
-  const nextPlayTimeRef = useRef(0);
-  const pendingAsstTextRef = useRef("");
-  const pendingUserTextRef = useRef("");
-  const voiceConvoIdRef = useRef<string | null>(null);
-  const [streamingContent, setStreamingContent] = useState<string | null>(null);
-  const [streamingVoiceContent, setStreamingVoiceContent] = useState<string | null>(null);
-  const [streamingUserContent, setStreamingUserContent] = useState<string | null>(null);
-  const userCommittedRef = useRef(false);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [extrasOpen, setExtrasOpen] = useState(false);
@@ -189,10 +165,7 @@ function ChatPage() {
       !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition),
     );
     setTtsSupported("speechSynthesis" in window);
-    return () => { stopGeminiLive(); };
   }, []);
-
-  useEffect(() => { convoModeRef.current = convoMode; }, [convoMode]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -328,287 +301,6 @@ function ChatPage() {
     startListening(false);
   }
 
-  function playLivePcm(base64: string) {
-    const ctx = playbackCtxRef.current;
-    if (!ctx) return;
-    const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-    const int16 = new Int16Array(bytes.buffer);
-    const float32 = new Float32Array(int16.length);
-    for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768;
-    const buf = ctx.createBuffer(1, float32.length, 24000);
-    buf.getChannelData(0).set(float32);
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
-    src.connect(ctx.destination);
-    const now = ctx.currentTime;
-    const start = Math.max(nextPlayTimeRef.current, now);
-    src.start(start);
-    nextPlayTimeRef.current = start + buf.duration;
-  }
-
-  function stopPlayback() {
-    // Close and recreate the AudioContext so any scheduled/playing buffers stop immediately
-    playbackCtxRef.current?.close();
-    const fresh = new AudioContext();
-    fresh.resume();
-    playbackCtxRef.current = fresh;
-    nextPlayTimeRef.current = 0;
-  }
-
-  // Commit the user's pending utterance as a chat message (once per turn, before the AI reply)
-  function commitVoiceUser() {
-    if (userCommittedRef.current) return;
-    const user = pendingUserTextRef.current.trim();
-    if (!user) return;
-    pendingUserTextRef.current = "";
-    userCommittedRef.current = true;
-    setStreamingUserContent(null);
-    setMessages((prev) => [...prev, { role: "user" as const, content: user }]);
-    saveVoiceMessage("user", user);
-  }
-
-  // Commit the AI's pending reply and reset for the next turn
-  function commitVoiceAssistant(interrupted: boolean) {
-    const asst = pendingAsstTextRef.current.trim();
-    pendingAsstTextRef.current = "";
-    setStreamingVoiceContent(null);
-    if (asst) {
-      setMessages((prev) => [...prev, { role: "assistant" as const, content: asst, ...(interrupted ? { interrupted: true } : {}) }]);
-      saveVoiceMessage("assistant", asst);
-    }
-    userCommittedRef.current = false; // ready for the next user turn
-  }
-
-  function handleLiveMessage(raw: string) {
-    let data: any;
-    try { data = JSON.parse(raw); } catch { return; }
-    const sc = data.serverContent;
-    if (!sc) return;
-
-    // AI interrupted by user speech — flush user (if not yet) then the AI partial
-    if (sc.interrupted) {
-      stopPlayback();
-      commitVoiceUser();
-      commitVoiceAssistant(true);
-      return;
-    }
-
-    // User speech transcription — accumulate and show live as a user bubble
-    const inTx = sc.inputTranscription;
-    if (inTx?.text) {
-      pendingUserTextRef.current += inTx.text;
-      if (!userCommittedRef.current) setStreamingUserContent(pendingUserTextRef.current);
-    }
-
-    const parts: any[] = sc.modelTurn?.parts ?? [];
-    const outTx = sc.outputTranscription;
-    const modelResponding = !!outTx?.text || parts.some((p) => p.inlineData?.data);
-
-    // Model started replying → the user's turn is over: commit user message now (before the AI reply)
-    if (modelResponding) commitVoiceUser();
-
-    // AI audio chunks — play immediately
-    for (const p of parts) {
-      if (p.inlineData?.data) playLivePcm(p.inlineData.data);
-    }
-
-    // AI transcription — stream live into bubble
-    if (outTx?.text) {
-      pendingAsstTextRef.current += outTx.text;
-      setStreamingVoiceContent(pendingAsstTextRef.current);
-    }
-
-    // Model finished this turn — commit the AI reply (and any user text that never triggered the transition)
-    if (sc.turnComplete) {
-      commitVoiceUser();
-      commitVoiceAssistant(false);
-    }
-  }
-
-  function saveVoiceMessage(role: "user" | "assistant", content: string) {
-    const convoId = voiceConvoIdRef.current;
-    if (!convoId) return;
-    supabase.auth.getUser().then(({ data: u }) => {
-      if (!u.user) return;
-      supabase.from("messages").insert({ conversation_id: convoId, user_id: u.user.id, role, content });
-      supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", convoId);
-    });
-  }
-
-  function stopGeminiLive() {
-    processorRef.current?.disconnect();
-    processorRef.current = null;
-    micCtxRef.current?.close();
-    micCtxRef.current = null;
-    micStreamRef.current?.getTracks().forEach((t) => t.stop());
-    micStreamRef.current = null;
-    playbackCtxRef.current?.close();
-    playbackCtxRef.current = null;
-    geminiWsRef.current?.close();
-    geminiWsRef.current = null;
-    nextPlayTimeRef.current = 0;
-    pendingAsstTextRef.current = "";
-    pendingUserTextRef.current = "";
-    userCommittedRef.current = false;
-    setStreamingUserContent(null);
-    setStreamingVoiceContent(null);
-  }
-
-  async function startGeminiLive() {
-    const { data: sess } = await supabase.auth.getSession();
-    const token = sess.session?.access_token;
-    const { key } = await getGeminiKey({ headers: token ? { Authorization: `Bearer ${token}` } : undefined });
-    if (!key) { toast.error("Voice conversation not configured."); return; }
-
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch((err: any) => {
-      const name = err?.name ?? "";
-      if (name === "NotAllowedError") toast.error("Microphone permission denied.");
-      else if (name === "NotFoundError") toast.error("No microphone found.");
-      else toast.error("Couldn't access microphone.");
-      return null;
-    });
-    if (!stream) return;
-
-    micStreamRef.current = stream;
-    const playCtx = new AudioContext();
-    await playCtx.resume();
-    playbackCtxRef.current = playCtx;
-    nextPlayTimeRef.current = 0;
-
-    const ws = new WebSocket(
-      `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${key}`,
-    );
-    geminiWsRef.current = ws;
-
-    ws.onopen = () => {
-      console.log("[GeminiLive] WebSocket open, sending setup");
-      ws.send(JSON.stringify({
-        setup: {
-          model: "models/gemini-3.1-flash-live-preview",
-          generationConfig: {
-            responseModalities: ["AUDIO"],
-          },
-          inputAudioTranscription: {},
-          outputAudioTranscription: {},
-          systemInstruction: {
-            parts: [{ text: "You are a friendly AI homework tutor. Help students learn by walking through problems step by step. Keep answers clear and concise." }],
-          },
-        },
-      }));
-    };
-
-    ws.onmessage = async (e) => {
-      const raw: string = typeof e.data === "string" ? e.data : await (e.data as Blob).text();
-      let msg: any;
-      try { msg = JSON.parse(raw); } catch { return; }
-
-      if (msg.setupComplete || msg.setup_complete) {
-        console.log("[GeminiLive] Setup complete, starting mic");
-        const micCtx = new AudioContext();
-        await micCtx.resume();
-        micCtxRef.current = micCtx;
-
-        // Inline AudioWorklet processor — accumulates 2048 samples then posts a Float32Array
-        const workletSrc = `
-class MicProcessor extends AudioWorkletProcessor {
-  constructor() { super(); this._buf = []; }
-  process(inputs) {
-    const ch = inputs[0]?.[0];
-    if (ch) {
-      for (let i = 0; i < ch.length; i++) this._buf.push(ch[i]);
-      if (this._buf.length >= 2048) {
-        this.port.postMessage(new Float32Array(this._buf.splice(0, 2048)));
-      }
-    }
-    return true;
-  }
-}
-registerProcessor('mic-processor', MicProcessor);`;
-        const blobUrl = URL.createObjectURL(new Blob([workletSrc], { type: "application/javascript" }));
-        await micCtx.audioWorklet.addModule(blobUrl);
-        URL.revokeObjectURL(blobUrl);
-
-        const source = micCtx.createMediaStreamSource(stream);
-        const workletNode = new AudioWorkletNode(micCtx, "mic-processor");
-        processorRef.current = workletNode;
-        workletNode.port.onmessage = (ev) => {
-          if (ws.readyState !== WebSocket.OPEN) return;
-          const float32: Float32Array = ev.data;
-          const ratio = micCtx.sampleRate / 16000;
-          const outLen = Math.floor(float32.length / ratio);
-          const int16 = new Int16Array(outLen);
-          for (let i = 0; i < outLen; i++) {
-            const s = float32[Math.floor(i * ratio)];
-            int16[i] = Math.max(-32768, Math.min(32767, s * 32768));
-          }
-          ws.send(JSON.stringify({
-            realtimeInput: { audio: { data: bufToBase64(int16.buffer), mimeType: "audio/pcm;rate=16000" } },
-          }));
-        };
-        source.connect(workletNode);
-        workletNode.connect(micCtx.destination);
-        return;
-      }
-
-      handleLiveMessage(raw);
-    };
-
-    ws.onerror = (ev) => {
-      console.error("[GeminiLive] WebSocket error", ev);
-      toast.error("Voice connection error — ending conversation.");
-      setConvoMode(false);
-      setListening(false);
-      stopGeminiLive();
-    };
-
-    ws.onclose = (ev) => {
-      console.log("[GeminiLive] WebSocket closed", ev.code, ev.reason);
-      if (convoModeRef.current) {
-        commitVoiceUser();
-        commitVoiceAssistant(false);
-        setConvoMode(false);
-        setListening(false);
-        stopGeminiLive();
-      }
-    };
-
-    setListening(true);
-  }
-
-  async function toggleConvoMode() {
-    if (convoMode) {
-      convoModeRef.current = false;
-      // Flush the last in-progress turn before tearing down (buffers are cleared by stopGeminiLive)
-      commitVoiceUser();
-      commitVoiceAssistant(false);
-      setConvoMode(false);
-      setListening(false);
-      stopGeminiLive();
-      voiceConvoIdRef.current = null;
-      return;
-    }
-
-    // Create a Supabase conversation for this voice session upfront
-    const { data: u } = await supabase.auth.getUser();
-    if (u.user) {
-      const { data } = await supabase
-        .from("conversations")
-        .insert({ user_id: u.user.id, title: "Voice Conversation", subject })
-        .select("id")
-        .single();
-      if (data) {
-        voiceConvoIdRef.current = data.id;
-        setActiveId(data.id);
-        await loadConversations();
-      }
-    }
-
-    setConvoMode(true);
-    toast.success("Connecting to voice conversation…");
-    await startGeminiLive();
-  }
-
-
   // load profile + conversations
   useEffect(() => {
     (async () => {
@@ -625,10 +317,10 @@ registerProcessor('mic-processor', MicProcessor);`;
     })();
   }, []);
 
-  // auto scroll — also follows tokens as they stream in
+  // auto scroll
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, loading, streamingContent, streamingVoiceContent, streamingUserContent]);
+  }, [messages, loading]);
 
   async function loadConversations() {
     const { data, error } = await supabase
@@ -804,76 +496,25 @@ registerProcessor('mic-processor', MicProcessor);`;
 
       const { data: sess } = await supabase.auth.getSession();
       const token = sess.session?.access_token;
-      const { key } = await getGeminiKey({ headers: token ? { Authorization: `Bearer ${token}` } : undefined });
 
-      const subjectGuidance: Record<string, string> = {
-        math: "Focus on step-by-step problem solving. Show every step clearly. Use LaTeX-style notation when helpful (e.g. x^2). Never just give the final answer — walk through reasoning.",
-        science: "Explain underlying concepts and the 'why'. Use real-world analogies. Cover physics, chemistry and biology.",
-        english: "Help with grammar, writing structure, literary analysis, vocabulary. Provide examples and revisions, but encourage the student to write in their own voice.",
-        history: "Provide context, dates, causes and consequences. Encourage critical thinking about sources and perspectives.",
-        general: "Help with any school subject. Encourage the student's own thinking.",
-      };
-      const baseMission = `Your mission: help students LEARN, not cheat. You always:
-- Break problems into clear, numbered steps so the student understands the reasoning.
-- Ask a quick clarifying question if the request is ambiguous.
-- Encourage the student to attempt the next step themselves when appropriate.
-- Refuse to write entire essays, full take-home exams, or do graded assessments for the student. Instead, offer outlines, examples, feedback, and explanations.
-- Keep answers concise, age-appropriate, and use Markdown (headings, lists, **bold**) for readability.`;
-      const systemPrompt = subject === "general"
-        ? `You are a friendly AI homework tutor for students.\n\n${baseMission}\n\nYou can help with any school subject.`
-        : `You are a friendly AI homework tutor specializing in ${subject.toUpperCase()}.\n\n${baseMission}\n\n${subjectGuidance[subject]}`;
-
-      const contents = nextMessages.map((m, i) => {
-        const isLast = i === nextMessages.length - 1;
-        const p: any[] = [{ text: m.content || " " }];
-        if (isLast && imageBase64) p.push({ inline_data: { mime_type: "image/jpeg", data: imageBase64 } });
-        return { role: m.role === "assistant" ? "model" : "user", parts: p };
+      // The Gemini API key stays server-side: this server function holds the
+      // key and talks to Gemini. The browser never sees it.
+      // Only send the most recent turns: keeps us under the server's 40-message
+      // cap (so long conversations don't start failing) and bounds Gemini token
+      // cost per request. ~24 messages keeps plenty of context.
+      const result = await askHomework({
+        data: {
+          messages: nextMessages.slice(-24).map((m) => ({ role: m.role, content: m.content })),
+          subject,
+          image: imageBase64,
+        },
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
-
-      let fullContent = "";
-
-      if (key) {
-        const resp = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:streamGenerateContent?key=${key}&alt=sse`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ system_instruction: { parts: [{ text: systemPrompt }] }, contents }),
-          },
-        );
-        if (!resp.ok) throw new Error(`Gemini error ${resp.status}`);
-
-        setStreamingContent("");
-        const reader = resp.body!.getReader();
-        const decoder = new TextDecoder();
-        let buf = "";
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buf += decoder.decode(value, { stream: true });
-          const lines = buf.split("\n");
-          buf = lines.pop() ?? "";
-          for (const line of lines) {
-            if (!line.startsWith("data: ")) continue;
-            const jsonStr = line.slice(6).trim();
-            if (!jsonStr) continue;
-            try {
-              const chunk = JSON.parse(jsonStr);
-              const t = chunk.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-              if (t) { fullContent += t; setStreamingContent(fullContent); }
-            } catch { /* incomplete chunk */ }
-          }
-        }
-        setStreamingContent(null);
-      } else {
-        // Fallback to server function if key unavailable
-        const result = await askHomework({
-          data: { messages: nextMessages.map((m) => ({ role: m.role, content: m.content })), subject, image: imageBase64 },
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
-        if (result.error || !result.content) { toast.error(result.error ?? "No response"); return; }
-        fullContent = result.content;
+      if (result.error || !result.content) {
+        toast.error(result.error ?? "No response");
+        return;
       }
+      const fullContent = result.content;
 
       if (!fullContent) { toast.error("No response from AI"); return; }
       const assistantMsg: Msg = { role: "assistant", content: fullContent };
@@ -895,7 +536,6 @@ registerProcessor('mic-processor', MicProcessor);`;
     } catch (err) {
       console.error(err);
       toast.error(err instanceof Error ? err.message : "Failed to send");
-      setStreamingContent(null);
     } finally {
       setLoading(false);
       setImageFile(null);
@@ -1236,16 +876,7 @@ registerProcessor('mic-processor', MicProcessor);`;
             {messages.map((m, i) => (
               <Bubble key={m.id ?? i} role={m.role} content={m.content} image={m.image} ttsSupported={ttsSupported} interrupted={m.interrupted} />
             ))}
-            {streamingContent !== null && (
-              <Bubble role="assistant" content={streamingContent} ttsSupported={false} streaming />
-            )}
-            {streamingUserContent !== null && (
-              <Bubble role="user" content={streamingUserContent} ttsSupported={false} streaming />
-            )}
-            {streamingVoiceContent !== null && (
-              <Bubble role="assistant" content={streamingVoiceContent} ttsSupported={false} streaming />
-            )}
-            {loading && streamingContent === null && (
+            {loading && (
               <div className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground">
                 <span className="pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-primary" />
                 <span className="pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-primary [animation-delay:120ms]" />
@@ -1313,17 +944,6 @@ registerProcessor('mic-processor', MicProcessor);`;
                   title={listening ? "Stop dictation" : "Voice input"}
                 >
                   {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                </Button>
-              )}
-              {mounted && (
-                <Button
-                  onClick={toggleConvoMode}
-                  size="icon"
-                  variant={convoMode ? "destructive" : "secondary"}
-                  className="h-10 w-10 shrink-0 rounded-xl"
-                  title={convoMode ? "End voice conversation" : "Start voice conversation"}
-                >
-                  {convoMode ? <PhoneOff className="h-4 w-4" /> : <Headphones className="h-4 w-4" />}
                 </Button>
               )}
               <Button

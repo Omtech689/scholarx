@@ -1,10 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { enforceRateLimit, RATE_LIMITS } from "@/integrations/supabase/rate-limit";
 import { z } from "zod";
-
-export const getGeminiKey = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .handler(async () => ({ key: process.env.GEMINI_API_KEY ?? "" }));
 
 async function fetchWithRetry(url: string, init: RequestInit, maxRetries = 2): Promise<Response> {
   let attempt = 0;
@@ -42,7 +39,12 @@ const inputSchema = z.object({
 export const askHomework = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => inputSchema.parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const limited = await enforceRateLimit(context.supabase, RATE_LIMITS.chat);
+    if (limited) {
+      return { content: "", error: limited };
+    }
+
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
     if (!GEMINI_API_KEY) {
       return { content: "", error: "AI is not configured. Please contact support." };

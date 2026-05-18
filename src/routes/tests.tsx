@@ -2,7 +2,7 @@ import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-ro
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { generateTest } from "@/api/tests.functions";
+import { generateTest, evaluateTest, type Evaluation } from "@/api/tests.functions";
 type GenerateTestResult = {
   questions: Array<{ type: "mcq" | "essay"; question: string; answer: string; choices?: string[] }>;
   error: string | null;
@@ -31,6 +31,10 @@ import {
   TrendingUp,
   ChevronDown,
   LineChart,
+  Save,
+  CheckCircle2,
+  XCircle,
+  ClipboardCheck,
 } from "lucide-react";
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
@@ -50,6 +54,7 @@ type SavedTest = {
   createdAt: string;
   questions: TestQuestion[];
   answers: Record<string, string>;
+  evaluation: Evaluation[];
 };
 
 const TEST_MODES = [
@@ -86,6 +91,9 @@ function TestCreatorPage() {
   const [preview, setPreview] = useState<TestQuestion[] | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
+  const [evaluation, setEvaluation] = useState<Evaluation[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [grading, setGrading] = useState(false);
   const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -99,7 +107,7 @@ function TestCreatorPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tests")
-        .select("id, topic, mode, questions, answers, created_at")
+        .select("id, topic, mode, questions, answers, evaluation, created_at")
         .eq("user_id", userId!)
         .order("created_at", { ascending: false });
 
@@ -114,6 +122,7 @@ function TestCreatorPage() {
         createdAt: row.created_at,
         questions: row.questions as TestQuestion[],
         answers: (row.answers as Record<string, string>) ?? {},
+        evaluation: (row.evaluation as Evaluation[] | null) ?? [],
       }));
     },
     staleTime: 1000 * 60 * 2,
@@ -171,6 +180,7 @@ function TestCreatorPage() {
         mode: saved.mode,
         questions: saved.questions,
         answers: saved.answers,
+        evaluation: saved.evaluation,
       })
       .eq("id", selectedTestId)
       .eq("user_id", userId);
@@ -187,6 +197,8 @@ function TestCreatorPage() {
     setSelectedTestId(id);
     setPreview(saved.questions);
     setAnswers(saved.answers);
+    setEvaluation(saved.evaluation ?? []);
+    setRevealed({});
     setTopicSeed(saved.topic);
     setTestMode(saved.mode);
   }
@@ -203,6 +215,8 @@ function TestCreatorPage() {
     setPreview(null);
     setAnswers({});
     setRevealed({});
+    setEvaluation([]);
+    setSelectedTestId(null);
 
     try {
       const topic =
@@ -214,7 +228,9 @@ function TestCreatorPage() {
         data: {
           topic,
           mode: testMode,
-          messages: nextMessages,
+          // Cap history: stays under the server's 24-message limit and bounds
+          // Gemini token cost per request.
+          messages: nextMessages.slice(-16),
         },
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       }) as GenerateTestResult;
@@ -228,55 +244,19 @@ function TestCreatorPage() {
         return;
       }
 
+      // Generate into a local preview only — nothing is persisted until the
+      // user presses "Save test" (same flow as flashcards).
       const questions = result.questions.map((item, index) => ({
         id: `${Date.now()}-${index}`,
         ...item,
       }));
 
-      let savedTestId = `test-${Date.now()}`;
-      let createdAt = new Date().toISOString();
-
-      if (userId) {
-        const { data: inserted, error: insertError } = await supabase
-          .from("tests")
-          .insert([
-            {
-              user_id: userId,
-              topic,
-              mode: testMode,
-              questions,
-              answers: {},
-            },
-          ])
-          .select("id, created_at")
-          .single();
-
-        if (!insertError && inserted) {
-          savedTestId = inserted.id;
-          createdAt = inserted.created_at;
-        } else if (insertError) {
-          console.error("Failed to create saved test", insertError);
-          toast.error("Could not save the test. It will still work locally.");
-        }
-      }
-
-      const savedTest: SavedTest = {
-        id: savedTestId,
-        topic,
-        mode: testMode,
-        createdAt,
-        questions,
-        answers: {},
-      };
-
-      setSelectedTestId(savedTest.id);
-      queryClient.setQueryData<SavedTest[]>(["tests", userId], (previous) => [savedTest, ...(previous ?? [])].slice(0, 20));
       setPreview(questions);
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: `Generated ${questions.length} ${testMode === "all_mcq" ? "multiple-choice" : testMode === "all_essay" ? "essay" : "mixed"} questions for "${topic.slice(0, 120)}${topic.length > 120 ? "…" : ""}". Answer them below and reveal the model answers when you are ready.`,
+          content: `Generated ${questions.length} ${testMode === "all_mcq" ? "multiple-choice" : testMode === "all_essay" ? "essay" : "mixed"} questions for "${topic.slice(0, 120)}${topic.length > 120 ? "…" : ""}". Answer them, grade your essays, then Save to keep this test.`,
         },
       ]);
     } catch (err) {
@@ -289,11 +269,11 @@ function TestCreatorPage() {
   }
 
   function setAnswer(questionId: string, value: string) {
-    setAnswers((prev) => {
-      const next = { ...prev, [questionId]: value };
-      updateSavedTest({ answers: next });
-      return next;
-    });
+    const next = { ...answers, [questionId]: value };
+    setAnswers(next);
+    // Only auto-persist if this test is already saved. Freshly generated
+    // tests stay local until the user presses "Save test".
+    if (selectedTestId) void updateSavedTest({ answers: next });
   }
 
   function revealAnswer(questionId: string) {
@@ -313,9 +293,103 @@ function TestCreatorPage() {
     setPreview(null);
     setAnswers({});
     setRevealed({});
+    setEvaluation([]);
     setMessages([]);
     setDraft("");
     setSelectedTestId(null);
+  }
+
+  async function saveTest() {
+    if (!preview || !userId || selectedTestId) return;
+    setSaving(true);
+    try {
+      const topic = topicSeed.trim() || "Practice test";
+      const { data: inserted, error } = await supabase
+        .from("tests")
+        .insert([
+          {
+            user_id: userId,
+            topic,
+            mode: testMode,
+            questions: preview,
+            answers,
+            evaluation: evaluation.length ? evaluation : null,
+          },
+        ])
+        .select("id, created_at")
+        .single();
+
+      if (error || !inserted) {
+        console.error("Failed to save test", error);
+        toast.error("Could not save the test. Please try again.");
+        return;
+      }
+
+      setSelectedTestId(inserted.id);
+      const savedTest: SavedTest = {
+        id: inserted.id,
+        topic,
+        mode: testMode,
+        createdAt: inserted.created_at,
+        questions: preview,
+        answers,
+        evaluation,
+      };
+      queryClient.setQueryData<SavedTest[]>(["tests", userId], (previous) => [
+        savedTest,
+        ...(previous ?? []),
+      ]);
+      queryClient.invalidateQueries({ queryKey: ["tests", userId] });
+      toast.success("Test saved to your library");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function gradeEssays() {
+    if (!preview || grading) return;
+    const essayQuestions = preview.filter((q) => q.type === "essay");
+    if (essayQuestions.length === 0) {
+      toast.info("This test has no essay questions to grade.");
+      return;
+    }
+    if (essayQuestions.every((q) => !(answers[q.id] ?? "").trim())) {
+      toast.error("Write an answer for at least one essay question first.");
+      return;
+    }
+
+    setGrading(true);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      const res = await evaluateTest({
+        data: {
+          topic: topicSeed.trim() || "Practice test",
+          questions: preview.map((q) =>
+            q.type === "mcq"
+              ? { id: q.id, type: "mcq" as const, question: q.question, choices: q.choices ?? [], answer: q.answer }
+              : { id: q.id, type: "essay" as const, question: q.question, answer: q.answer },
+          ),
+          answers: essayQuestions.map((q) => ({ questionId: q.id, answer: answers[q.id] ?? "" })),
+        },
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
+      setEvaluation(res.evaluations);
+      // Reveal model answers so feedback and the ideal answer sit side by side.
+      revealAll();
+      if (selectedTestId) void updateSavedTest({ evaluation: res.evaluations, answers });
+      toast.success("Essays graded");
+    } catch (err) {
+      console.error("gradeEssays error", err);
+      toast.error("Grading failed. Please try again.");
+    } finally {
+      setGrading(false);
+    }
   }
 
   function exportTest() {
@@ -433,6 +507,11 @@ function TestCreatorPage() {
     }
     return count;
   }, 0);
+
+  const evalById: Record<string, Evaluation> = {};
+  for (const ev of evaluation) evalById[ev.questionId] = ev;
+  const essayCount = preview?.filter((q) => q.type === "essay").length ?? 0;
+  const essayCorrect = evaluation.filter((e) => e.correct).length;
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
@@ -839,6 +918,27 @@ function TestCreatorPage() {
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    {preview.some((q) => q.type === "essay") && (
+                      <Button size="sm" onClick={gradeEssays} disabled={grading} className="gap-1">
+                        {grading ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <ClipboardCheck className="h-3.5 w-3.5" />
+                        )}
+                        {grading ? "Grading…" : "Grade my essays"}
+                      </Button>
+                    )}
+                    {selectedTestId ? (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Saved
+                      </span>
+                    ) : (
+                      <Button size="sm" variant="secondary" onClick={saveTest} disabled={saving} className="gap-1">
+                        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                        {saving ? "Saving…" : "Save test"}
+                      </Button>
+                    )}
                     <Button variant="outline" size="sm" onClick={revealAll}>
                       Reveal all answers
                     </Button>
@@ -887,6 +987,32 @@ function TestCreatorPage() {
                     </div>
                   );
                 })()}
+                {essayCount > 0 && evaluation.length > 0 && (
+                  <div
+                    className="rounded-2xl border border-border p-4 text-sm"
+                    style={{
+                      background: `color-mix(in oklab, ${
+                        essayCorrect / essayCount >= 0.8
+                          ? "var(--science)"
+                          : essayCorrect / essayCount >= 0.5
+                          ? "var(--english)"
+                          : "var(--history)"
+                      } 10%, var(--card))`,
+                    }}
+                  >
+                    <div className="flex flex-wrap items-center gap-4">
+                      <div className="text-center">
+                        <div className="text-3xl font-bold" style={{ fontFamily: "var(--font-display)" }}>
+                          {essayCorrect}/{essayCount}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">Essays correct</div>
+                      </div>
+                      <p className="text-muted-foreground">
+                        AI-graded against the model answers. Open each essay below for specific feedback.
+                      </p>
+                    </div>
+                  </div>
+                )}
                 <div className="space-y-4">
                   {preview.map((item, index) => (
                     <div key={item.id} className="rounded-3xl border border-border bg-background/70 p-4 shadow-sm">
@@ -950,6 +1076,30 @@ function TestCreatorPage() {
                               </span>
                             )}
                           </div>
+                          {evalById[item.id] && (
+                            <div
+                              className="rounded-2xl border p-3 text-sm"
+                              style={{
+                                borderColor: evalById[item.id].correct ? "var(--science)" : "var(--history)",
+                                background: `color-mix(in oklab, ${
+                                  evalById[item.id].correct ? "var(--science)" : "var(--history)"
+                                } 10%, var(--card))`,
+                              }}
+                            >
+                              <p
+                                className="flex items-center gap-1.5 font-semibold"
+                                style={{ color: evalById[item.id].correct ? "var(--science)" : "var(--history)" }}
+                              >
+                                {evalById[item.id].correct ? (
+                                  <CheckCircle2 className="h-4 w-4" />
+                                ) : (
+                                  <XCircle className="h-4 w-4" />
+                                )}
+                                {evalById[item.id].correct ? "Correct" : "Needs work"}
+                              </p>
+                              <p className="mt-2 whitespace-pre-wrap text-foreground">{evalById[item.id].feedback}</p>
+                            </div>
+                          )}
                           {revealed[item.id] && (
                             <div className="rounded-2xl border border-border bg-muted/10 p-3 text-sm text-foreground">
                               <p className="font-semibold">Model answer</p>
