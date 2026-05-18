@@ -405,10 +405,11 @@ function ChatPage() {
     ws.onopen = () => {
       console.log("[GeminiLive] WebSocket open, sending setup");
       ws.send(JSON.stringify({
-        config: {
+        setup: {
           model: "models/gemini-3.1-flash-live-preview",
-          responseModalities: ["AUDIO"],
-          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } } },
+          generationConfig: {
+            responseModalities: ["AUDIO"],
+          },
           systemInstruction: {
             parts: [{ text: "You are a friendly AI homework tutor. Help students learn by walking through problems step by step. Keep answers clear and concise." }],
           },
@@ -417,10 +418,11 @@ function ChatPage() {
     };
 
     ws.onmessage = async (e) => {
+      console.log("[GeminiLive] Raw message:", typeof e.data, typeof e.data === "string" ? e.data.slice(0, 300) : "(binary)");
+      if (typeof e.data !== "string") return;
       let msg: any;
-      try { msg = JSON.parse(e.data); } catch { return; }
+      try { msg = JSON.parse(e.data); } catch (err) { console.error("[GeminiLive] JSON parse error:", err); return; }
 
-      // Gemini sends either camelCase or snake_case depending on API version
       if (msg.setupComplete || msg.setup_complete) {
         console.log("[GeminiLive] Setup complete, starting mic");
         const micCtx = new AudioContext();
