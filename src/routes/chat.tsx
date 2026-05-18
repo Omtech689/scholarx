@@ -404,7 +404,7 @@ function ChatPage() {
     ws.onopen = () => {
       ws.send(JSON.stringify({
         setup: {
-          model: "models/gemini-2.5-flash-native-audio-dialog",
+          model: "models/gemini-2.0-flash-live-001",
           generationConfig: {
             responseModalities: ["AUDIO"],
             speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } } },
@@ -414,34 +414,41 @@ function ChatPage() {
           },
         },
       }));
-
-      // Start streaming mic audio after setup
-      const micCtx = new AudioContext();
-      micCtxRef.current = micCtx;
-      const source = micCtx.createMediaStreamSource(stream);
-      // ScriptProcessorNode: capture PCM, resample to 16 kHz, stream to Gemini
-      const bufSize = 4096;
-      const proc = micCtx.createScriptProcessor(bufSize, 1, 1);
-      processorRef.current = proc;
-      proc.onaudioprocess = (e) => {
-        if (ws.readyState !== WebSocket.OPEN) return;
-        const input = e.inputBuffer.getChannelData(0);
-        const ratio = micCtx.sampleRate / 16000;
-        const outLen = Math.floor(input.length / ratio);
-        const int16 = new Int16Array(outLen);
-        for (let i = 0; i < outLen; i++) {
-          const s = input[Math.floor(i * ratio)];
-          int16[i] = Math.max(-32768, Math.min(32767, s * 32768));
-        }
-        ws.send(JSON.stringify({
-          realtimeInput: { mediaChunks: [{ data: bufToBase64(int16.buffer), mimeType: "audio/pcm;rate=16000" }] },
-        }));
-      };
-      source.connect(proc);
-      proc.connect(micCtx.destination);
     };
 
-    ws.onmessage = (e) => handleLiveMessage(e.data);
+    ws.onmessage = (e) => {
+      let msg: any;
+      try { msg = JSON.parse(e.data); } catch { return; }
+
+      if (msg.setupComplete) {
+        // Server confirmed setup — now safe to start streaming mic audio
+        const micCtx = new AudioContext();
+        micCtxRef.current = micCtx;
+        const source = micCtx.createMediaStreamSource(stream);
+        const bufSize = 4096;
+        const proc = micCtx.createScriptProcessor(bufSize, 1, 1);
+        processorRef.current = proc;
+        proc.onaudioprocess = (ev) => {
+          if (ws.readyState !== WebSocket.OPEN) return;
+          const input = ev.inputBuffer.getChannelData(0);
+          const ratio = micCtx.sampleRate / 16000;
+          const outLen = Math.floor(input.length / ratio);
+          const int16 = new Int16Array(outLen);
+          for (let i = 0; i < outLen; i++) {
+            const s = input[Math.floor(i * ratio)];
+            int16[i] = Math.max(-32768, Math.min(32767, s * 32768));
+          }
+          ws.send(JSON.stringify({
+            realtimeInput: { mediaChunks: [{ data: bufToBase64(int16.buffer), mimeType: "audio/pcm;rate=16000" }] },
+          }));
+        };
+        source.connect(proc);
+        proc.connect(micCtx.destination);
+        return;
+      }
+
+      handleLiveMessage(e.data);
+    };
 
     ws.onerror = () => {
       toast.error("Voice connection error — ending conversation.");
