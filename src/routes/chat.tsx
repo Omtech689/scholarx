@@ -418,10 +418,9 @@ function ChatPage() {
     };
 
     ws.onmessage = async (e) => {
-      console.log("[GeminiLive] Raw message:", typeof e.data, typeof e.data === "string" ? e.data.slice(0, 300) : "(binary)");
-      if (typeof e.data !== "string") return;
+      const raw: string = typeof e.data === "string" ? e.data : await (e.data as Blob).text();
       let msg: any;
-      try { msg = JSON.parse(e.data); } catch (err) { console.error("[GeminiLive] JSON parse error:", err); return; }
+      try { msg = JSON.parse(raw); } catch { return; }
 
       if (msg.setupComplete || msg.setup_complete) {
         console.log("[GeminiLive] Setup complete, starting mic");
@@ -451,8 +450,7 @@ function ChatPage() {
         return;
       }
 
-      console.log("[GeminiLive] Message:", JSON.stringify(msg).slice(0, 200));
-      handleLiveMessage(e.data);
+      handleLiveMessage(raw);
     };
 
     ws.onerror = (ev) => {
