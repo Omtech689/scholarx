@@ -69,7 +69,7 @@ export const Route = createRootRoute({
           "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.desmos.com",
           "font-src 'self' data: https://fonts.gstatic.com https://*.desmos.com",
           "img-src 'self' data: blob: https:",
-          "connect-src 'self' https://nozxlljeuswjxqoffrti.supabase.co wss://nozxlljeuswjxqoffrti.supabase.co https://generativelanguage.googleapis.com https://*.desmos.com",
+          "connect-src 'self' https://nozxlljeuswjxqoffrti.supabase.co wss://nozxlljeuswjxqoffrti.supabase.co https://generativelanguage.googleapis.com wss://generativelanguage.googleapis.com https://*.desmos.com",
           "worker-src 'self' blob: https://*.desmos.com",
           "frame-src 'self' https://challenges.cloudflare.com https://*.desmos.com",
           "object-src 'none'",
@@ -124,7 +124,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
         {/* Load Google Fonts without blocking render — preload swaps to stylesheet on load */}
         <script dangerouslySetInnerHTML={{ __html: `(function(){var l=document.createElement('link');l.rel='preload';l.as='style';l.href='https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap';l.onload=function(){this.rel='stylesheet'};document.head.appendChild(l);})()`}} />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         <QueryClientProvider client={queryClient}>
           {children}
           <Toaster />
