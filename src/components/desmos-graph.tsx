@@ -5,13 +5,12 @@ const DESMOS_SRC =
 
 // Approximate hex equivalents of the app's OKLCH theme palette.
 const T = {
-  bg:        "#1a1b2e", // oklch(0.16 0.02 265)
-  panel:     "#1e1f34", // oklch(0.20 0.025 265)
-  input:     "#13141f",
-  fg:        "#f2f3f8", // oklch(0.97 0.01 250)
-  muted:     "#9899b0", // oklch(0.68 0.02 260)
-  border:    "#2e2f48", // oklch(0.30 0.03 265)
-  primary:   "#41d4e4", // oklch(0.78 0.18 195)
+  bg:     "#1a1b2e", // oklch(0.16 0.02 265)
+  panel:  "#1e1f34", // oklch(0.20 0.025 265)
+  input:  "#13141f",
+  fg:     "#f2f3f8", // oklch(0.97 0.01 250)
+  muted:  "#9899b0", // oklch(0.68 0.02 260)
+  border: "#2e2f48", // oklch(0.30 0.03 265)
 };
 
 function buildSrcdoc(expression: string | undefined, keypad: boolean): string {
@@ -23,7 +22,6 @@ function buildSrcdoc(expression: string | undefined, keypad: boolean): string {
     expressions: true,
     backgroundColor: T.bg,
   });
-  // JSON.stringify handles all escaping; null means "no initial expression"
   const initExpr = expression !== undefined ? JSON.stringify(expression) : "null";
 
   return `<!DOCTYPE html><html><head>
@@ -64,8 +62,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:${T.bg};color:${T.fg
     setTimeout(function(){calc.resize();},50);
     window.parent.postMessage({type:'desmos-ready'},'*');
   }
-  // Script is at end of <body> so the DOM is already parsed; call init()
-  // directly. The internal polling handles the async Desmos CDN load.
   init();
   window.addEventListener('message',function(ev){
     if(!calc) return;
@@ -91,14 +87,13 @@ export function DesmosGraph({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [ready, setReady] = useState(false);
 
-  // Rebuild the srcdoc only when keypad changes; expression updates go via postMessage.
   const srcdoc = useMemo(
     () => buildSrcdoc(expression, keypad),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [keypad],
   );
 
-  // Listen for the calculator-ready signal from inside the srcdoc.
+  // postMessage from inside the srcdoc: expression updates + precise ready signal.
   useEffect(() => {
     function onMessage(e: MessageEvent) {
       if (e.data?.type === "desmos-ready") setReady(true);
@@ -134,6 +129,9 @@ export function DesmosGraph({
         ref={iframeRef}
         srcDoc={srcdoc}
         title="Graphing Calculator"
+        // onLoad fires once the iframe document (including its blocking scripts)
+        // has fully loaded — reliable fallback if postMessage never arrives.
+        onLoad={() => setReady(true)}
         style={{ width: "100%", height: "100%", border: "none", display: "block" }}
       />
     </div>
