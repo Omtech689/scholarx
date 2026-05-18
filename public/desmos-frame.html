@@ -1,0 +1,56 @@
+<!DOCTYPE html><html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="https://www.desmos.com/api/v1.9/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#1a1b2e;color:#f2f3f8;font-family:system-ui,sans-serif}
+#calc{width:100%;height:100%}
+.dcg-calculator-api-container{background:#1a1b2e!important}
+.dcg-expressions-panel,.dcg-expression-list{background:#1e1f34!important;border-right:1px solid #2e2f48!important}
+.dcg-expression-icon-container{border-bottom:1px solid #2e2f48!important;background:#1e1f34!important}
+.dcg-mq-editable-field,.dcg-mq-root-block{background:#13141f!important;color:#f2f3f8!important}
+.dcg-mq-cursor{border-color:#f2f3f8!important}
+.dcg-btn-flat,.dcg-action-btn-container{background:#1e1f34!important;color:#f2f3f8!important}
+.dcg-btn-flat:hover{background:#2e2f48!important}
+.dcg-keypad-container{background:#1e1f34!important;border-top:1px solid #2e2f48!important}
+.dcg-keypad-key,.dcg-keypad-action-key{background:#1e1f34!important;color:#f2f3f8!important;border:1px solid #2e2f48!important}
+.dcg-keypad-key:active,.dcg-keypad-action-key:active{background:#2e2f48!important}
+.dcg-header,.dcg-add-expression-container{background:#1e1f34!important;border-bottom:1px solid #2e2f48!important}
+.dcg-expression-text,.dcg-label{color:#f2f3f8!important}
+.dcg-icon-remove,.dcg-icon-error{color:#9899b0!important}
+.dcg-graphpaper-branding{opacity:0.4}
+</style>
+</head><body>
+<div id="calc"></div>
+<script>
+(function(){
+  var params=new URLSearchParams(location.search);
+  var keypad=params.get('keypad')!=='0';
+  var calc=null;
+  function init(){
+    if(!window.Desmos){setTimeout(init,50);return;}
+    var el=document.getElementById('calc');
+    if(!el){setTimeout(init,50);return;}
+    calc=Desmos.GraphingCalculator(el,{
+      keypad:keypad,
+      settingsMenu:false,
+      border:false,
+      lockViewport:false,
+      expressions:true,
+      backgroundColor:'#1a1b2e',
+    });
+    setTimeout(function(){calc.resize();},50);
+    window.parent.postMessage({type:'desmos-ready'},'*');
+  }
+  init();
+  window.addEventListener('message',function(ev){
+    if(!calc)return;
+    if(ev.data&&ev.data.type==='desmos-set-expr')
+      calc.setExpression({id:'e1',latex:ev.data.latex});
+    if(ev.data&&ev.data.type==='desmos-resize')
+      calc.resize();
+  });
+})();
+</script>
+</body></html>
