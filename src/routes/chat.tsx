@@ -155,6 +155,7 @@ function ChatPage() {
   const nextPlayTimeRef = useRef(0);
   const pendingAsstTextRef = useRef("");
   const pendingUserTextRef = useRef("");
+  const voiceConvoIdRef = useRef<string | null>(null);
   const [streamingContent, setStreamingContent] = useState<string | null>(null);
   const [streamingVoiceContent, setStreamingVoiceContent] = useState<string | null>(null);
 
@@ -362,55 +363,62 @@ function ChatPage() {
     const sc = data.serverContent;
     if (!sc) return;
 
-    // AI interrupted by user speech — stop audio and save whatever was said so far
+    // AI interrupted — stop audio, commit whatever was transcribed so far
     if (sc.interrupted) {
       stopPlayback();
       const partial = pendingAsstTextRef.current.trim();
       pendingAsstTextRef.current = "";
       setStreamingVoiceContent(null);
-      if (partial) setMessages((prev) => [...prev, { role: "assistant" as const, content: partial, interrupted: true }]);
+      if (partial) {
+        setMessages((prev) => [...prev, { role: "assistant" as const, content: partial, interrupted: true }]);
+        saveVoiceMessage("assistant", partial);
+      }
       return;
     }
 
-    // Incremental user speech transcription
+    // Accumulate user transcription (do NOT add to chat yet — wait for turnComplete for correct ordering)
     const inTx = sc.inputTranscription;
-    if (inTx?.text) {
-      pendingUserTextRef.current += inTx.text;
-      if (inTx.finished) {
-        const text = pendingUserTextRef.current.trim();
-        pendingUserTextRef.current = "";
-        if (text) setMessages((prev) => [...prev, { role: "user" as const, content: text }]);
-      }
-    }
+    if (inTx?.text) pendingUserTextRef.current += inTx.text;
 
-    // AI audio chunks
+    // AI audio chunks — play immediately
     const parts: any[] = sc.modelTurn?.parts ?? [];
     for (const p of parts) {
       if (p.inlineData?.data) playLivePcm(p.inlineData.data);
     }
 
-    // AI text transcription — stream into bubble as it arrives
+    // AI transcription — stream live into bubble
     const outTx = sc.outputTranscription;
     if (outTx?.text) {
       pendingAsstTextRef.current += outTx.text;
       setStreamingVoiceContent(pendingAsstTextRef.current);
-      if (outTx.finished) {
-        const text = pendingAsstTextRef.current.trim();
-        pendingAsstTextRef.current = "";
-        setStreamingVoiceContent(null);
-        if (text) setMessages((prev) => [...prev, { role: "assistant" as const, content: text }]);
-      }
     }
 
+    // Turn complete — commit both messages: user first, then AI (preserves conversation order)
     if (sc.turnComplete) {
+      const user = pendingUserTextRef.current.trim();
       const asst = pendingAsstTextRef.current.trim();
+      pendingUserTextRef.current = "";
       pendingAsstTextRef.current = "";
       setStreamingVoiceContent(null);
-      if (asst) setMessages((prev) => [...prev, { role: "assistant" as const, content: asst }]);
-      const user = pendingUserTextRef.current.trim();
-      pendingUserTextRef.current = "";
-      if (user) setMessages((prev) => [...prev, { role: "user" as const, content: user }]);
+      setMessages((prev) => {
+        const next = [...prev];
+        if (user) next.push({ role: "user" as const, content: user });
+        if (asst) next.push({ role: "assistant" as const, content: asst });
+        return next;
+      });
+      if (user) saveVoiceMessage("user", user);
+      if (asst) saveVoiceMessage("assistant", asst);
     }
+  }
+
+  function saveVoiceMessage(role: "user" | "assistant", content: string) {
+    const convoId = voiceConvoIdRef.current;
+    if (!convoId) return;
+    supabase.auth.getUser().then(({ data: u }) => {
+      if (!u.user) return;
+      supabase.from("messages").insert({ conversation_id: convoId, user_id: u.user.id, role, content });
+      supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", convoId);
+    });
   }
 
   function stopGeminiLive() {
@@ -530,11 +538,29 @@ function ChatPage() {
 
   async function toggleConvoMode() {
     if (convoMode) {
+      convoModeRef.current = false;
       setConvoMode(false);
       setListening(false);
       stopGeminiLive();
+      voiceConvoIdRef.current = null;
       return;
     }
+
+    // Create a Supabase conversation for this voice session upfront
+    const { data: u } = await supabase.auth.getUser();
+    if (u.user) {
+      const { data } = await supabase
+        .from("conversations")
+        .insert({ user_id: u.user.id, title: "Voice Conversation", subject })
+        .select("id")
+        .single();
+      if (data) {
+        voiceConvoIdRef.current = data.id;
+        setActiveId(data.id);
+        await loadConversations();
+      }
+    }
+
     setConvoMode(true);
     toast.success("Connecting to voice conversation…");
     await startGeminiLive();
@@ -815,7 +841,7 @@ function ChatPage() {
         conversation_id: convoId,
         user_id: u.user.id,
         role: "assistant",
-        content: result.content,
+        content: fullContent,
       });
 
       await supabase
