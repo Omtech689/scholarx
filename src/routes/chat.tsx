@@ -221,6 +221,7 @@ function ChatPage() {
   const sidebarStartWidthRef = useRef(320);
   const [mounted, setMounted] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; id: string } | null>(null);
 
   const filteredConversations = useMemo(
     () =>
@@ -281,6 +282,18 @@ function ChatPage() {
       window.removeEventListener("mouseup", handleMouseUp);
     };
   }, []);
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const close = () => setContextMenu(null);
+    const keyClose = (e: KeyboardEvent) => { if (e.key === "Escape") setContextMenu(null); };
+    window.addEventListener("click", close);
+    window.addEventListener("keydown", keyClose);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("keydown", keyClose);
+    };
+  }, [contextMenu]);
 
   const startListening = useCallback((autoSend: boolean) => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -1146,7 +1159,11 @@ registerProcessor('mic-processor', MicProcessor);`;
                         selectConversation(c.id);
                         setMobileMenuOpen(false);
                       }}
-                      className={`flex-1 flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        setContextMenu({ x: e.clientX, y: e.clientY, id: c.id });
+                      }}
+                      className={`min-w-0 flex-1 flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
                         activeId === c.id
                           ? "bg-primary/15 text-foreground"
                           : "hover:bg-secondary text-muted-foreground hover:text-foreground"
@@ -1158,7 +1175,7 @@ registerProcessor('mic-processor', MicProcessor);`;
                     <button
                       type="button"
                       onClick={(e) => deleteConversation(c.id, e)}
-                      className="h-8 w-8 flex items-center justify-center shrink-0 rounded-full text-muted-foreground hover:text-destructive"
+                      className="h-8 w-8 flex items-center justify-center shrink-0 rounded-full text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                       title="Delete conversation"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -1255,7 +1272,11 @@ registerProcessor('mic-processor', MicProcessor);`;
                 <div className="flex items-center gap-1 group">
                   <button
                     onClick={() => selectConversation(c.id)}
-                    className={`flex-1 flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setContextMenu({ x: e.clientX, y: e.clientY, id: c.id });
+                    }}
+                    className={`min-w-0 flex-1 flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
                       activeId === c.id
                         ? "bg-primary/15 text-foreground"
                         : "hover:bg-secondary text-muted-foreground hover:text-foreground"
@@ -1268,7 +1289,7 @@ registerProcessor('mic-processor', MicProcessor);`;
                     variant="ghost"
                     size="icon"
                     onClick={(e) => deleteConversation(c.id, e)}
-                    className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                    className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                     title="Delete conversation"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -1565,6 +1586,30 @@ registerProcessor('mic-processor', MicProcessor);`;
           </div>
         </div>
       </main>
+
+      {/* Right-click context menu */}
+      {contextMenu && (
+        <div
+          className="fixed z-50 bg-popover border rounded-md shadow-md py-1 min-w-[160px]"
+          style={{
+            top: Math.min(contextMenu.y, window.innerHeight - 56),
+            left: Math.min(contextMenu.x, window.innerWidth - 168),
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            className="w-full px-3 py-1.5 text-sm text-left flex items-center gap-2 text-destructive hover:bg-destructive/10 rounded-sm"
+            onClick={(e) => {
+              deleteConversation(contextMenu.id, e);
+              setContextMenu(null);
+            }}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Delete chat
+          </button>
+        </div>
+      )}
     </div>
   );
 }
