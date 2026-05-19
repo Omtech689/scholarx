@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TestsRouteImport } from './routes/tests'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as SupportRouteImport } from './routes/support'
 import { Route as StudyRouteImport } from './routes/study'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ResearchRouteImport } from './routes/research'
@@ -37,6 +38,11 @@ const TestsRoute = TestsRouteImport.update({
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SupportRoute = SupportRouteImport.update({
+  id: '/support',
+  path: '/support',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StudyRoute = StudyRouteImport.update({
@@ -139,6 +145,7 @@ export interface FileRoutesByFullPath {
   '/research': typeof ResearchRoute
   '/reset-password': typeof ResetPasswordRoute
   '/study': typeof StudyRoute
+  '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/tests': typeof TestsRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -160,6 +167,7 @@ export interface FileRoutesByTo {
   '/research': typeof ResearchRoute
   '/reset-password': typeof ResetPasswordRoute
   '/study': typeof StudyRoute
+  '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/tests': typeof TestsRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -182,6 +190,7 @@ export interface FileRoutesById {
   '/research': typeof ResearchRoute
   '/reset-password': typeof ResetPasswordRoute
   '/study': typeof StudyRoute
+  '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/tests': typeof TestsRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -205,6 +214,7 @@ export interface FileRouteTypes {
     | '/research'
     | '/reset-password'
     | '/study'
+    | '/support'
     | '/terms'
     | '/tests'
     | '/auth/callback'
@@ -226,6 +236,7 @@ export interface FileRouteTypes {
     | '/research'
     | '/reset-password'
     | '/study'
+    | '/support'
     | '/terms'
     | '/tests'
     | '/auth/callback'
@@ -247,6 +258,7 @@ export interface FileRouteTypes {
     | '/research'
     | '/reset-password'
     | '/study'
+    | '/support'
     | '/terms'
     | '/tests'
     | '/auth/callback'
@@ -269,6 +281,7 @@ export interface RootRouteChildren {
   ResearchRoute: typeof ResearchRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   StudyRoute: typeof StudyRoute
+  SupportRoute: typeof SupportRoute
   TermsRoute: typeof TermsRoute
   TestsRoute: typeof TestsRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
@@ -299,6 +312,13 @@ declare module '@tanstack/react-router' {
       path: '/study'
       fullPath: '/study'
       preLoaderRoute: typeof StudyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/support': {
+      id: '/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -429,6 +449,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResearchRoute: ResearchRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   StudyRoute: StudyRoute,
+  SupportRoute: SupportRoute,
   TermsRoute: TermsRoute,
   TestsRoute: TestsRoute,
   AuthCallbackRoute: AuthCallbackRoute,

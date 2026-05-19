@@ -1,4 +1,5 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { AppSidebarLinks } from "@/components/app-sidebar-links";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -130,8 +131,6 @@ function FlashcardsPage() {
 
   const queryClient = useQueryClient();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [extrasOpen, setExtrasOpen] = useState(false);
-  const [mobileExtrasOpen, setMobileExtrasOpen] = useState(false);
 
   const profileQuery = useQuery<string>({
     queryKey: ["profile"],
@@ -502,82 +501,12 @@ function FlashcardsPage() {
                 ))}
               </ul>
             </ScrollArea>
-            <div className="border-t border-border px-3 py-3 space-y-1">
-              <Link
-                to="/chat"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-              >
-                <MessageSquare className="h-4 w-4" /> Chat
-              </Link>
-              <Link
-                to="/planner"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-              >
-                <ListTodo className="h-4 w-4" /> Study planner
-              </Link>
-              <Link
-                to="/progress"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-              >
-                <TrendingUp className="h-4 w-4" /> Progress
-              </Link>
-              <button
-                onClick={() => setMobileExtrasOpen((v) => !v)}
-                className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-              >
-                <Sparkles className="h-4 w-4" />
-                Extra functions
-                <ChevronDown
-                  className={`ml-auto h-3.5 w-3.5 transition-transform duration-200 ${mobileExtrasOpen ? "rotate-180" : ""}`}
-                />
-              </button>
-              {mobileExtrasOpen && (
-                <div className="ml-4 space-y-0.5 border-l border-border pl-2">
-                  <Link
-                    to="/flashcards"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-primary font-medium hover:bg-accent hover:text-accent-foreground transition"
-                  >
-                    <Layers className="h-3.5 w-3.5" /> Flashcards
-                  </Link>
-                  <Link
-                    to="/tests"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-                  >
-                    <BookOpen className="h-3.5 w-3.5" /> Test creator
-                  </Link>
-                  <Link
-                    to="/graph"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-                  >
-                    <LineChart className="h-3.5 w-3.5" /> Graphing
-                  </Link>
-                </div>
-              )}
-              <div className="flex items-center justify-between gap-2 px-2 pt-1 text-sm">
-                <Link
-                  to="/profile"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="min-w-0 truncate text-muted-foreground hover:text-foreground transition"
-                >
-                  {displayName}
-                </Link>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={logout}
-                  title="Sign out"
-                  className="shrink-0"
-                >
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
+            <AppSidebarLinks
+              currentPage="flashcards"
+              displayName={displayName}
+              onLogout={logout}
+              onClose={() => setMobileMenuOpen(false)}
+            />
           </SheetContent>
         </Sheet>
 
@@ -643,75 +572,11 @@ function FlashcardsPage() {
               ))}
             </ul>
           </ScrollArea>
-          <div className="border-t border-border px-3 py-3 space-y-1">
-            <Link
-              to="/chat"
-              className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-            >
-              <MessageSquare className="h-4 w-4" /> Chat
-            </Link>
-            <Link
-              to="/planner"
-              className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-            >
-              <ListTodo className="h-4 w-4" /> Study planner
-            </Link>
-            <Link
-              to="/progress"
-              className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-            >
-              <TrendingUp className="h-4 w-4" /> Progress
-            </Link>
-            <button
-              onClick={() => setExtrasOpen((v) => !v)}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-            >
-              <Sparkles className="h-4 w-4" />
-              Extra functions
-              <ChevronDown
-                className={`ml-auto h-3.5 w-3.5 transition-transform duration-200 ${extrasOpen ? "rotate-180" : ""}`}
-              />
-            </button>
-            {extrasOpen && (
-              <div className="ml-4 space-y-0.5 border-l border-border pl-2">
-                <Link
-                  to="/flashcards"
-                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-primary font-medium hover:bg-accent hover:text-accent-foreground transition"
-                >
-                  <Layers className="h-3.5 w-3.5" /> Flashcards
-                </Link>
-                <Link
-                  to="/tests"
-                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-                >
-                  <BookOpen className="h-3.5 w-3.5" /> Test creator
-                </Link>
-                <Link
-                  to="/graph"
-                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-                >
-                  <LineChart className="h-3.5 w-3.5" /> Graphing
-                </Link>
-              </div>
-            )}
-            <div className="flex items-center justify-between gap-2 px-2 pt-1 text-sm">
-              <Link
-                to="/profile"
-                className="min-w-0 truncate text-muted-foreground hover:text-foreground transition"
-              >
-                {displayName}
-              </Link>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={logout}
-                title="Sign out"
-                className="shrink-0"
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+          <AppSidebarLinks
+            currentPage="flashcards"
+            displayName={displayName}
+            onLogout={logout}
+          />
         </aside>
 
         {/* Main - preview cards list */}
@@ -820,82 +685,12 @@ function FlashcardsPage() {
               ))}
             </ul>
           </ScrollArea>
-          <div className="border-t border-border px-3 py-3 space-y-1">
-            <Link
-              to="/chat"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-            >
-              <MessageSquare className="h-4 w-4" /> Chat
-            </Link>
-            <Link
-              to="/planner"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-            >
-              <ListTodo className="h-4 w-4" /> Study planner
-            </Link>
-            <Link
-              to="/progress"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-            >
-              <TrendingUp className="h-4 w-4" /> Progress
-            </Link>
-            <button
-              onClick={() => setMobileExtrasOpen((v) => !v)}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-            >
-              <Sparkles className="h-4 w-4" />
-              Extra functions
-              <ChevronDown
-                className={`ml-auto h-3.5 w-3.5 transition-transform duration-200 ${mobileExtrasOpen ? "rotate-180" : ""}`}
-              />
-            </button>
-            {mobileExtrasOpen && (
-              <div className="ml-4 space-y-0.5 border-l border-border pl-2">
-                <Link
-                  to="/flashcards"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-primary font-medium hover:bg-accent hover:text-accent-foreground transition"
-                >
-                  <Layers className="h-3.5 w-3.5" /> Flashcards
-                </Link>
-                <Link
-                  to="/tests"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-                >
-                  <BookOpen className="h-3.5 w-3.5" /> Test creator
-                </Link>
-                <Link
-                  to="/graph"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-                >
-                  <LineChart className="h-3.5 w-3.5" /> Graphing
-                </Link>
-              </div>
-            )}
-            <div className="flex items-center justify-between gap-2 px-2 pt-1 text-sm">
-              <Link
-                to="/profile"
-                onClick={() => setMobileMenuOpen(false)}
-                className="min-w-0 truncate text-muted-foreground hover:text-foreground transition"
-              >
-                {displayName}
-              </Link>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={logout}
-                title="Sign out"
-                className="shrink-0"
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+          <AppSidebarLinks
+            currentPage="flashcards"
+            displayName={displayName}
+            onLogout={logout}
+            onClose={() => setMobileMenuOpen(false)}
+          />
         </SheetContent>
       </Sheet>
 
@@ -954,75 +749,11 @@ function FlashcardsPage() {
             ))}
           </ul>
         </ScrollArea>
-        <div className="border-t border-border px-3 py-3 space-y-1">
-          <Link
-            to="/chat"
-            className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-          >
-            <MessageSquare className="h-4 w-4" /> Chat
-          </Link>
-          <Link
-            to="/planner"
-            className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-          >
-            <ListTodo className="h-4 w-4" /> Study planner
-          </Link>
-          <Link
-            to="/progress"
-            className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-          >
-            <TrendingUp className="h-4 w-4" /> Progress
-          </Link>
-          <button
-            onClick={() => setExtrasOpen((v) => !v)}
-            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-          >
-            <Sparkles className="h-4 w-4" />
-            Extra functions
-            <ChevronDown
-              className={`ml-auto h-3.5 w-3.5 transition-transform duration-200 ${extrasOpen ? "rotate-180" : ""}`}
-            />
-          </button>
-          {extrasOpen && (
-            <div className="ml-4 space-y-0.5 border-l border-border pl-2">
-              <Link
-                to="/flashcards"
-                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-primary font-medium hover:bg-accent hover:text-accent-foreground transition"
-              >
-                <Layers className="h-3.5 w-3.5" /> Flashcards
-              </Link>
-              <Link
-                to="/tests"
-                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-              >
-                <BookOpen className="h-3.5 w-3.5" /> Test creator
-              </Link>
-              <Link
-                to="/graph"
-                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition"
-              >
-                <LineChart className="h-3.5 w-3.5" /> Graphing
-              </Link>
-            </div>
-          )}
-          <div className="flex items-center justify-between gap-2 px-2 pt-1 text-sm">
-            <Link
-              to="/profile"
-              className="min-w-0 truncate text-muted-foreground hover:text-foreground transition"
-            >
-              {displayName}
-            </Link>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={logout}
-              title="Sign out"
-              className="shrink-0"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+        <AppSidebarLinks
+          currentPage="flashcards"
+          displayName={displayName}
+          onLogout={logout}
+        />
       </aside>
 
       {/* Main */}

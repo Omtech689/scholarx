@@ -1,4 +1,5 @@
 import { createFileRoute, redirect, Link, useNavigate } from "@tanstack/react-router";
+import { AppSidebarLinks } from "@/components/app-sidebar-links";
 import { RouteError } from "@/components/ui/route-error";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,8 +48,6 @@ function GraphPage() {
   const navigate = useNavigate();
   const [displayName, setDisplayName] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [extrasOpen, setExtrasOpen] = useState(false);
-  const [mobileExtrasOpen, setMobileExtrasOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -68,64 +67,6 @@ function GraphPage() {
     navigate({ to: "/" });
   }
 
-  function SidebarFooter({ mobile = false }: { mobile?: boolean }) {
-    const open = mobile ? mobileExtrasOpen : extrasOpen;
-    const toggle = mobile
-      ? () => setMobileExtrasOpen((v) => !v)
-      : () => setExtrasOpen((v) => !v);
-    const close = () => setMobileOpen(false);
-
-    return (
-      <div className="border-t border-border px-3 py-3 space-y-1">
-        <Link to="/chat" onClick={mobile ? close : undefined} className={NAV_LINK}>
-          <MessageSquare className="h-4 w-4" /> Chat
-        </Link>
-        <Link to="/planner" onClick={mobile ? close : undefined} className={NAV_LINK}>
-          <ListTodo className="h-4 w-4" /> Study planner
-        </Link>
-        <Link to="/progress" onClick={mobile ? close : undefined} className={NAV_LINK}>
-          <TrendingUp className="h-4 w-4" /> Progress
-        </Link>
-        <button onClick={toggle} className={`${NAV_LINK} w-full`}>
-          <Sparkles className="h-4 w-4" />
-          Extra functions
-          <ChevronDown
-            className={`ml-auto h-3.5 w-3.5 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-          />
-        </button>
-        {open && (
-          <div className="ml-4 space-y-0.5 border-l border-border pl-2">
-            <Link to="/flashcards" onClick={mobile ? close : undefined} className={SUB_LINK}>
-              <Layers className="h-3.5 w-3.5" /> Flashcards
-            </Link>
-            <Link to="/tests" onClick={mobile ? close : undefined} className={SUB_LINK}>
-              <BookOpen className="h-3.5 w-3.5" /> Test creator
-            </Link>
-            <Link
-              to="/graph"
-              onClick={mobile ? close : undefined}
-              className={`${SUB_LINK} text-primary font-medium`}
-            >
-              <LineChart className="h-3.5 w-3.5" /> Graphing
-            </Link>
-          </div>
-        )}
-        <div className="flex items-center justify-between gap-2 px-2 pt-1 text-sm">
-          <Link
-            to="/profile"
-            onClick={mobile ? close : undefined}
-            className="min-w-0 truncate text-muted-foreground hover:text-foreground transition"
-          >
-            {displayName}
-          </Link>
-          <Button variant="ghost" size="icon" onClick={logout} title="Sign out" className="shrink-0">
-            <LogOut className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Mobile drawer */}
@@ -136,7 +77,12 @@ function GraphPage() {
             ScholarX
           </div>
           <div className="flex-1" />
-          <SidebarFooter mobile />
+          <AppSidebarLinks
+            currentPage="graph"
+            displayName={displayName}
+            onLogout={logout}
+            onClose={() => setMobileOpen(false)}
+          />
         </SheetContent>
       </Sheet>
 
@@ -162,7 +108,11 @@ function GraphPage() {
           <p>Supports trig, log, exponents, and more.</p>
         </div>
         <div className="flex-1" />
-        <SidebarFooter />
+        <AppSidebarLinks
+          currentPage="graph"
+          displayName={displayName}
+          onLogout={logout}
+        />
       </aside>
 
       {/* Main */}

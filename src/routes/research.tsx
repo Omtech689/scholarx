@@ -1,4 +1,5 @@
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { AppSidebarLinks } from "@/components/app-sidebar-links";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { RouteError } from "@/components/ui/route-error";
 import { useConfirm } from "@/components/ui/confirm";
 import { downloadMarkdown, printMarkdownAsPdf, markdownToHtml } from "@/lib/export";
@@ -22,6 +24,7 @@ import {
   Download,
   FileDown,
   Plus,
+  Menu,
 } from "lucide-react";
 
 type Source = { label: string; text: string };
@@ -56,9 +59,26 @@ export const Route = createFileRoute("/research")({
 });
 
 function ResearchPage() {
+  const navigate = useNavigate();
   const confirm = useConfirm();
   const queryClient = useQueryClient();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [displayName, setDisplayName] = useState("Student");
   const [brief, setBrief] = useState("");
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: u }) => {
+      if (!u.user) return;
+      supabase.from("profiles").select("display_name").eq("id", u.user.id).maybeSingle().then(({ data: p }) => {
+        setDisplayName(p?.display_name ?? u.user?.email?.split("@")[0] ?? "Student");
+      });
+    });
+  }, []);
+
+  async function logout() {
+    await supabase.auth.signOut();
+    navigate({ to: "/" });
+  }
   const [style, setStyle] = useState<"report" | "literature_review" | "summary">("report");
   const [sources, setSources] = useState<Source[]>([{ label: "", text: "" }]);
   const [loading, setLoading] = useState(false);
@@ -222,6 +242,23 @@ function ResearchPage() {
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
+      {/* Mobile drawer */}
+      <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+        <SheetContent side="left" className="flex w-80 flex-col p-0">
+          <div className="flex items-center gap-2 px-5 py-5 font-display text-lg font-semibold">
+            <Microscope className="h-5 w-5 text-primary" /> Research
+          </div>
+          <div className="flex-1" />
+          <AppSidebarLinks
+            currentPage="research"
+            displayName={displayName}
+            onLogout={logout}
+            onClose={() => setMobileMenuOpen(false)}
+          />
+        </SheetContent>
+      </Sheet>
+
+      {/* Desktop sidebar */}
       <aside className="hidden w-72 shrink-0 flex-col border-r border-border bg-card/40 backdrop-blur md:flex">
         <div className="flex items-center gap-2 px-5 py-5 font-display text-lg font-semibold">
           <Microscope className="h-5 w-5 text-primary" /> Research
@@ -276,21 +313,22 @@ function ResearchPage() {
             ))}
           </ul>
         </ScrollArea>
+        <AppSidebarLinks
+          currentPage="research"
+          displayName={displayName}
+          onLogout={logout}
+        />
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center gap-2 border-b border-border px-4 py-3 md:px-6">
-          <Button
-            asChild
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 md:hidden"
-            aria-label="Back to chat"
+          <button
+            className="md:hidden shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-secondary"
+            onClick={() => setMobileMenuOpen(true)}
+            aria-label="Open menu"
           >
-            <Link to="/chat">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
+            <Menu className="h-5 w-5" />
+          </button>
           <div>
             <h1
               className="text-base font-semibold leading-none"

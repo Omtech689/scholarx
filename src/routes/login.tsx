@@ -277,6 +277,8 @@ function LoginPage() {
           <Link to="/privacy" className="underline hover:text-foreground">Privacy</Link>
           {" · "}
           <Link to="/terms" className="underline hover:text-foreground">Terms</Link>
+          {" · "}
+          <Link to="/support" className="underline hover:text-foreground">Help</Link>
         </p>
       </div>
     </main>

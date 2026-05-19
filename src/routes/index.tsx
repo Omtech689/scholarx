@@ -129,6 +129,7 @@ function Landing() {
         <a href="#features" className="mobile-nav-link" onClick={closeMobileNav}>Features</a>
         <a href="#how" className="mobile-nav-link" onClick={closeMobileNav}>How it works</a>
         <a href="#planner" className="mobile-nav-link" onClick={closeMobileNav}>Planner</a>
+        <a href="#support" className="mobile-nav-link" onClick={closeMobileNav}>Support</a>
 
         <div className="mobile-nav-divider" />
 
@@ -152,6 +153,7 @@ function Landing() {
               <a href="#features" className="nav-link">Features</a>
               <a href="#how" className="nav-link">How it works</a>
               <a href="#planner" className="nav-link">Planner</a>
+              <a href="#support" className="nav-link">Support</a>
             </div>
             {/* Desktop CTAs */}
             <a href="/login" className="btn btn-ghost nav-cta">Sign in</a>
@@ -351,6 +353,57 @@ function Landing() {
         </div>
       </section>
 
+      {/* ---------- Support / FAQ ---------- */}
+      <section id="support" className="section">
+        <div className="section-head reveal">
+          <span className="section-eyebrow">Help &amp; Support</span>
+          <h2 className="section-title">Frequently asked questions</h2>
+          <p className="section-sub">
+            Quick answers to common questions. Need more help?{" "}
+            <Link to="/support" className="underline hover:opacity-80">Visit the full support page</Link>{" "}
+            or email us at{" "}
+            <a href="mailto:support@scholarx.app" className="underline hover:opacity-80">support@scholarx.app</a>.
+          </p>
+        </div>
+
+        <div className="steps reveal" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
+          <div className="step reveal">
+            <div className="step-num">Q</div>
+            <h3 className="step-title">Is ScholarX free?</h3>
+            <p className="step-desc">Yes — 100% free. No credit card, no subscription, no hidden fees. Create an account and start learning immediately.</p>
+          </div>
+          <div className="step reveal delay-1">
+            <div className="step-num">Q</div>
+            <h3 className="step-title">What subjects are supported?</h3>
+            <p className="step-desc">Math, Science, English, and History — with a general mode for anything else. Photo problem-solving works across all subjects.</p>
+          </div>
+          <div className="step reveal delay-2">
+            <div className="step-num">Q</div>
+            <h3 className="step-title">Is my data private?</h3>
+            <p className="step-desc">Your conversations are stored securely in your account and are never shared with third parties or used to train AI models.</p>
+          </div>
+          <div className="step reveal">
+            <div className="step-num">Q</div>
+            <h3 className="step-title">Can I use it on mobile?</h3>
+            <p className="step-desc">Yes. ScholarX is fully responsive and works in any modern mobile browser. Voice input and voice conversation mode are supported too.</p>
+          </div>
+          <div className="step reveal delay-1">
+            <div className="step-num">Q</div>
+            <h3 className="step-title">Can I upload photos of problems?</h3>
+            <p className="step-desc">Yes — tap the image icon in the chat to upload a photo of a textbook question or handwritten problem. ScholarX will solve and explain it.</p>
+          </div>
+          <div className="step reveal delay-2">
+            <div className="step-num">Q</div>
+            <h3 className="step-title">How do I reset my password?</h3>
+            <p className="step-desc">On the sign-in page, click "Forgot your password?" and enter your email. You'll receive a reset link within a few minutes.</p>
+          </div>
+        </div>
+
+        <div className="reveal" style={{ textAlign: "center", marginTop: "2rem" }}>
+          <Link to="/support" className="btn btn-outline">View all FAQs →</Link>
+        </div>
+      </section>
+
       {/* ---------- CTA ---------- */}
       <section className="section">
         <div className="cta reveal">
@@ -378,6 +431,8 @@ function Landing() {
       <footer className="landing-footer">
         <span>© {new Date().getFullYear()} ScholarX · Built for students who want to actually understand it.</span>
         <span className="flex items-center gap-3 text-xs opacity-70">
+          <Link to="/support" className="hover:opacity-100 transition-opacity">Help</Link>
+          <span>·</span>
           <Link to="/privacy" className="hover:opacity-100 transition-opacity">Privacy Policy</Link>
           <span>·</span>
           <Link to="/terms" className="hover:opacity-100 transition-opacity">Terms of Service</Link>

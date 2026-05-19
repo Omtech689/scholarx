@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate, Link } from "@tanstack/react-router";
 import { RouteError } from "@/components/ui/route-error";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +16,8 @@ import {
   LogOut,
   CheckCircle,
   GraduationCap,
+  MessageSquare,
+  LifeBuoy,
 } from "lucide-react";
 
 const LEARNING_STYLES = [
@@ -296,13 +298,10 @@ function ProfilePage() {
       <div className="container mx-auto max-w-4xl px-4 py-8">
         {/* Header */}
         <div className="mb-8 flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => window.history.back()}
-            className="shrink-0"
-          >
-            <ArrowLeft className="h-4 w-4" />
+          <Button variant="ghost" size="icon" asChild className="shrink-0">
+            <Link to="/chat">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
           </Button>
           <h1 className="text-2xl font-bold">Profile Settings</h1>
         </div>
@@ -344,6 +343,18 @@ function ProfilePage() {
                 <Shield className="h-4 w-4" />
                 Security
               </button>
+              <Button variant="ghost" asChild className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground">
+                <Link to="/chat">
+                  <MessageSquare className="h-4 w-4" />
+                  Back to app
+                </Link>
+              </Button>
+              <Button variant="ghost" asChild className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground">
+                <Link to="/support">
+                  <LifeBuoy className="h-4 w-4" />
+                  Help &amp; Support
+                </Link>
+              </Button>
               <Button
                 variant="ghost"
                 onClick={logout}
