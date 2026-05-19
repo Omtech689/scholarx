@@ -8,6 +8,7 @@ declare global {
   interface Window {
     Tawk_API: {
       onLoad?: () => void;
+      onChatMessageAgent?: (message: unknown) => void;
       setAttributes?: (attrs: Record<string, string>, cb: (err: unknown) => void) => void;
       maximize?: () => void;
       minimize?: () => void;
@@ -41,12 +42,27 @@ async function identifyUser() {
   api.setAttributes(attrs, () => {});
 }
 
+// Open and maximize the chat window. Queues if the widget hasn't loaded yet.
 export function openTawkChat() {
   if (typeof window === "undefined") return;
   const api = window.Tawk_API;
   if (!api) return;
-  api.showWidget?.();
-  api.maximize?.();
+
+  const open = () => {
+    api.showWidget?.();
+    if (!api.isChatMaximized?.()) api.maximize?.();
+  };
+
+  if (typeof api.maximize === "function") {
+    open();
+  } else {
+    // Widget still bootstrapping — queue it
+    const prev = api.onLoad;
+    api.onLoad = function () {
+      if (typeof prev === "function") prev();
+      open();
+    };
+  }
 }
 
 export function TawkTo() {
@@ -59,7 +75,14 @@ export function TawkTo() {
     window.Tawk_API = window.Tawk_API || {};
     window.Tawk_LoadStart = new Date();
 
-    window.Tawk_API.onLoad = identifyUser;
+    window.Tawk_API.onLoad = function () {
+      identifyUser();
+      // Auto-open the chat window whenever an agent replies
+      window.Tawk_API.onChatMessageAgent = function () {
+        window.Tawk_API?.showWidget?.();
+        window.Tawk_API?.maximize?.();
+      };
+    };
 
     const s1 = document.createElement("script");
     s1.id = "tawkto-script";

@@ -75,14 +75,14 @@ export const Route = createRootRoute({
         content: [
           "default-src 'self'",
           "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://challenges.cloudflare.com https://static.cloudflareinsights.com https://*.desmos.com https://embed.tawk.to https://*.tawk.to",
-          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.desmos.com",
-          "font-src 'self' data: https://fonts.gstatic.com https://*.desmos.com",
+          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.desmos.com https://*.tawk.to https://tawk.to",
+          "font-src 'self' data: https://fonts.gstatic.com https://*.desmos.com https://*.tawk.to https://tawk.to",
           "img-src 'self' data: blob: https:",
           // Gemini endpoints are needed ONLY for the Live voice WebSocket, which
           // authenticates with a short-lived ephemeral token (never the API key).
           "connect-src 'self' https://nozxlljeuswjxqoffrti.supabase.co wss://nozxlljeuswjxqoffrti.supabase.co https://generativelanguage.googleapis.com wss://generativelanguage.googleapis.com https://cloudflareinsights.com https://*.desmos.com https://*.tawk.to wss://*.tawk.to",
           "worker-src 'self' blob: https://*.desmos.com",
-          "frame-src 'self' https://challenges.cloudflare.com https://*.desmos.com https://*.tawk.to",
+          "frame-src 'self' https://challenges.cloudflare.com https://*.desmos.com https://*.tawk.to https://tawk.to",
           "form-action 'self'",
           "object-src 'none'",
           "base-uri 'self'",
