@@ -74,7 +74,7 @@ export const Route = createRootRoute({
         httpEquiv: "Content-Security-Policy",
         content: [
           "default-src 'self'",
-          "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://challenges.cloudflare.com https://static.cloudflareinsights.com https://*.desmos.com https://embed.tawk.to https://*.tawk.to",
+          "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://challenges.cloudflare.com https://static.cloudflareinsights.com https://*.desmos.com https://embed.tawk.to https://*.tawk.to https://cdn.jsdelivr.net",
           "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.desmos.com https://*.tawk.to https://tawk.to",
           "font-src 'self' data: https://fonts.gstatic.com https://*.desmos.com https://*.tawk.to https://tawk.to",
           "img-src 'self' data: blob: https:",
