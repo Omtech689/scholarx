@@ -1,4 +1,5 @@
-import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { FeatureLanding } from "@/components/feature-landing";
 import { AppSidebarLinks } from "@/components/app-sidebar-links";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -104,12 +105,16 @@ export const Route = createFileRoute("/flashcards")({
     ],
   }),
   beforeLoad: async () => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined") return { session: null };
     const { data } = await supabase.auth.getSession();
-    if (!data.session) throw redirect({ to: "/login", search: { mode: "signin" as const } });
+    return { session: data.session ?? null };
   },
   errorComponent: RouteError,
-  component: FlashcardsPage,
+  component: () => {
+    const { session } = Route.useRouteContext();
+    if (!session) return <FeatureLanding feature="flashcards" />;
+    return <FlashcardsPage />;
+  },
 });
 
 function FlashcardsPage() {

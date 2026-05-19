@@ -1,4 +1,5 @@
-import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { FeatureLanding } from "@/components/feature-landing";
 import { AppSidebarLinks } from "@/components/app-sidebar-links";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -42,12 +43,16 @@ export const Route = createFileRoute("/progress")({
     ],
   }),
   beforeLoad: async () => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined") return { session: null };
     const { data } = await supabase.auth.getSession();
-    if (!data.session) throw redirect({ to: "/login", search: { mode: "signin" as const } });
+    return { session: data.session ?? null };
   },
   errorComponent: RouteError,
-  component: ProgressPage,
+  component: () => {
+    const { session } = Route.useRouteContext();
+    if (!session) return <FeatureLanding feature="progress" />;
+    return <ProgressPage />;
+  },
 });
 
 type Task = { completed: boolean; subject: string | null; completed_at: string | null; created_at: string };

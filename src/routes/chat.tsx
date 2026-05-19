@@ -1,4 +1,5 @@
-import { createFileRoute, redirect, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { FeatureLanding } from "@/components/feature-landing";
 import { RouteError } from "@/components/ui/route-error";
 import { AppSidebarLinks } from "@/components/app-sidebar-links";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -161,12 +162,16 @@ export const Route = createFileRoute("/chat")({
     ],
   }),
   beforeLoad: async () => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined") return { session: null };
     const { data } = await supabase.auth.getSession();
-    if (!data.session) throw redirect({ to: "/login", search: { mode: "signin" as const } });
+    return { session: data.session ?? null };
   },
   errorComponent: RouteError,
-  component: ChatPage,
+  component: () => {
+    const { session } = Route.useRouteContext();
+    if (!session) return <FeatureLanding feature="chat" />;
+    return <ChatPage />;
+  },
 });
 
 function ChatPage() {
