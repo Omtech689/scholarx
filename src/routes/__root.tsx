@@ -82,6 +82,7 @@ export const Route = createRootRoute({
           "connect-src 'self' https://nozxlljeuswjxqoffrti.supabase.co wss://nozxlljeuswjxqoffrti.supabase.co https://generativelanguage.googleapis.com wss://generativelanguage.googleapis.com https://cloudflareinsights.com https://*.desmos.com",
           "worker-src 'self' blob: https://*.desmos.com",
           "frame-src 'self' https://challenges.cloudflare.com https://*.desmos.com",
+          "form-action 'self'",
           "object-src 'none'",
           "base-uri 'self'",
         ].join("; "),

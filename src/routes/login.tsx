@@ -256,7 +256,25 @@ function LoginPage() {
               {isSignup ? "Sign in" : "Create Account"}
             </button>
           </p>
+
+          {isSignup && (
+            <p className="mt-4 text-center text-xs text-muted-foreground">
+              By creating an account you agree to our{" "}
+              <Link to="/terms" className="underline hover:text-foreground">Terms of Service</Link>
+              {" "}and{" "}
+              <Link to="/privacy" className="underline hover:text-foreground">Privacy Policy</Link>.
+            </p>
+          )}
         </div>
+
+        <p className="mt-6 text-center text-xs text-muted-foreground">
+          ScholarX is an independent AI study tool.{" "}
+          <Link to="/" className="underline hover:text-foreground">Learn more</Link>
+          {" · "}
+          <Link to="/privacy" className="underline hover:text-foreground">Privacy</Link>
+          {" · "}
+          <Link to="/terms" className="underline hover:text-foreground">Terms</Link>
+        </p>
       </div>
     </main>
   );
