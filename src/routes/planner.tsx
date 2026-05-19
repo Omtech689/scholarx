@@ -57,9 +57,28 @@ export const Route = createFileRoute("/planner")({
   head: () => ({
     meta: [
       { title: "Study Planner — ScholarX" },
-      { name: "description", content: "Track assignments, deadlines and priorities. Your personal study planner." },
-      { name: "robots", content: "noindex, nofollow" },
+      {
+        name: "description",
+        content:
+          "Stay on top of every assignment and deadline. Track tasks by subject, priority, and due date — your personal study planner built into ScholarX. Free for students.",
+      },
+      { property: "og:title", content: "Study Planner — ScholarX" },
+      {
+        property: "og:description",
+        content:
+          "Track assignments, deadlines, and priorities in one place. A simple, fast study planner for students — free.",
+      },
+      { property: "og:url", content: "https://scholarx.space/planner" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Study Planner — ScholarX" },
+      {
+        name: "twitter:description",
+        content:
+          "Track assignments and deadlines by subject, priority, and due date. Built-in study planner — free for students.",
+      },
     ],
+    links: [{ rel: "canonical", href: "https://scholarx.space/planner" }],
   }),
   beforeLoad: async () => {
     if (typeof window === "undefined") return { session: null };

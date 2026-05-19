@@ -26,10 +26,26 @@ export const Route = createFileRoute("/graph")({
       { title: "Graphing Calculator — ScholarX" },
       {
         name: "description",
-        content: "Interactive Desmos graphing calculator for visualising mathematical functions.",
+        content:
+          "The full Desmos graphing calculator built into ScholarX. Plot functions, explore equations with sliders, and visualise math instantly — free for students.",
       },
-      { name: "robots", content: "noindex, nofollow" },
+      { property: "og:title", content: "Graphing Calculator — ScholarX" },
+      {
+        property: "og:description",
+        content:
+          "Full Desmos graphing calculator built in. Plot functions, parametric and polar curves, and click AI tutor formulas to graph them instantly. Free.",
+      },
+      { property: "og:url", content: "https://scholarx.space/graph" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Graphing Calculator — ScholarX" },
+      {
+        name: "twitter:description",
+        content:
+          "Full Desmos graphing calculator inside ScholarX. Plot equations, use sliders, and graph AI tutor formulas instantly. Free.",
+      },
     ],
+    links: [{ rel: "canonical", href: "https://scholarx.space/graph" }],
   }),
   beforeLoad: async () => {
     if (typeof window === "undefined") return { session: null };

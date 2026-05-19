@@ -38,13 +38,29 @@ type DocRow = {
 export const Route = createFileRoute("/study")({
   head: () => ({
     meta: [
-      { title: "Study Guides — ScholarX" },
+      { title: "AI Study Guide Generator — ScholarX" },
       {
         name: "description",
-        content: "Generate AI study guides from any topic or chat and save them.",
+        content:
+          "Turn any topic into a clear, structured study guide with key concepts, definitions, and worked examples — ready in seconds. Free for students.",
       },
-      { name: "robots", content: "noindex, nofollow" },
+      { property: "og:title", content: "AI Study Guide Generator — ScholarX" },
+      {
+        property: "og:description",
+        content:
+          "Generate organized study guides on any topic instantly. Key concepts, definitions, and examples included. Export to Markdown. Free.",
+      },
+      { property: "og:url", content: "https://scholarx.space/study" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "AI Study Guide Generator — ScholarX" },
+      {
+        name: "twitter:description",
+        content:
+          "Generate a structured study guide on any topic in seconds — key concepts, definitions, and examples. Free for students.",
+      },
     ],
+    links: [{ rel: "canonical", href: "https://scholarx.space/study" }],
   }),
   beforeLoad: async () => {
     if (typeof window === "undefined") return { session: null };

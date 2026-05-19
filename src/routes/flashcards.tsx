@@ -96,13 +96,29 @@ function isDue(card: DbCard): boolean {
 export const Route = createFileRoute("/flashcards")({
   head: () => ({
     meta: [
-      { title: "Flashcards — ScholarX" },
+      { title: "AI Flashcards with Spaced Repetition — ScholarX" },
       {
         name: "description",
-        content: "Generate AI flashcards from any topic and save them to your library.",
+        content:
+          "Generate flashcard decks on any topic in seconds. Study smarter with the SM-2 spaced repetition algorithm — automatically schedules cards at the right time. Free for students.",
       },
-      { name: "robots", content: "noindex, nofollow" },
+      { property: "og:title", content: "AI Flashcards with Spaced Repetition — ScholarX" },
+      {
+        property: "og:description",
+        content:
+          "Generate a full flashcard deck from any topic in seconds. SM-2 spaced repetition schedules your reviews automatically. Export to CSV or PDF. Free.",
+      },
+      { property: "og:url", content: "https://scholarx.space/flashcards" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "AI Flashcards with Spaced Repetition — ScholarX" },
+      {
+        name: "twitter:description",
+        content:
+          "Generate flashcard decks on any topic in seconds. SM-2 spaced repetition keeps your reviews on track. Free for students.",
+      },
     ],
+    links: [{ rel: "canonical", href: "https://scholarx.space/flashcards" }],
   }),
   beforeLoad: async () => {
     if (typeof window === "undefined") return { session: null };

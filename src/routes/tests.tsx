@@ -70,13 +70,29 @@ const TEST_MODES = [
 export const Route = createFileRoute("/tests")({
   head: () => ({
     meta: [
-      { title: "Test Creator — ScholarX" },
+      { title: "AI Practice Test Creator — ScholarX" },
       {
         name: "description",
-        content: "Generate interactive AI practice tests and answer them inside ScholarX.",
+        content:
+          "Generate multiple-choice and essay practice tests on any topic. Answer interactively, get instant MCQ scoring, and see AI-written model answers. Free for students.",
       },
-      { name: "robots", content: "noindex, nofollow" },
+      { property: "og:title", content: "AI Practice Test Creator — ScholarX" },
+      {
+        property: "og:description",
+        content:
+          "Create MCQ and essay tests on any topic in seconds. Instant scoring, model answers, and PDF export — free for students.",
+      },
+      { property: "og:url", content: "https://scholarx.space/tests" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "AI Practice Test Creator — ScholarX" },
+      {
+        name: "twitter:description",
+        content:
+          "Generate MCQ or essay tests on any topic, answer interactively, and get instant scores with model answers. Free.",
+      },
     ],
+    links: [{ rel: "canonical", href: "https://scholarx.space/tests" }],
   }),
   errorComponent: RouteError,
   beforeLoad: async () => {

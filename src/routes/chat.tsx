@@ -156,10 +156,25 @@ export const Route = createFileRoute("/chat")({
       {
         name: "description",
         content:
-          "Ask your AI tutor anything — Math, Science, English, or History. Instant explanations with full math rendering.",
+          "Ask your AI tutor anything in Math, Science, English, or History. Get step-by-step explanations, voice conversation mode, and photo problem solving — free for students.",
       },
-      { name: "robots", content: "noindex, nofollow" },
+      { property: "og:title", content: "AI Tutor — ScholarX" },
+      {
+        property: "og:description",
+        content:
+          "Step-by-step AI tutoring for Math, Science, English, and History. Voice conversation, photo problem solver, and full math rendering — free.",
+      },
+      { property: "og:url", content: "https://scholarx.space/chat" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "AI Tutor — ScholarX" },
+      {
+        name: "twitter:description",
+        content:
+          "Step-by-step AI tutoring with voice mode, photo problem solving, and math rendering. Free for students.",
+      },
     ],
+    links: [{ rel: "canonical", href: "https://scholarx.space/chat" }],
   }),
   beforeLoad: async () => {
     if (typeof window === "undefined") return { session: null };

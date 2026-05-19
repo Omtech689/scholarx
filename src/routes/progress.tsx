@@ -37,10 +37,29 @@ import {
 export const Route = createFileRoute("/progress")({
   head: () => ({
     meta: [
-      { title: "Progress — ScholarX" },
-      { name: "description", content: "Track your study progress across tasks, flashcards, and tests." },
-      { name: "robots", content: "noindex, nofollow" },
+      { title: "Progress Dashboard — ScholarX" },
+      {
+        name: "description",
+        content:
+          "See your chat activity, flashcard review stats, and test scores all in one dashboard. Track how your studying is improving over time — free for students.",
+      },
+      { property: "og:title", content: "Progress Dashboard — ScholarX" },
+      {
+        property: "og:description",
+        content:
+          "Track chat sessions, flashcard performance, and test scores automatically. See your improvement at a glance — free.",
+      },
+      { property: "og:url", content: "https://scholarx.space/progress" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Progress Dashboard — ScholarX" },
+      {
+        name: "twitter:description",
+        content:
+          "See your study stats — chat activity, flashcard reviews, and test scores — updated automatically. Free.",
+      },
     ],
+    links: [{ rel: "canonical", href: "https://scholarx.space/progress" }],
   }),
   beforeLoad: async () => {
     if (typeof window === "undefined") return { session: null };

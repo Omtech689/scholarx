@@ -2,15 +2,7 @@ User-agent: *
 Allow: /
 Disallow: /api/
 Disallow: /auth/
-Disallow: /chat
-Disallow: /flashcards
-Disallow: /tests
-Disallow: /planner
 Disallow: /profile
-Disallow: /progress
-Disallow: /study
-Disallow: /research
-Disallow: /graph
 Disallow: /reset-password
 
 Sitemap: https://scholarx.space/sitemap.xml

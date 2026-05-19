@@ -45,10 +45,26 @@ export const Route = createFileRoute("/research")({
       { title: "Research Mode — ScholarX" },
       {
         name: "description",
-        content: "Synthesize a cited research report from sources you provide.",
+        content:
+          "Build in-depth, structured overviews on any topic. Great for essays, projects, and deep exam prep — ScholarX organizes the research so you can focus on understanding.",
       },
-      { name: "robots", content: "noindex, nofollow" },
+      { property: "og:title", content: "Research Mode — ScholarX" },
+      {
+        property: "og:description",
+        content:
+          "Generate structured, in-depth research overviews on any topic. Ideal for essays and projects. Free for students.",
+      },
+      { property: "og:url", content: "https://scholarx.space/research" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Research Mode — ScholarX" },
+      {
+        name: "twitter:description",
+        content:
+          "Get structured, in-depth overviews on any topic. Great for essays, projects, and exam revision. Free.",
+      },
     ],
+    links: [{ rel: "canonical", href: "https://scholarx.space/research" }],
   }),
   beforeLoad: async () => {
     if (typeof window === "undefined") return { session: null };
