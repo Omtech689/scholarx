@@ -202,6 +202,9 @@ function ChatPage() {
   const pendingAsstTextRef = useRef("");
   const pendingUserTextRef = useRef("");
   const voiceConvoIdRef = useRef<string | null>(null);
+  const voiceIsNewConvoRef = useRef(false);
+  const voiceFirstUserTextRef = useRef("");
+  const voiceFirstAsstTextRef = useRef("");
   const userCommittedRef = useRef(false);
   const [streamingVoiceContent, setStreamingVoiceContent] = useState<string | null>(null);
   const [streamingUserContent, setStreamingUserContent] = useState<string | null>(null);
@@ -421,6 +424,9 @@ function ChatPage() {
     setStreamingUserContent(null);
     setMessages((prev) => [...prev, { role: "user" as const, content: user }]);
     saveVoiceMessage("user", user);
+    if (voiceIsNewConvoRef.current && !voiceFirstUserTextRef.current) {
+      voiceFirstUserTextRef.current = user;
+    }
   }
 
   function commitVoiceAssistant(interrupted: boolean) {
@@ -437,8 +443,35 @@ function ChatPage() {
         },
       ]);
       saveVoiceMessage("assistant", asst);
+      if (
+        voiceIsNewConvoRef.current &&
+        voiceFirstUserTextRef.current &&
+        !voiceFirstAsstTextRef.current
+      ) {
+        voiceFirstAsstTextRef.current = asst;
+        generateVoiceChatTitle(voiceFirstUserTextRef.current, asst);
+      }
     }
     userCommittedRef.current = false;
+  }
+
+  async function generateVoiceChatTitle(userText: string, assistantText: string) {
+    const convoId = voiceConvoIdRef.current;
+    if (!convoId) return;
+    const { data: sess } = await supabase.auth.getSession();
+    const token = sess.session?.access_token;
+    try {
+      const { title } = await generateTitle({
+        data: { messages: [{ role: "user", content: userText }, { role: "assistant", content: assistantText }] },
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (title && voiceConvoIdRef.current) {
+        await supabase.from("conversations").update({ title }).eq("id", voiceConvoIdRef.current);
+        await loadConversations();
+      }
+    } catch (e) {
+      console.error("[voice] auto-title failed", e);
+    }
   }
 
   function handleLiveServerContent(sc: any) {
@@ -480,11 +513,12 @@ function ChatPage() {
   function saveVoiceMessage(role: "user" | "assistant", content: string) {
     const convoId = voiceConvoIdRef.current;
     if (!convoId) return;
-    supabase.auth.getUser().then(({ data: u }) => {
-      if (!u.user) return;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) return;
       supabase
         .from("messages")
-        .insert({ conversation_id: convoId, user_id: u.user.id, role, content });
+        .insert({ conversation_id: convoId, user_id: session.user.id, role, content })
+        .then(({ error }) => { if (error) console.error("[voice] message save failed", error); });
       supabase
         .from("conversations")
         .update({ updated_at: new Date().toISOString() })
@@ -508,6 +542,8 @@ function ChatPage() {
     nextPlayTimeRef.current = 0;
     pendingAsstTextRef.current = "";
     pendingUserTextRef.current = "";
+    voiceFirstUserTextRef.current = "";
+    voiceFirstAsstTextRef.current = "";
     userCommittedRef.current = false;
     setStreamingUserContent(null);
     setStreamingVoiceContent(null);
@@ -657,21 +693,35 @@ registerProcessor('mic-processor', MicProcessor);`;
       setListening(false);
       stopGeminiLive();
       voiceConvoIdRef.current = null;
+      voiceIsNewConvoRef.current = false;
       return;
     }
 
     const { data: u } = await supabase.auth.getUser();
-    if (u.user) {
-      const { data } = await supabase
+    if (!u.user) {
+      toast.error("Sign in to use voice chat.");
+      return;
+    }
+
+    if (activeId) {
+      // Attach voice to the already-open conversation
+      voiceConvoIdRef.current = activeId;
+      voiceIsNewConvoRef.current = false;
+    } else {
+      // No open chat — create a new one for this voice session
+      const { data, error } = await supabase
         .from("conversations")
-        .insert({ user_id: u.user.id, title: "Voice Conversation", subject })
+        .insert({ user_id: u.user.id, title: "Voice Chat", subject })
         .select("id")
         .single();
-      if (data) {
-        voiceConvoIdRef.current = data.id;
-        setActiveId(data.id);
-        await loadConversations();
+      if (error || !data) {
+        toast.error("Couldn't start voice conversation.");
+        return;
       }
+      voiceConvoIdRef.current = data.id;
+      voiceIsNewConvoRef.current = true;
+      setActiveId(data.id);
+      await loadConversations();
     }
 
     toast.success("Connecting to voice conversation…");
@@ -679,7 +729,13 @@ registerProcessor('mic-processor', MicProcessor);`;
     if (ok) {
       setConvoMode(true);
     } else {
+      if (voiceIsNewConvoRef.current && voiceConvoIdRef.current) {
+        supabase.from("conversations").delete().eq("id", voiceConvoIdRef.current);
+        setActiveId(null);
+        loadConversations();
+      }
       voiceConvoIdRef.current = null;
+      voiceIsNewConvoRef.current = false;
     }
   }
 
