@@ -182,6 +182,7 @@ function LoginPage() {
                 <Label htmlFor="name">Display name</Label>
                 <Input
                   id="name"
+                  autoComplete="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Alex"
@@ -194,6 +195,7 @@ function LoginPage() {
               <Input
                 id="email"
                 type="email"
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@school.edu"
@@ -206,6 +208,7 @@ function LoginPage() {
               <Input
                 id="password"
                 type="password"
+                autoComplete={isSignup ? "new-password" : "current-password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
