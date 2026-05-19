@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import Turnstile from "react-turnstile";
+import { openTawkChat } from "@/components/tawkto";
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string;
 
@@ -55,6 +56,17 @@ function LoginPage() {
       if (data.session) navigate({ to: "/chat" });
     });
   }, [navigate]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      toast("Need help signing in?", {
+        description: "Our support team is available to help.",
+        action: { label: "Chat now", onClick: openTawkChat },
+        duration: 12000,
+      });
+    }, 30000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const resetTurnstile = () => {
     setTurnstileToken(null);

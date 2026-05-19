@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { ChevronDown, Mail, LifeBuoy, MessageSquare, BookOpen, Layers, ListTodo } from "lucide-react";
+import { ChevronDown, Mail, LifeBuoy, MessageSquare, BookOpen, Layers, ListTodo, MessagesSquare } from "lucide-react";
+import { openTawkChat } from "@/components/tawkto";
 
 export const Route = createFileRoute("/support")({
   head: () => ({
@@ -146,15 +147,24 @@ function SupportPage() {
             <div className="glass rounded-xl p-6">
               <h2 className="mb-3 text-base font-semibold">Contact us</h2>
               <p className="mb-4 text-sm text-muted-foreground">
-                Didn't find what you were looking for? Send us an email and we'll get back to you.
+                Didn't find what you were looking for? Chat with us live or send an email.
               </p>
-              <a
-                href="mailto:support@scholarx.app"
-                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
-              >
-                <Mail className="h-4 w-4" />
-                support@scholarx.app
-              </a>
+              <div className="space-y-2">
+                <button
+                  onClick={openTawkChat}
+                  className="flex w-full items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
+                >
+                  <MessagesSquare className="h-4 w-4" />
+                  Chat with us
+                </button>
+                <a
+                  href="mailto:support@scholarx.app"
+                  className="flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-muted-foreground transition hover:text-foreground hover:bg-accent"
+                >
+                  <Mail className="h-4 w-4" />
+                  support@scholarx.app
+                </a>
+              </div>
             </div>
 
             {/* Quick links */}

@@ -10,6 +10,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
 import { ConfirmProvider } from "@/components/ui/confirm";
 import { useEffect } from "react";
+import { TawkTo } from "@/components/tawkto";
 
 import appCss from "../styles.css?url";
 
@@ -73,15 +74,15 @@ export const Route = createRootRoute({
         httpEquiv: "Content-Security-Policy",
         content: [
           "default-src 'self'",
-          "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://challenges.cloudflare.com https://static.cloudflareinsights.com https://*.desmos.com",
+          "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://challenges.cloudflare.com https://static.cloudflareinsights.com https://*.desmos.com https://embed.tawk.to https://*.tawk.to",
           "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.desmos.com",
           "font-src 'self' data: https://fonts.gstatic.com https://*.desmos.com",
           "img-src 'self' data: blob: https:",
           // Gemini endpoints are needed ONLY for the Live voice WebSocket, which
           // authenticates with a short-lived ephemeral token (never the API key).
-          "connect-src 'self' https://nozxlljeuswjxqoffrti.supabase.co wss://nozxlljeuswjxqoffrti.supabase.co https://generativelanguage.googleapis.com wss://generativelanguage.googleapis.com https://cloudflareinsights.com https://*.desmos.com",
+          "connect-src 'self' https://nozxlljeuswjxqoffrti.supabase.co wss://nozxlljeuswjxqoffrti.supabase.co https://generativelanguage.googleapis.com wss://generativelanguage.googleapis.com https://cloudflareinsights.com https://*.desmos.com https://*.tawk.to wss://*.tawk.to",
           "worker-src 'self' blob: https://*.desmos.com",
-          "frame-src 'self' https://challenges.cloudflare.com https://*.desmos.com",
+          "frame-src 'self' https://challenges.cloudflare.com https://*.desmos.com https://*.tawk.to",
           "form-action 'self'",
           "object-src 'none'",
           "base-uri 'self'",
@@ -124,7 +125,12 @@ function RootComponent() {
     }
   }, [navigate]);
 
-  return <Outlet />;
+  return (
+    <>
+      <TawkTo />
+      <Outlet />
+    </>
+  );
 }
 
 function RootShell({ children }: { children: React.ReactNode }) {
