@@ -91,7 +91,12 @@ Rules:
         headers: {
           Authorization: `Bearer ${GEMINI_API_KEY}`,
           "Content-Type": "application/json",
-          ...(HELICONE_API_KEY ? { "Helicone-Auth": `Bearer ${HELICONE_API_KEY}` } : {}),
+          ...(HELICONE_API_KEY
+            ? {
+                "Helicone-Auth": `Bearer ${HELICONE_API_KEY}`,
+                "Helicone-Target-URL": "https://generativelanguage.googleapis.com",
+              }
+            : {}),
         },
         body: JSON.stringify({
           model: "gemini-3.1-flash-lite",

@@ -199,7 +199,12 @@ export const askHomework = createServerFn({ method: "POST" })
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            ...(HELICONE_API_KEY ? { "Helicone-Auth": `Bearer ${HELICONE_API_KEY}` } : {}),
+            ...(HELICONE_API_KEY
+              ? {
+                  "Helicone-Auth": `Bearer ${HELICONE_API_KEY}`,
+                  "Helicone-Target-URL": "https://generativelanguage.googleapis.com",
+                }
+              : {}),
           },
           body: JSON.stringify({
             contents: [
@@ -282,7 +287,12 @@ export const generateTitle = createServerFn({ method: "POST" })
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            ...(HELICONE_API_KEY ? { "Helicone-Auth": `Bearer ${HELICONE_API_KEY}` } : {}),
+            ...(HELICONE_API_KEY
+              ? {
+                  "Helicone-Auth": `Bearer ${HELICONE_API_KEY}`,
+                  "Helicone-Target-URL": "https://generativelanguage.googleapis.com",
+                }
+              : {}),
           },
           body: JSON.stringify({
             contents: [
