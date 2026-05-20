@@ -5,12 +5,14 @@ import {
   Scripts,
   Link,
   useNavigate,
+  useRouter,
 } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
 import { ConfirmProvider } from "@/components/ui/confirm";
 import { useEffect } from "react";
 import { TawkTo } from "@/components/tawkto";
+import { supabase } from "@/integrations/supabase/client";
 
 import appCss from "../styles.css?url";
 
@@ -105,6 +107,18 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   const navigate = useNavigate();
+  const router = useRouter();
+
+  // On hard refresh, the server-side beforeLoad returns session:null because
+  // localStorage doesn't exist on the server. After hydration, Supabase restores
+  // the session from localStorage and fires onAuthStateChange. We invalidate the
+  // router so all route beforeLoads re-run client-side with the real session.
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      router.invalidate();
+    });
+    return () => subscription.unsubscribe();
+  }, [router]);
 
   useEffect(() => {
     const hash = window.location.hash;
