@@ -3,5 +3,5 @@
   "name": "scholarx",
   "compatibility_date": "2025-09-24",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "@tanstack/react-start/server-entry"
+  "main": "./src/entry.worker.ts"
 }

@@ -1,6 +1,11 @@
 # Cloudflare Workers Assets header overrides
 # https://developers.cloudflare.com/workers/static-assets/headers/
 
+/*
+  # Allow microphone for voice chat (Gemini Live). Cloudflare may inject a
+  # restrictive Permissions-Policy globally; this overrides it for all assets.
+  Permissions-Policy: microphone=(self), camera=(), geolocation=()
+
 /desmos-frame.html
   # Allow same-origin embedding (the main page iframes this file)
   X-Frame-Options: SAMEORIGIN

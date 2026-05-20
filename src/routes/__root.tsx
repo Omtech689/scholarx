@@ -79,6 +79,7 @@ export const Route = createRootRoute({
           "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://challenges.cloudflare.com https://static.cloudflareinsights.com https://*.desmos.com https://embed.tawk.to https://*.tawk.to https://cdn.jsdelivr.net",
           "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.desmos.com https://*.tawk.to https://tawk.to",
           "font-src 'self' data: https://fonts.gstatic.com https://*.desmos.com https://*.tawk.to https://tawk.to",
+          "media-src 'self' data: blob:",
           "img-src 'self' data: blob: https:",
           // Gemini endpoints are needed ONLY for the Live voice WebSocket, which
           // authenticates with a short-lived ephemeral token (never the API key).
