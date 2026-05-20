@@ -4,6 +4,7 @@ import { enforceRateLimit, RATE_LIMITS } from "@/integrations/supabase/rate-limi
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { heliconeGeminiBase, heliconeHeaders } from "./helicone";
 
 // Live (voice) model. The ephemeral-token constraint and the client's
 // live.connect() call MUST use the same model id. Override via env if needed.
@@ -168,6 +169,7 @@ const inputSchema = z.object({
     .max(40),
   subject: z.enum(["math", "science", "english", "history", "general"]).default("general"),
   image: z.string().max(1_500_000).optional(),
+  conversationId: z.string().uuid().optional(),
 });
 
 export const askHomework = createServerFn({ method: "POST" })
@@ -187,24 +189,25 @@ export const askHomework = createServerFn({ method: "POST" })
     const personalization = await fetchPersonalization(context.supabase, context.userId);
     const systemPrompt = buildSystemPrompt(data.subject, personalization);
 
-    const HELICONE_API_KEY = process.env.HELICONE_API_KEY;
-    const geminiBase = HELICONE_API_KEY
-      ? "https://gateway.helicone.ai"
-      : "https://generativelanguage.googleapis.com";
-
     try {
       const res = await fetchWithRetry(
-        `${geminiBase}/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
+        `${heliconeGeminiBase()}/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            ...(HELICONE_API_KEY
-              ? {
-                  "Helicone-Auth": `Bearer ${HELICONE_API_KEY}`,
-                  "Helicone-Target-URL": "https://generativelanguage.googleapis.com",
-                }
-              : {}),
+            ...heliconeHeaders({
+              userId: context.userId,
+              feature: "chat",
+              sessionId: data.conversationId ?? crypto.randomUUID(),
+              sessionPath: "/chat/message",
+              sessionName: "Chat Conversation",
+              properties: {
+                Subject: data.subject,
+                HasImage: data.image ? "true" : "false",
+                TurnCount: data.messages.length,
+              },
+            }),
           },
           body: JSON.stringify({
             contents: [
@@ -259,6 +262,7 @@ const titleInputSchema = z.object({
     )
     .min(1)
     .max(6),
+  conversationId: z.string().uuid().optional(),
 });
 
 export const generateTitle = createServerFn({ method: "POST" })
@@ -275,24 +279,20 @@ export const generateTitle = createServerFn({ method: "POST" })
       .map((m) => `${m.role}: ${m.content}`)
       .join("\n")
       .slice(0, 2000);
-    const HELICONE_API_KEY = process.env.HELICONE_API_KEY;
-    const geminiBase = HELICONE_API_KEY
-      ? "https://gateway.helicone.ai"
-      : "https://generativelanguage.googleapis.com";
-
     try {
       const res = await fetchWithRetry(
-        `${geminiBase}/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
+        `${heliconeGeminiBase()}/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            ...(HELICONE_API_KEY
-              ? {
-                  "Helicone-Auth": `Bearer ${HELICONE_API_KEY}`,
-                  "Helicone-Target-URL": "https://generativelanguage.googleapis.com",
-                }
-              : {}),
+            ...heliconeHeaders({
+              userId: context.userId,
+              feature: "chat-title",
+              sessionId: data.conversationId ?? crypto.randomUUID(),
+              sessionPath: "/chat/title",
+              sessionName: "Chat Conversation",
+            }),
           },
           body: JSON.stringify({
             contents: [

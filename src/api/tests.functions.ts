@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { enforceRateLimit, RATE_LIMITS } from "@/integrations/supabase/rate-limit";
 import { z } from "zod";
+import { heliconeGeminiBase, heliconeHeaders } from "./helicone";
 
 const inputSchema = z.object({
   topic: z.string().min(1).max(400),
@@ -15,6 +16,7 @@ const inputSchema = z.object({
     )
     .max(24)
     .optional(),
+  sessionId: z.string().uuid().optional(),
 });
 
 const mcqBaseSchema = z.object({
@@ -120,23 +122,23 @@ Rules:
 
     const messages = [{ role: "system" as const, content: systemPrompt }, ...history];
 
-    const HELICONE_API_KEY = process.env.HELICONE_API_KEY;
-    const base = HELICONE_API_KEY
-      ? "https://gateway.helicone.ai"
-      : "https://generativelanguage.googleapis.com";
-
     try {
-      const res = await fetchWithRetry(`${base}/v1beta/openai/chat/completions`, {
+      const res = await fetchWithRetry(`${heliconeGeminiBase()}/v1beta/openai/chat/completions`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${GEMINI_API_KEY}`,
           "Content-Type": "application/json",
-          ...(HELICONE_API_KEY
-            ? {
-                "Helicone-Auth": `Bearer ${HELICONE_API_KEY}`,
-                "Helicone-Target-URL": "https://generativelanguage.googleapis.com",
-              }
-            : {}),
+          ...heliconeHeaders({
+            userId: context.userId,
+            feature: "test-generate",
+            sessionId: data.sessionId ?? crypto.randomUUID(),
+            sessionPath: "/tests/generate",
+            sessionName: "Practice Test",
+            properties: {
+              Topic: topic.slice(0, 120),
+              Mode: data.mode,
+            },
+          }),
         },
         body: JSON.stringify({
           model: "gemini-3.1-flash-lite",
@@ -217,6 +219,7 @@ const evaluateTestInputSchema = z.object({
     .min(4)
     .max(16),
   answers: z.array(answerSchema).min(1),
+  sessionId: z.string().uuid().optional(),
 });
 
 // Shape returned to the client. questionId is attached server-side by order,
@@ -293,23 +296,23 @@ Grade these ${essayQuestions.length} essay answers:
 
 ${questionPayload}`;
 
-    const HELICONE_API_KEY = process.env.HELICONE_API_KEY;
-    const base = HELICONE_API_KEY
-      ? "https://gateway.helicone.ai"
-      : "https://generativelanguage.googleapis.com";
-
     try {
-      const res = await fetchWithRetry(`${base}/v1beta/openai/chat/completions`, {
+      const res = await fetchWithRetry(`${heliconeGeminiBase()}/v1beta/openai/chat/completions`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${GEMINI_API_KEY}`,
           "Content-Type": "application/json",
-          ...(HELICONE_API_KEY
-            ? {
-                "Helicone-Auth": `Bearer ${HELICONE_API_KEY}`,
-                "Helicone-Target-URL": "https://generativelanguage.googleapis.com",
-              }
-            : {}),
+          ...heliconeHeaders({
+            userId: context.userId,
+            feature: "test-evaluate",
+            sessionId: data.sessionId ?? crypto.randomUUID(),
+            sessionPath: "/tests/evaluate",
+            sessionName: "Practice Test",
+            properties: {
+              Topic: data.topic.slice(0, 120),
+              EssayCount: essayQuestions.length,
+            },
+          }),
         },
         body: JSON.stringify({
           model: "gemini-3.1-flash-lite",

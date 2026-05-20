@@ -2,6 +2,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { enforceRateLimit, RATE_LIMITS } from "@/integrations/supabase/rate-limit";
 import { z } from "zod";
+import {
+  heliconeGeminiBase,
+  heliconeHeaders,
+  type HeliconeHeaderOpts,
+} from "./helicone";
 
 async function fetchWithRetry(url: string, init: RequestInit, maxRetries = 2): Promise<Response> {
   let attempt = 0;
@@ -14,29 +19,24 @@ async function fetchWithRetry(url: string, init: RequestInit, maxRetries = 2): P
   }
 }
 
-async function callGemini(systemPrompt: string, userPrompt: string, temperature: number) {
+async function callGemini(
+  systemPrompt: string,
+  userPrompt: string,
+  temperature: number,
+  helicone: HeliconeHeaderOpts,
+) {
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
   if (!GEMINI_API_KEY)
     return { content: "", error: "AI is not configured. Please contact support." };
 
-  const HELICONE_API_KEY = process.env.HELICONE_API_KEY;
-  const base = HELICONE_API_KEY
-    ? "https://gateway.helicone.ai"
-    : "https://generativelanguage.googleapis.com";
-
   const res = await fetchWithRetry(
-    `${base}/v1beta/openai/chat/completions`,
+    `${heliconeGeminiBase()}/v1beta/openai/chat/completions`,
     {
       method: "POST",
       headers: {
         Authorization: `Bearer ${GEMINI_API_KEY}`,
         "Content-Type": "application/json",
-        ...(HELICONE_API_KEY
-          ? {
-              "Helicone-Auth": `Bearer ${HELICONE_API_KEY}`,
-              "Helicone-Target-URL": "https://generativelanguage.googleapis.com",
-            }
-          : {}),
+        ...heliconeHeaders(helicone),
       },
       body: JSON.stringify({
         model: "gemini-3.1-flash-lite",
@@ -117,7 +117,17 @@ Rules:
           .join("\n")}`
       : `Write a study guide on: ${topic}`;
 
-    const result = await callGemini(systemPrompt, userPrompt, 0.4);
+    const result = await callGemini(systemPrompt, userPrompt, 0.4, {
+      userId: context.userId,
+      feature: "study-guide",
+      sessionId: crypto.randomUUID(),
+      sessionPath: "/study",
+      sessionName: "Study Guide",
+      properties: {
+        Detail: data.detail,
+        Topic: topic.slice(0, 120),
+      },
+    });
     return result;
   });
 
@@ -187,6 +197,16 @@ Do not output anything except the Markdown document.`;
 
     const userPrompt = `Research brief:\n${data.brief}\n\nProvided sources:\n\n${sourcesBlock}`;
 
-    const result = await callGemini(systemPrompt, userPrompt, 0.3);
+    const result = await callGemini(systemPrompt, userPrompt, 0.3, {
+      userId: context.userId,
+      feature: "research",
+      sessionId: crypto.randomUUID(),
+      sessionPath: "/research",
+      sessionName: "Research Report",
+      properties: {
+        Style: data.style,
+        SourceCount: data.sources.length,
+      },
+    });
     return result;
   });

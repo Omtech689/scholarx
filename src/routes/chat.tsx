@@ -495,7 +495,10 @@ function ChatPage() {
     const token = sess.session?.access_token;
     try {
       const { title } = await generateTitle({
-        data: { messages: [{ role: "user", content: userText }, { role: "assistant", content: assistantText }] },
+        data: {
+          messages: [{ role: "user", content: userText }, { role: "assistant", content: assistantText }],
+          conversationId: convoId,
+        },
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
       if (title && voiceConvoIdRef.current) {
@@ -1054,7 +1057,7 @@ registerProcessor('mic-processor', MicProcessor);`;
       // ReadableStream-returning server function did not stream reliably
       // through TanStack Start on Cloudflare Workers.)
       const result = await askHomework({
-        data: { messages: payloadMessages, subject, image: imageBase64 },
+        data: { messages: payloadMessages, subject, image: imageBase64, conversationId: convoId },
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
       setLoading(false);
@@ -1086,6 +1089,7 @@ registerProcessor('mic-processor', MicProcessor);`;
                 { role: "user", content: text },
                 { role: "assistant", content: fullContent },
               ],
+              conversationId: convoId,
             },
             headers: token ? { Authorization: `Bearer ${token}` } : undefined,
           });
