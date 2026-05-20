@@ -1,0 +1,8 @@
+# Cloudflare Workers Assets header overrides
+# https://developers.cloudflare.com/workers/static-assets/headers/
+
+/desmos-frame.html
+  # Allow same-origin embedding (the main page iframes this file)
+  X-Frame-Options: SAMEORIGIN
+  # Desmos CDN loads cross-origin scripts/workers — COEP must stay off for this frame
+  Cross-Origin-Embedder-Policy: unsafe-none
