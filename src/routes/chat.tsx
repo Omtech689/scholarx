@@ -681,44 +681,16 @@ registerProcessor('mic-processor', MicProcessor);`;
               return;
             }
             const sc = msg?.serverContent;
-            if (sc) {
-              const hasAudio = (sc.modelTurn?.parts ?? []).some((p: any) => p.inlineData?.data);
-              const hasOutTx = !!sc.outputTranscription?.text;
-              const hasInTx  = !!sc.inputTranscription?.text;
-              console.log("[GeminiLive] serverContent", {
-                hasAudio,
-                hasOutTx,
-                outTxText: sc.outputTranscription?.text?.slice(0, 60),
-                hasInTx,
-                inTxText: sc.inputTranscription?.text?.slice(0, 60),
-                turnComplete: !!sc.turnComplete,
-                interrupted: !!sc.interrupted,
-              });
-            } else if (msg) {
-              console.log("[GeminiLive] unknown msg keys:", Object.keys(msg));
-            }
             handleLiveServerContent(sc);
           },
           onerror: (e: any) => {
             console.error("[GeminiLive] error", e);
             toast.error("Voice connection error — ending conversation.");
-            convoModeRef.current = false;
             setConvoMode(false);
             setListening(false);
             stopGeminiLive();
           },
-          onclose: () => {
-            console.log("[GeminiLive] closed, convoMode=", convoModeRef.current);
-            if (convoModeRef.current) {
-              convoModeRef.current = false;
-              commitVoiceUser();
-              commitVoiceAssistant(false);
-              setConvoMode(false);
-              setListening(false);
-              stopGeminiLive();
-              toast.error("Voice session ended unexpectedly.");
-            }
-          },
+          onclose: () => {},
         },
         config: {
           responseModalities: [Modality.AUDIO],
@@ -782,7 +754,6 @@ registerProcessor('mic-processor', MicProcessor);`;
     toast.success("Connecting to voice conversation…");
     const ok = await startGeminiLive();
     if (ok) {
-      convoModeRef.current = true;
       setConvoMode(true);
     } else {
       if (voiceIsNewConvoRef.current && voiceConvoIdRef.current) {
