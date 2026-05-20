@@ -187,12 +187,20 @@ export const askHomework = createServerFn({ method: "POST" })
     const personalization = await fetchPersonalization(context.supabase, context.userId);
     const systemPrompt = buildSystemPrompt(data.subject, personalization);
 
+    const HELICONE_API_KEY = process.env.HELICONE_API_KEY;
+    const geminiBase = HELICONE_API_KEY
+      ? "https://gateway.helicone.ai"
+      : "https://generativelanguage.googleapis.com";
+
     try {
       const res = await fetchWithRetry(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
+        `${geminiBase}/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(HELICONE_API_KEY ? { "Helicone-Auth": `Bearer ${HELICONE_API_KEY}` } : {}),
+          },
           body: JSON.stringify({
             contents: [
               {
@@ -262,12 +270,20 @@ export const generateTitle = createServerFn({ method: "POST" })
       .map((m) => `${m.role}: ${m.content}`)
       .join("\n")
       .slice(0, 2000);
+    const HELICONE_API_KEY = process.env.HELICONE_API_KEY;
+    const geminiBase = HELICONE_API_KEY
+      ? "https://gateway.helicone.ai"
+      : "https://generativelanguage.googleapis.com";
+
     try {
       const res = await fetchWithRetry(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
+        `${geminiBase}/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(HELICONE_API_KEY ? { "Helicone-Auth": `Bearer ${HELICONE_API_KEY}` } : {}),
+          },
           body: JSON.stringify({
             contents: [
               {

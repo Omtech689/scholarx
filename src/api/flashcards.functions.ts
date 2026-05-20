@@ -80,12 +80,18 @@ Rules:
 
     const messages = [{ role: "system" as const, content: systemPrompt }, ...history];
 
+    const HELICONE_API_KEY = process.env.HELICONE_API_KEY;
+    const base = HELICONE_API_KEY
+      ? "https://gateway.helicone.ai"
+      : "https://generativelanguage.googleapis.com";
+
     try {
-      const res = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`, {
+      const res = await fetchWithRetry(`${base}/v1beta/openai/chat/completions`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${GEMINI_API_KEY}`,
           "Content-Type": "application/json",
+          ...(HELICONE_API_KEY ? { "Helicone-Auth": `Bearer ${HELICONE_API_KEY}` } : {}),
         },
         body: JSON.stringify({
           model: "gemini-3.1-flash-lite",
