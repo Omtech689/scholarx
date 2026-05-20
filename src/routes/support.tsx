@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { ChevronDown, Mail, LifeBuoy, MessageSquare, BookOpen, Layers, ListTodo, MessagesSquare } from "lucide-react";
-import { openTawkChat } from "@/components/tawkto";
+import { openCrispChat } from "@/components/crisp";
 
 export const Route = createFileRoute("/support")({
   head: () => ({
@@ -151,7 +151,7 @@ function SupportPage() {
               </p>
               <div className="space-y-2">
                 <button
-                  onClick={openTawkChat}
+                  onClick={openCrispChat}
                   className="flex w-full items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
                 >
                   <MessagesSquare className="h-4 w-4" />
