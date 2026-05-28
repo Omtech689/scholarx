@@ -27,6 +27,29 @@ export const Route = createFileRoute("/support")({
       },
     ],
     links: [{ rel: "canonical", href: "https://scholarx.space/support" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: [
+            { "@type": "Question", name: "Is ScholarX completely free?", acceptedAnswer: { "@type": "Answer", text: "Yes. ScholarX is 100% free — no credit card, no subscription, no hidden fees. Just create an account and start learning." } },
+            { "@type": "Question", name: "What subjects does ScholarX support?", acceptedAnswer: { "@type": "Answer", text: "ScholarX supports Math, Science, English, and History. You can also ask general questions outside those subjects in the chat." } },
+            { "@type": "Question", name: "Is my data private and secure?", acceptedAnswer: { "@type": "Answer", text: "Yes. Your conversations are stored securely in your account and are never shared with third parties or used to train AI models. You can delete your conversation history at any time from the chat sidebar." } },
+            { "@type": "Question", name: "Can I use ScholarX on my phone?", acceptedAnswer: { "@type": "Answer", text: "Yes. ScholarX is fully responsive and works on phones and tablets in any modern browser. Voice input and voice conversation mode are also supported on compatible mobile browsers." } },
+            { "@type": "Question", name: "How do I reset my password?", acceptedAnswer: { "@type": "Answer", text: "Go to the sign-in page and click \"Forgot your password?\" — enter your email address and you'll receive a password reset link within a few minutes." } },
+            { "@type": "Question", name: "How does spaced repetition work in flashcards?", acceptedAnswer: { "@type": "Answer", text: "ScholarX uses the SM-2 spaced repetition algorithm. After each review you rate how well you remembered the card, and the algorithm schedules the next review accordingly — easy cards come back later, hard ones sooner." } },
+            { "@type": "Question", name: "Can I upload a photo of a problem?", acceptedAnswer: { "@type": "Answer", text: "Yes. In the chat composer, tap the image icon to upload a photo of a textbook problem, diagram, or handwritten work. ScholarX will read it and walk you through the solution step by step." } },
+            { "@type": "Question", name: "What is voice conversation mode?", acceptedAnswer: { "@type": "Answer", text: "Voice conversation mode lets you speak your question and hear the answer — fully hands-free. It uses your browser's speech recognition and text-to-speech. Tap the headphones icon in the chat to start." } },
+            { "@type": "Question", name: "Can I export my notes, flashcards, or test results?", acceptedAnswer: { "@type": "Answer", text: "Yes. Study guides, practice tests, and chat conversations can be exported to Markdown or PDF directly from the page header." } },
+            { "@type": "Question", name: "Does using ScholarX violate academic honesty policies?", acceptedAnswer: { "@type": "Answer", text: "ScholarX is built to explain and tutor — not to write answers for you to submit. Using AI-generated text as your own work may violate your school's academic honesty policy. Use it to understand, not to copy." } },
+            { "@type": "Question", name: "How do I delete my account?", acceptedAnswer: { "@type": "Answer", text: "To delete your account and all associated data, please email us at support@scholarx.app from your registered email address and we'll process the request promptly." } },
+            { "@type": "Question", name: "The AI gave me a wrong answer — what should I do?", acceptedAnswer: { "@type": "Answer", text: "AI tutors can occasionally make mistakes, especially on complex problems. Always double-check answers against your textbook or teacher. If you spot a consistent issue, please let us know at support@scholarx.app." } },
+          ],
+        }),
+      },
+    ],
   }),
   component: SupportPage,
 });

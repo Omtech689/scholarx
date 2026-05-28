@@ -61,6 +61,20 @@ export const Route = createFileRoute("/study")({
       },
     ],
     links: [{ rel: "canonical", href: "https://scholarx.space/study" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          name: "AI Study Guide Generator — ScholarX",
+          description: "Turn any topic into a clear, structured study guide with key concepts, definitions, and worked examples — ready in seconds. Free for students.",
+          url: "https://scholarx.space/study",
+          isPartOf: { "@id": "https://scholarx.space/#website" },
+          about: { "@type": "SoftwareApplication", name: "ScholarX", applicationCategory: "EducationApplication", operatingSystem: "Web", offers: { "@type": "Offer", price: "0", priceCurrency: "USD" } },
+        }),
+      },
+    ],
   }),
   beforeLoad: async () => {
     if (typeof window === "undefined") return { session: null };

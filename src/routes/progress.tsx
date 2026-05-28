@@ -62,6 +62,20 @@ export const Route = createFileRoute("/progress")({
       },
     ],
     links: [{ rel: "canonical", href: "https://scholarx.space/progress" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          name: "Progress Dashboard — ScholarX",
+          description: "See your chat activity, flashcard review stats, and test scores all in one dashboard. Track how your studying is improving over time — free for students.",
+          url: "https://scholarx.space/progress",
+          isPartOf: { "@id": "https://scholarx.space/#website" },
+          about: { "@type": "SoftwareApplication", name: "ScholarX", applicationCategory: "EducationApplication", operatingSystem: "Web", offers: { "@type": "Offer", price: "0", priceCurrency: "USD" } },
+        }),
+      },
+    ],
   }),
   beforeLoad: async () => {
     if (typeof window === "undefined") return { session: null };

@@ -65,6 +65,20 @@ export const Route = createFileRoute("/research")({
       },
     ],
     links: [{ rel: "canonical", href: "https://scholarx.space/research" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          name: "Research Mode — ScholarX",
+          description: "Build in-depth, structured overviews on any topic. Great for essays, projects, and deep exam prep — ScholarX organizes the research so you can focus on understanding.",
+          url: "https://scholarx.space/research",
+          isPartOf: { "@id": "https://scholarx.space/#website" },
+          about: { "@type": "SoftwareApplication", name: "ScholarX", applicationCategory: "EducationApplication", operatingSystem: "Web", offers: { "@type": "Offer", price: "0", priceCurrency: "USD" } },
+        }),
+      },
+    ],
   }),
   beforeLoad: async () => {
     if (typeof window === "undefined") return { session: null };

@@ -119,6 +119,20 @@ export const Route = createFileRoute("/flashcards")({
       },
     ],
     links: [{ rel: "canonical", href: "https://scholarx.space/flashcards" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          name: "AI Flashcards with Spaced Repetition — ScholarX",
+          description: "Generate flashcard decks on any topic in seconds. Study smarter with the SM-2 spaced repetition algorithm — automatically schedules cards at the right time. Free for students.",
+          url: "https://scholarx.space/flashcards",
+          isPartOf: { "@id": "https://scholarx.space/#website" },
+          about: { "@type": "SoftwareApplication", name: "ScholarX", applicationCategory: "EducationApplication", operatingSystem: "Web", offers: { "@type": "Offer", price: "0", priceCurrency: "USD" } },
+        }),
+      },
+    ],
   }),
   beforeLoad: async () => {
     if (typeof window === "undefined") return { session: null };

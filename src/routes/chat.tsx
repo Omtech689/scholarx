@@ -175,6 +175,20 @@ export const Route = createFileRoute("/chat")({
       },
     ],
     links: [{ rel: "canonical", href: "https://scholarx.space/chat" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          name: "AI Tutor — ScholarX",
+          description: "Ask your AI tutor anything in Math, Science, English, or History. Get step-by-step explanations, voice conversation mode, and photo problem solving — free for students.",
+          url: "https://scholarx.space/chat",
+          isPartOf: { "@id": "https://scholarx.space/#website" },
+          about: { "@type": "SoftwareApplication", name: "ScholarX", applicationCategory: "EducationApplication", operatingSystem: "Web", offers: { "@type": "Offer", price: "0", priceCurrency: "USD" } },
+        }),
+      },
+    ],
   }),
   beforeLoad: async () => {
     if (typeof window === "undefined") return { session: null };
@@ -1680,12 +1694,14 @@ const Bubble = memo(function Bubble({
         }`}
       >
         {imageUrl ? (
-          <img src={imageUrl} alt="Uploaded" className="mb-2 max-w-full rounded-lg" />
+          <img src={imageUrl} alt="Uploaded" className="mb-2 max-w-full rounded-lg" loading="lazy" decoding="async" />
         ) : image ? (
           <img
             src={`data:image/jpeg;base64,${image}`}
             alt="Uploaded"
             className="mb-2 max-w-full rounded-lg"
+            loading="lazy"
+            decoding="async"
           />
         ) : null}
         <FormattedContent text={content} />

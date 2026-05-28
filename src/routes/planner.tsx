@@ -79,6 +79,20 @@ export const Route = createFileRoute("/planner")({
       },
     ],
     links: [{ rel: "canonical", href: "https://scholarx.space/planner" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          name: "Study Planner — ScholarX",
+          description: "Stay on top of every assignment and deadline. Track tasks by subject, priority, and due date — your personal study planner built into ScholarX. Free for students.",
+          url: "https://scholarx.space/planner",
+          isPartOf: { "@id": "https://scholarx.space/#website" },
+          about: { "@type": "SoftwareApplication", name: "ScholarX", applicationCategory: "EducationApplication", operatingSystem: "Web", offers: { "@type": "Offer", price: "0", priceCurrency: "USD" } },
+        }),
+      },
+    ],
   }),
   beforeLoad: async () => {
     if (typeof window === "undefined") return { session: null };

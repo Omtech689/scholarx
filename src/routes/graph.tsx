@@ -46,6 +46,20 @@ export const Route = createFileRoute("/graph")({
       },
     ],
     links: [{ rel: "canonical", href: "https://scholarx.space/graph" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          name: "Graphing Calculator — ScholarX",
+          description: "The full Desmos graphing calculator built into ScholarX. Plot functions, explore equations with sliders, and visualise math instantly — free for students.",
+          url: "https://scholarx.space/graph",
+          isPartOf: { "@id": "https://scholarx.space/#website" },
+          about: { "@type": "SoftwareApplication", name: "ScholarX", applicationCategory: "EducationApplication", operatingSystem: "Web", offers: { "@type": "Offer", price: "0", priceCurrency: "USD" } },
+        }),
+      },
+    ],
   }),
   beforeLoad: async () => {
     if (typeof window === "undefined") return { session: null };

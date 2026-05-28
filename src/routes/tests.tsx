@@ -93,6 +93,20 @@ export const Route = createFileRoute("/tests")({
       },
     ],
     links: [{ rel: "canonical", href: "https://scholarx.space/tests" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          name: "AI Practice Test Creator — ScholarX",
+          description: "Generate multiple-choice and essay practice tests on any topic. Answer interactively, get instant MCQ scoring, and see AI-written model answers. Free for students.",
+          url: "https://scholarx.space/tests",
+          isPartOf: { "@id": "https://scholarx.space/#website" },
+          about: { "@type": "SoftwareApplication", name: "ScholarX", applicationCategory: "EducationApplication", operatingSystem: "Web", offers: { "@type": "Offer", price: "0", priceCurrency: "USD" } },
+        }),
+      },
+    ],
   }),
   errorComponent: RouteError,
   beforeLoad: async () => {
