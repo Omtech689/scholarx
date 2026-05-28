@@ -12,6 +12,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { ConfirmProvider } from "@/components/ui/confirm";
 import { useEffect } from "react";
 import { Crisp } from "@/components/crisp";
+import { OfflineBanner } from "@/components/offline-banner";
 import { supabase } from "@/integrations/supabase/client";
 
 import appCss from "../styles.css?url";
@@ -60,9 +61,13 @@ export const Route = createRootRoute({
         content:
           "ScholarX is an AI homework helper that explains Math, Science, English and History concepts to help students learn — not cheat.",
       },
+      { name: "theme-color", content: "#0a0a0f" },
+      { name: "robots", content: "index, follow" },
+      { name: "referrer", content: "strict-origin-when-cross-origin" },
       // Global OG fallbacks (per-route head() overrides these)
       { property: "og:site_name", content: "ScholarX" },
       { property: "og:type", content: "website" },
+      { property: "og:locale", content: "en_US" },
       { property: "og:image", content: "https://scholarx.space/og-image.png" },
       { property: "og:image:width", content: "1200" },
       { property: "og:image:height", content: "630" },
@@ -143,6 +148,7 @@ function RootComponent() {
   return (
     <>
       <Crisp />
+      <OfflineBanner />
       <Outlet />
     </>
   );

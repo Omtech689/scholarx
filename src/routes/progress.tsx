@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { FeatureLanding } from "@/components/feature-landing";
 import { AppSidebarLinks } from "@/components/app-sidebar-links";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,6 +33,7 @@ import {
   ChevronDown,
   LineChart as LineChartIcon,
   Sparkles,
+  Menu,
 } from "lucide-react";
 
 export const Route = createFileRoute("/progress")({
@@ -95,6 +97,13 @@ function countMcqScore(questions: unknown, answers: unknown): { correct: number;
 
 function ProgressPage() {
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  async function logout() {
+    await supabase.auth.signOut();
+    navigate({ to: "/" });
+  }
+
   const profileQuery = useQuery<string>({
     queryKey: ["profile"],
     queryFn: async () => {
@@ -196,6 +205,21 @@ function ProgressPage() {
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
+      <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+        <SheetContent side="left" className="w-80 p-0 flex flex-col">
+          <div className="flex items-center gap-2 px-5 py-5 font-display text-lg font-semibold">
+            <img src="/logo-removebg-preview.png" className="h-8 w-8 object-contain" alt="ScholarX" />
+            ScholarX
+          </div>
+          <AppSidebarLinks
+            currentPage="progress"
+            displayName={displayName}
+            onLogout={logout}
+            onClose={() => setMobileMenuOpen(false)}
+          />
+        </SheetContent>
+      </Sheet>
+
       {/* Sidebar */}
       <aside className="hidden w-72 shrink-0 flex-col border-r border-border bg-card/40 backdrop-blur md:flex">
         <div className="flex items-center gap-2 px-5 py-5 font-display text-lg font-semibold">
@@ -205,13 +229,20 @@ function ProgressPage() {
         <AppSidebarLinks
           currentPage="progress"
           displayName={displayName}
-          onLogout={async () => { await supabase.auth.signOut(); navigate({ to: "/" }); }}
+          onLogout={logout}
         />
       </aside>
 
       {/* Main */}
       <main className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b border-border px-4 py-3 md:px-6">
+        <header className="flex items-center gap-2 border-b border-border px-4 py-3 md:px-6">
+          <button
+            className="md:hidden shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-secondary"
+            onClick={() => setMobileMenuOpen(true)}
+            aria-label="Open menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
           <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-primary-foreground shrink-0" style={{ background: "var(--gradient-primary)", boxShadow: "var(--shadow-glow)" }}>
             <TrendingUp className="h-4 w-4" />
           </span>

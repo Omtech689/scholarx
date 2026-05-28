@@ -25,6 +25,13 @@ export const Route = createFileRoute("/login")({
         content: "Sign in or create a free ScholarX account to access your AI tutor, flashcards, and study planner.",
       },
       { property: "og:url", content: "https://scholarx.space/login" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Sign In — ScholarX" },
+      {
+        name: "twitter:description",
+        content: "Sign in or create a free ScholarX account to access your AI tutor, flashcards, and study planner.",
+      },
     ],
     links: [{ rel: "canonical", href: "https://scholarx.space/login" }],
   }),
