@@ -7,6 +7,7 @@
     "dev": "vite dev",
     "build": "vite build",
     "build:dev": "vite build --mode development",
+    "build:mobile": "vite build && node scripts/generate-capacitor-html.mjs && bunx cap sync android",
     "preview": "vite preview",
     "deploy": "vite build && wrangler deploy",
     "lint": "eslint .",
