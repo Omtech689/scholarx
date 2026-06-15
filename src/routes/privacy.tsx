@@ -150,7 +150,6 @@ function PrivacyPage() {
               .
             </p>
           </div>
-          </div>
         </section>
       </main>
 
