@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { enforceRateLimit, RATE_LIMITS } from "@/integrations/supabase/rate-limit";
+import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
@@ -183,9 +184,9 @@ export const askHomework = createServerFn({ method: "POST" })
     }
 
     try {
-      // Get the user's session token for Edge Function authorization
-      const { data: { session }, error: sessionError } = await context.supabase.auth.getSession();
-      if (sessionError || !session?.access_token) {
+      const request = getRequest();
+      const authHeader = request.headers.get("authorization") || request.headers.get("Authorization");
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
         return { content: "", error: "Authentication failed. Please log in again." };
       }
 
@@ -194,7 +195,7 @@ export const askHomework = createServerFn({ method: "POST" })
         {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${session.access_token}`,
+            "Authorization": authHeader,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -250,9 +251,9 @@ export const generateTitle = createServerFn({ method: "POST" })
     if (limited) return { title: "", error: limited };
 
     try {
-      // Get the user's session token for Edge Function authorization
-      const { data: { session }, error: sessionError } = await context.supabase.auth.getSession();
-      if (sessionError || !session?.access_token) {
+      const request = getRequest();
+      const authHeader = request.headers.get("authorization") || request.headers.get("Authorization");
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
         return { title: "", error: "Authentication failed." };
       }
 
@@ -262,7 +263,7 @@ export const generateTitle = createServerFn({ method: "POST" })
         {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${session.access_token}`,
+            "Authorization": authHeader,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
