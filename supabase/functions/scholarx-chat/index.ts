@@ -1,9 +1,20 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, content-type',
+}
+
 Deno.serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
   // 1. Get the authenticated user's JWT from the request headers
   const authHeader = req.headers.get('Authorization')
-  if (!authHeader) return new Response('Unauthorized', { status: 401 })
+  if (!authHeader) return new Response('Unauthorized', { status: 401, headers: corsHeaders })
 
   // 2. Initialize Supabase client to verify the user
   const supabaseClient = createClient(
@@ -14,7 +25,7 @@ Deno.serve(async (req) => {
 
   // Get user profile data
   const { data: { user }, error } = await supabaseClient.auth.getUser()
-  if (error || !user) return new Response('Invalid User Token', { status: 401 })
+  if (error || !user) return new Response('Invalid User Token', { status: 401, headers: corsHeaders })
 
   // 3. Extract the user's ID
   const userId = user.id 
@@ -41,6 +52,9 @@ Deno.serve(async (req) => {
   
   // Return the AI response back to your React app
   return new Response(JSON.stringify(aiData), {
-    headers: { 'Content-Type': 'application/json' }
+    headers: { 
+      'Content-Type': 'application/json',
+      ...corsHeaders
+    }
   })
 })
