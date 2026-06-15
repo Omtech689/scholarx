@@ -85,7 +85,7 @@ function PrivacyPage() {
             </h2>
             <p>
               <strong>Payment Processing:</strong> If you purchase a Premium subscription, payments are processed
-              securely through our third-party payment gateway (Stripe). ScholarX does not store full credit card
+              securely through our third-party payment gateway (Moyasar). ScholarX does not store full credit card
               numbers or payment credentials on our servers. Billing details and receipts may be stored for
               transactional purposes in accordance with applicable law.
             </p>

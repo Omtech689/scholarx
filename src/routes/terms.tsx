@@ -91,7 +91,7 @@ function TermsPage() {
             </p>
             <p className="mt-2">
               <strong>Payment Processing:</strong> All payments are securely processed through our third-party payment
-              gateway (Stripe). ScholarX does not store your credit card or financial credentials on our servers. You
+              gateway (Moyasar). ScholarX does not store your credit card or financial credentials on our servers. You
               agree to provide accurate and complete billing information.
             </p>
             <p className="mt-2">
