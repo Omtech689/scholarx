@@ -75,17 +75,32 @@ Deno.serve(async (req) => {
       return withCors(new Response(JSON.stringify({ error: 'Prompt or messages are required' }), { status: 400 }))
     }
 
-    // 5. Send request to Gemini API, proxying through Helicone
-    const heliconeResponse = await fetch('https://gateway.helicone.ai/v1/beta/models/gemini-1.5-flash:generateContent', {
+    // 5. Send request to Gemini API, proxying through Helicone using OpenAI-compatible chat completions.
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') ?? ''
+    if (!GEMINI_API_KEY) {
+      return withCors(
+        new Response(JSON.stringify({ error: 'AI is not configured.' }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+    }
+
+    const heliconeUrl = 'https://gateway.helicone.ai/v1beta/openai/chat/completions'
+    const heliconeResponse = await fetch(heliconeUrl, {
       method: 'POST',
       headers: {
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
         'Content-Type': 'application/json',
-        'x-goog-api-key': Deno.env.get('GEMINI_API_KEY') ?? '',
         'Helicone-Auth': `Bearer ${Deno.env.get('HELICONE_API_KEY')}`,
+        'Helicone-Target-URL': 'https://generativelanguage.googleapis.com',
         'Helicone-User-Id': userId,
+        'Helicone-Property-Feature': 'chat',
       },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
+        model: 'gemini-3.1-flash-lite',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3,
       }),
     })
 
@@ -93,7 +108,7 @@ Deno.serve(async (req) => {
       const text = await heliconeResponse.text().catch(() => '')
       console.error('Helicone error', heliconeResponse.status, text)
       return withCors(
-        new Response(JSON.stringify({ error: `Helicone request failed (${heliconeResponse.status})` }), {
+        new Response(JSON.stringify({ error: `Helicone request failed (${heliconeResponse.status})`, detail: text }), {
           status: 502,
           headers: { 'Content-Type': 'application/json' },
         }),
@@ -114,13 +129,16 @@ Deno.serve(async (req) => {
       )
     }
 
-    const response = new Response(JSON.stringify(aiData), {
+    const content = aiData?.choices?.[0]?.message?.content ?? aiData?.choices?.[0]?.text ?? ''
+    const responseBody = content ? { content } : { error: 'Empty AI response', raw: aiData }
+    const response = new Response(JSON.stringify(responseBody), {
       headers: { 'Content-Type': 'application/json' },
+      status: content ? 200 : 502,
     })
     return withCors(response)
   } catch (error) {
     console.error('scholarx-chat error', error)
-    const response = new Response(JSON.stringify({ error: 'Internal server error' }), {
+    const response = new Response(JSON.stringify({ error: 'Internal server error', detail: String(error) }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     })
