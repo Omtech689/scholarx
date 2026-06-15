@@ -6,7 +6,9 @@ import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
-const SCHOLARX_CHAT_FUNCTION_URL = "https://nozxlljeuswjxqoffrti.supabase.co/functions/v1/scholarx-chat";
+const SCHOLARX_CHAT_FUNCTION_URL =
+  (import.meta.env.VITE_SCHOLARX_CHAT_FUNCTION_URL as string) ||
+  (process.env.NODE_ENV === 'development' ? 'http://localhost:54321/functions/v1/scholarx-chat' : 'https://nozxlljeuswjxqoffrti.supabase.co/functions/v1/scholarx-chat');
 
 // Live (voice) model. The ephemeral-token constraint and the client's
 // live.connect() call MUST use the same model id. Override via env if needed.

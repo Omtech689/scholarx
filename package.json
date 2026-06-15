@@ -10,6 +10,7 @@
     "build:mobile": "vite build && node scripts/generate-capacitor-html.mjs && bunx cap sync android",
     "preview": "vite preview",
     "deploy": "vite build && wrangler deploy",
+    "local-proxy": "node supabase/local-proxy/server.js",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
