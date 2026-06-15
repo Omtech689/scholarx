@@ -142,10 +142,10 @@ function PrivacyPage() {
             <p>
               If you have questions about this policy, please contact us at{" "}
               <a
-                href="mailto:support@scholarx.app"
+                href="mailto:support@scholarx.space"
                 className="text-primary underline underline-offset-2 hover:opacity-80"
               >
-                support@scholarx.app
+                support@scholarx.space
               </a>
               .
             </p>
