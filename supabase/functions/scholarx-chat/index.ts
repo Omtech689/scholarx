@@ -2,15 +2,16 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, content-type, x-client-info',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, content-type, x-client-info, accept',
+  'Access-Control-Expose-Headers': 'Content-Type',
 }
 
 const withCors = (response: Response) => {
-  corsHeaders['Content-Type'] ||= 'application/json'
   response.headers.set('Access-Control-Allow-Origin', corsHeaders['Access-Control-Allow-Origin'])
   response.headers.set('Access-Control-Allow-Methods', corsHeaders['Access-Control-Allow-Methods'])
   response.headers.set('Access-Control-Allow-Headers', corsHeaders['Access-Control-Allow-Headers'])
+  response.headers.set('Access-Control-Expose-Headers', corsHeaders['Access-Control-Expose-Headers'])
   return response
 }
 
@@ -23,7 +24,14 @@ Deno.serve(async (req) => {
   try {
     // 1. Get the authenticated user's JWT from the request headers
     const authHeader = req.headers.get('Authorization')
-    if (!authHeader) return withCors(new Response('Unauthorized', { status: 401 }))
+    if (!authHeader) {
+      return withCors(
+        new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+    }
 
     // 2. Initialize Supabase client to verify the user
     const supabaseClient = createClient(
@@ -33,14 +41,30 @@ Deno.serve(async (req) => {
     )
 
     // Get user profile data
-    const { data: { user }, error } = await supabaseClient.auth.getUser()
-    if (error || !user) return withCors(new Response('Invalid User Token', { status: 401 }))
+    const authResult = await supabaseClient.auth.getUser()
+    const user = authResult.data?.user
+    if (authResult.error || !user) {
+      console.error('Invalid user token', authResult.error)
+      return withCors(
+        new Response(JSON.stringify({ error: 'Invalid User Token', details: authResult.error?.message ?? null }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+    }
 
     // 3. Extract the user's ID
     const userId = user.id
 
     // 4. Parse the request payload from the React frontend
-    const body = await req.json()
+    let body: any = {}
+    try {
+      body = await req.json()
+    } catch (parseError) {
+      console.error('Invalid JSON body', parseError)
+      return withCors(new Response(JSON.stringify({ error: 'Invalid JSON body' }), { status: 400 }))
+    }
+
     const prompt =
       body.prompt ||
       (Array.isArray(body.messages)
@@ -65,7 +89,31 @@ Deno.serve(async (req) => {
       }),
     })
 
-    const aiData = await heliconeResponse.json()
+    if (!heliconeResponse.ok) {
+      const text = await heliconeResponse.text().catch(() => '')
+      console.error('Helicone error', heliconeResponse.status, text)
+      return withCors(
+        new Response(JSON.stringify({ error: `Helicone request failed (${heliconeResponse.status})` }), {
+          status: 502,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+    }
+
+    const aiData = await heliconeResponse.json().catch((parseError) => {
+      console.error('Failed to parse Helicone response', parseError)
+      return null
+    })
+
+    if (aiData === null) {
+      return withCors(
+        new Response(JSON.stringify({ error: 'Invalid response from Helicone' }), {
+          status: 502,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+    }
+
     const response = new Response(JSON.stringify(aiData), {
       headers: { 'Content-Type': 'application/json' },
     })
