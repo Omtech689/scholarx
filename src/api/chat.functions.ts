@@ -14,6 +14,102 @@ const SCHOLARX_CHAT_FUNCTION_URL =
 // live.connect() call MUST use the same model id. Override via env if needed.
 const LIVE_MODEL = process.env.GEMINI_LIVE_MODEL || "gemini-3.1-flash-live-preview";
 
+/**
+ * Client-side function to call the Supabase Edge Function directly with session token.
+ * This passes the user's current session token in the Authorization header.
+ */
+export async function callScholarxChatDirect(
+  messages: Array<{ role: "user" | "assistant"; content: string }>,
+  subject: string,
+  sessionToken: string | undefined,
+  image?: string,
+  conversationId?: string,
+): Promise<{ content: string; error: string | null }> {
+  if (!sessionToken) {
+    return { content: "", error: "Authentication failed. Please log in again." };
+  }
+
+  try {
+    const response = await fetch(SCHOLARX_CHAT_FUNCTION_URL, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${sessionToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messages,
+        subject,
+        image,
+        conversationId,
+      }),
+    });
+
+    if (response.status === 429) {
+      return { content: "", error: "Too many requests right now. Please try again in a moment." };
+    }
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("Edge Function error", response.status, text);
+      return { content: "", error: "The AI tutor couldn't respond. Please try again." };
+    }
+
+    const json = await response.json();
+    const content: string = json.content ?? "";
+    const error: string | null = json.error ?? null;
+    return { content, error };
+  } catch (e) {
+    console.error("callScholarxChatDirect error", e);
+    return { content: "", error: "Network error talking to the AI tutor." };
+  }
+}
+
+/**
+ * Client-side function to generate a conversation title directly using the Edge Function.
+ */
+export async function generateTitleDirect(
+  messages: Array<{ role: "user" | "assistant"; content: string }>,
+  sessionToken: string | undefined,
+  conversationId?: string,
+): Promise<{ title: string; error: string | null }> {
+  if (!sessionToken) {
+    return { title: "", error: "Authentication failed." };
+  }
+
+  try {
+    const response = await fetch(SCHOLARX_CHAT_FUNCTION_URL, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${sessionToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messages,
+        subject: "general",
+        conversationId,
+      }),
+    });
+
+    if (!response.ok) {
+      return { title: "", error: "Could not generate a title." };
+    }
+
+    const json = await response.json();
+    const content: string = json.content ?? "";
+    // Extract just the first line as title
+    const title = content
+      .split("\n")[0]
+      .replace(/["']/g, "")
+      .replace(/[.!?]+$/, "")
+      .trim()
+      .slice(0, 80);
+    return { title, error: null as string | null };
+  } catch (e) {
+    console.error("generateTitleDirect error", e);
+    return { title: "", error: "Could not generate a title." };
+  }
+}
+
 const LIVE_SYSTEM_INSTRUCTION =
   "You are a friendly AI homework tutor. Help students learn by walking through problems step by step. Keep answers clear and concise.";
 

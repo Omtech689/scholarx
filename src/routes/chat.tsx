@@ -4,7 +4,7 @@ import { RouteError } from "@/components/ui/route-error";
 import { AppSidebarLinks } from "@/components/app-sidebar-links";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { askHomework, generateTitle, getLiveToken } from "@/api/chat.functions";
+import { askHomework, generateTitle, getLiveToken, callScholarxChatDirect, generateTitleDirect } from "@/api/chat.functions";
 import { useConfirm } from "@/components/ui/confirm";
 import type { TablesInsert } from "@/integrations/supabase/types";
 import { downloadMarkdown, printMarkdownAsPdf } from "@/lib/export";
@@ -1070,10 +1070,13 @@ registerProcessor('mic-processor', MicProcessor);`;
       // Non-streaming: fetch the full reply and render it once. (A
       // ReadableStream-returning server function did not stream reliably
       // through TanStack Start on Cloudflare Workers.)
-      const result = await askHomework({
-        data: { messages: payloadMessages, subject, image: imageBase64, conversationId: convoId },
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
+      const result = await callScholarxChatDirect(
+        payloadMessages,
+        subject,
+        token,
+        imageBase64,
+        convoId,
+      );
       setLoading(false);
       if (result.error || !result.content) {
         toast.error(result.error ?? "No response from AI");
@@ -1097,16 +1100,14 @@ registerProcessor('mic-processor', MicProcessor);`;
       // Auto-title the conversation from its opening exchange.
       if (isFirstExchange) {
         try {
-          const { title } = await generateTitle({
-            data: {
-              messages: [
-                { role: "user", content: text },
-                { role: "assistant", content: fullContent },
-              ],
-              conversationId: convoId,
-            },
-            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          });
+          const { title } = await generateTitleDirect(
+            [
+              { role: "user", content: text },
+              { role: "assistant", content: fullContent },
+            ],
+            token,
+            convoId,
+          );
           if (title && convoId) {
             await supabase.from("conversations").update({ title }).eq("id", convoId);
           }
