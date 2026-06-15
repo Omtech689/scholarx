@@ -2,11 +2,11 @@
 // This function acts as a secure bridge between your React app and Gemini API via Helicone.
 // The HELICONE_API_KEY never leaves Supabase, keeping it safe from exposure.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Max-Age": "86400",
 };
 
 interface ChatRequest {
@@ -19,7 +19,7 @@ interface ChatRequest {
 export default async (req: Request): Promise<Response> => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeaders });
   }
 
   if (req.method !== "POST") {
@@ -41,33 +41,49 @@ export default async (req: Request): Promise<Response> => {
 
     const token = authHeader.slice(7); // Remove "Bearer "
 
-    // Initialize Supabase client to verify user and fetch personalization
+    // Initialize Supabase client (lazy import to reduce cold-start cost)
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     if (!supabaseUrl || !supabaseKey) {
       return new Response(JSON.stringify({ error: "Service misconfigured" }), {
         status: 500,
-        headers: corsHeaders,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
       });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Verify JWT via Supabase Auth REST endpoint
+    const authRes = await fetch(`${supabaseUrl.replace(/\/+$/, '')}/auth/v1/user`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: supabaseKey,
+      },
+    }).catch(() => null);
 
-    // Verify JWT and get user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser(token);
-
-    if (authError || !user) {
+    if (!authRes || !authRes.ok) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
-        headers: corsHeaders,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
       });
     }
 
-    const userId = user.id;
+    const user = await authRes.json();
+    const userId = user?.id;
+    if (!userId) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+      });
+    }
 
     // Parse the request body
     const body: ChatRequest = await req.json();
@@ -84,11 +100,28 @@ export default async (req: Request): Promise<Response> => {
     }
 
     // Fetch user personalization (same as server function)
-    const { data: personalizationData } = await supabase
-      .from("profiles")
-      .select("display_name, grade_level, learning_style, explanation_tone, study_goals, interests")
-      .eq("id", userId)
-      .maybeSingle();
+    // Fetch personalization via PostgREST
+    let personalizationData: any = null;
+    try {
+      const profileRes = await fetch(
+        `${supabaseUrl.replace(/\/+$/, '')}/rest/v1/profiles?select=display_name,grade_level,learning_style,explanation_tone,study_goals,interests&id=eq.${encodeURIComponent(
+          userId,
+        )}`,
+        {
+          headers: {
+            Authorization: `Bearer ${supabaseKey}`,
+            apikey: supabaseKey,
+            Accept: "application/json",
+          },
+        },
+      );
+      if (profileRes && profileRes.ok) {
+        const arr = await profileRes.json();
+        personalizationData = Array.isArray(arr) && arr.length > 0 ? arr[0] : null;
+      }
+    } catch (e) {
+      console.error("profile fetch error", e);
+    }
 
     // Build system prompt (simplified version of your server function)
     const subject = body.subject || "general";
@@ -136,11 +169,23 @@ export default async (req: Request): Promise<Response> => {
       ],
     };
 
-    const response = await fetch(geminiUrl, {
+    // Use a timeout for the Gemini/Helicone request to avoid worker hangs
+    async function fetchWithTimeout(resource: string, init: RequestInit, timeout = 15000) {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeout);
+      try {
+        const res = await fetch(resource, { ...init, signal: controller.signal });
+        return res;
+      } finally {
+        clearTimeout(id);
+      }
+    }
+
+    const response = await fetchWithTimeout(geminiUrl, {
       method: "POST",
       headers,
       body: JSON.stringify(geminiPayload),
-    });
+    }, 15000);
 
     if (response.status === 429) {
       return new Response(JSON.stringify({ error: "Too many requests. Please try again in a moment." }), {
