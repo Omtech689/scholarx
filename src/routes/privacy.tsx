@@ -81,6 +81,22 @@ function PrivacyPage() {
 
           <div>
             <h2 className="text-lg font-semibold mb-2" style={{ fontFamily: "var(--font-display)" }}>
+              4. Payments & Billing
+            </h2>
+            <p>
+              <strong>Payment Processing:</strong> If you purchase a Premium subscription, payments are processed
+              securely through our third-party payment gateway (Stripe). ScholarX does not store full credit card
+              numbers or payment credentials on our servers. Billing details and receipts may be stored for
+              transactional purposes in accordance with applicable law.
+            </p>
+            <p className="mt-2">
+              <strong>Refund Policy:</strong> To the maximum extent permitted by law, subscription fees are
+              non-refundable. For questions about billing, contact support at the address below.
+            </p>
+          </div>
+
+          <div>
+            <h2 className="text-lg font-semibold mb-2" style={{ fontFamily: "var(--font-display)" }}>
               4. AI Processing
             </h2>
             <p>
@@ -111,7 +127,17 @@ function PrivacyPage() {
 
           <div>
             <h2 className="text-lg font-semibold mb-2" style={{ fontFamily: "var(--font-display)" }}>
-              7. Contact
+              7. Rate Limiting & Automated Access
+            </h2>
+            <p>
+              To protect system stability and ensure fair access, ScholarX enforces rate limits and monitors for
+              automated access patterns. We may throttle or block traffic that appears to come from bots, scrapers,
+              or automated scripts. We log usage metadata and may use those logs to detect and mitigate abuse.
+            </p>
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold mb-2" style={{ fontFamily: "var(--font-display)" }}>
+              8. Contact
             </h2>
             <p>
               If you have questions about this policy, please contact us at{" "}
@@ -123,6 +149,7 @@ function PrivacyPage() {
               </a>
               .
             </p>
+          </div>
           </div>
         </section>
       </main>
