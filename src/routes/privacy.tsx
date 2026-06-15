@@ -97,7 +97,7 @@ function PrivacyPage() {
 
           <div>
             <h2 className="text-lg font-semibold mb-2" style={{ fontFamily: "var(--font-display)" }}>
-              4. AI Processing
+              5. AI Processing
             </h2>
             <p>
               Questions and prompts you submit are sent to a third-party AI provider (Google Gemini) to generate
@@ -108,7 +108,7 @@ function PrivacyPage() {
 
           <div>
             <h2 className="text-lg font-semibold mb-2" style={{ fontFamily: "var(--font-display)" }}>
-              5. Cookies & Local Storage
+              6. Cookies & Local Storage
             </h2>
             <p>
               We use browser local storage to maintain your login session. No third-party advertising cookies are used.
@@ -117,7 +117,7 @@ function PrivacyPage() {
 
           <div>
             <h2 className="text-lg font-semibold mb-2" style={{ fontFamily: "var(--font-display)" }}>
-              6. Your Rights
+              7. Your Rights
             </h2>
             <p>
               You may delete your account at any time from your Profile settings. Upon deletion, your personal data
@@ -127,7 +127,7 @@ function PrivacyPage() {
 
           <div>
             <h2 className="text-lg font-semibold mb-2" style={{ fontFamily: "var(--font-display)" }}>
-              7. Rate Limiting & Automated Access
+              8. Rate Limiting & Automated Access
             </h2>
             <p>
               To protect system stability and ensure fair access, ScholarX enforces rate limits and monitors for
@@ -137,7 +137,7 @@ function PrivacyPage() {
           </div>
           <div>
             <h2 className="text-lg font-semibold mb-2" style={{ fontFamily: "var(--font-display)" }}>
-              8. Contact
+              9. Contact
             </h2>
             <p>
               If you have questions about this policy, please contact us at{" "}

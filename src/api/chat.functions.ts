@@ -4,7 +4,8 @@ import { enforceRateLimit, RATE_LIMITS } from "@/integrations/supabase/rate-limi
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
-import { heliconeGeminiBase, heliconeHeaders } from "./helicone";
+
+const SCHOLARX_CHAT_FUNCTION_URL = "https://nozxlljeuswjxqoffrti.supabase.co/functions/v1/scholarx-chat";
 
 // Live (voice) model. The ephemeral-token constraint and the client's
 // live.connect() call MUST use the same model id. Override via env if needed.
@@ -181,51 +182,26 @@ export const askHomework = createServerFn({ method: "POST" })
       return { content: "", error: limited };
     }
 
-    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-    if (!GEMINI_API_KEY) {
-      return { content: "", error: "AI is not configured. Please contact support." };
-    }
-
-    const personalization = await fetchPersonalization(context.supabase, context.userId);
-    const systemPrompt = buildSystemPrompt(data.subject, personalization);
-
     try {
+      // Get the user's session token for Edge Function authorization
+      const { data: { session }, error: sessionError } = await context.supabase.auth.getSession();
+      if (sessionError || !session?.access_token) {
+        return { content: "", error: "Authentication failed. Please log in again." };
+      }
+
       const res = await fetchWithRetry(
-        `${heliconeGeminiBase()}/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
+        SCHOLARX_CHAT_FUNCTION_URL,
         {
           method: "POST",
           headers: {
+            "Authorization": `Bearer ${session.access_token}`,
             "Content-Type": "application/json",
-            ...heliconeHeaders({
-              userId: context.userId,
-              feature: "chat",
-              sessionId: data.conversationId ?? crypto.randomUUID(),
-              sessionPath: "/chat/message",
-              sessionName: "Chat Conversation",
-              properties: {
-                Subject: data.subject,
-                HasImage: data.image ? "true" : "false",
-                TurnCount: data.messages.length,
-              },
-            }),
           },
           body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text:
-                      systemPrompt +
-                      "\n\n" +
-                      data.messages.map((m) => `${m.role}: ${m.content}`).join("\n") +
-                      "\nAssistant: ",
-                  },
-                  ...(data.image
-                    ? [{ inline_data: { mime_type: "image/jpeg", data: data.image } }]
-                    : []),
-                ],
-              },
-            ],
+            messages: data.messages,
+            subject: data.subject,
+            image: data.image,
+            conversationId: data.conversationId,
           }),
         },
       );
@@ -235,13 +211,14 @@ export const askHomework = createServerFn({ method: "POST" })
       }
       if (!res.ok) {
         const text = await res.text();
-        console.error("Gemini API error", res.status, text);
+        console.error("Edge Function error", res.status, text);
         return { content: "", error: "The AI tutor couldn't respond. Please try again." };
       }
 
       const json = await res.json();
-      const content: string = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-      return { content, error: null as string | null };
+      const content: string = json.content ?? "";
+      const error: string | null = json.error ?? null;
+      return { content, error };
     } catch (e) {
       console.error("askHomework error", e);
       return { content: "", error: "Network error talking to the AI tutor." };
@@ -272,49 +249,37 @@ export const generateTitle = createServerFn({ method: "POST" })
     const limited = await enforceRateLimit(context.supabase, RATE_LIMITS.chat);
     if (limited) return { title: "", error: limited };
 
-    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-    if (!GEMINI_API_KEY) return { title: "", error: "AI is not configured." };
-
-    const transcript = data.messages
-      .map((m) => `${m.role}: ${m.content}`)
-      .join("\n")
-      .slice(0, 2000);
     try {
+      // Get the user's session token for Edge Function authorization
+      const { data: { session }, error: sessionError } = await context.supabase.auth.getSession();
+      if (sessionError || !session?.access_token) {
+        return { title: "", error: "Authentication failed." };
+      }
+
+      // Call Edge Function to generate title
       const res = await fetchWithRetry(
-        `${heliconeGeminiBase()}/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
+        SCHOLARX_CHAT_FUNCTION_URL,
         {
           method: "POST",
           headers: {
+            "Authorization": `Bearer ${session.access_token}`,
             "Content-Type": "application/json",
-            ...heliconeHeaders({
-              userId: context.userId,
-              feature: "chat-title",
-              sessionId: data.conversationId ?? crypto.randomUUID(),
-              sessionPath: "/chat/title",
-              sessionName: "Chat Conversation",
-            }),
           },
           body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text:
-                      "Give a concise 3–6 word title (no quotes, no punctuation at the end, Title Case) for this tutoring conversation:\n\n" +
-                      transcript,
-                  },
-                ],
-              },
-            ],
-            generationConfig: { temperature: 0.2, maxOutputTokens: 20 },
+            messages: data.messages,
+            subject: "general",
+            conversationId: data.conversationId,
           }),
         },
       );
+
       if (!res.ok) return { title: "", error: "Could not generate a title." };
       const json = await res.json();
-      const raw: string = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-      const title = raw
-        .replace(/["'\n]/g, "")
+      const content: string = json.content ?? "";
+      // Extract just the first line as title
+      const title = content
+        .split("\n")[0]
+        .replace(/["']/g, "")
         .replace(/[.!?]+$/, "")
         .trim()
         .slice(0, 80);
