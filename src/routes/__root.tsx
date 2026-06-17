@@ -11,7 +11,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
 import { ConfirmProvider } from "@/components/ui/confirm";
 import { useEffect } from "react";
-import { Crisp } from "@/components/crisp";
+import { Crisp, CrispController } from "@/components/crisp";
 import { OfflineBanner } from "@/components/offline-banner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -148,6 +148,7 @@ function RootComponent() {
   return (
     <>
       <Crisp />
+      <CrispController />
       <OfflineBanner />
       <Outlet />
     </>

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useRouterState } from "@tanstack/react-router";
+import { useLocation, useRouterState } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 
 const CRISP_WEBSITE_ID = "08bdfba9-9790-4709-9e51-4b5c3b5198d6";
@@ -69,6 +69,21 @@ export function Crisp() {
   useEffect(() => {
     if (typeof window === "undefined" || !window.$crisp) return;
     window.$crisp.push(["set", "session:data", [[["current_page", pathname]]]]);
+  }, [pathname]);
+
+  return null;
+}
+export function CrispController() {
+  const pathname = useLocation({ select: (location) => location.pathname });
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.$crisp) return;
+
+    if (pathname === "/support") {
+      window.$crisp.push(["do", "chat:show"]);
+    } else {
+      window.$crisp.push(["do", "chat:hide"]);
+    }
   }, [pathname]);
 
   return null;
