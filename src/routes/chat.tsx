@@ -810,7 +810,7 @@ registerProcessor('mic-processor', MicProcessor);`;
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, loading, streamingVoiceContent, streamingUserContent]);
 
-  async function loadConversations(userId: string | null = session?.user.id) {
+  async function loadConversations(userId: string | null = session?.user.id ?? null) {
     const query = supabase
       .from("conversations")
       .select("id,title,subject,updated_at")

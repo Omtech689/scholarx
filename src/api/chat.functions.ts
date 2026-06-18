@@ -87,6 +87,7 @@ export async function generateTitleDirect(
         messages,
         subject: "general",
         conversationId,
+        isTitleGen: true,
       }),
     });
 
@@ -368,6 +369,7 @@ export const generateTitle = createServerFn({ method: "POST" })
             messages: data.messages,
             subject: "general",
             conversationId: data.conversationId,
+            isTitleGen: true,
           }),
         },
       );

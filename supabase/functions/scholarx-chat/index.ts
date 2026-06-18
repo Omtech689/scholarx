@@ -65,11 +65,23 @@ Deno.serve(async (req) => {
       return withCors(new Response(JSON.stringify({ error: 'Invalid JSON body' }), { status: 400 }))
     }
 
-    const prompt =
-      body.prompt ||
-      (Array.isArray(body.messages)
-        ? body.messages.map((m: any) => `${m.role === 'assistant' ? 'Assistant' : 'User'}: ${m.content}`).join('\n')
-        : '')
+    const isTitleGen = body.isTitleGen === true
+
+    let prompt = ''
+    if (isTitleGen) {
+      prompt = `Based on the following opening exchange, generate a short, clean, descriptive title for the conversation (1-5 words). Do NOT use quotation marks, punctuation, or prefix it with "Title:".
+
+Exchange:
+${Array.isArray(body.messages)
+  ? body.messages.map((m: any) => `${m.role === 'assistant' ? 'Assistant' : 'User'}: ${m.content}`).join('\n')
+  : ''}`
+    } else {
+      prompt =
+        body.prompt ||
+        (Array.isArray(body.messages)
+          ? body.messages.map((m: any) => `${m.role === 'assistant' ? 'Assistant' : 'User'}: ${m.content}`).join('\n')
+          : '')
+    }
 
     if (!prompt) {
       return withCors(new Response(JSON.stringify({ error: 'Prompt or messages are required' }), { status: 400 }))
@@ -95,7 +107,7 @@ Deno.serve(async (req) => {
         'Helicone-Auth': `Bearer ${Deno.env.get('HELICONE_API_KEY')}`,
         'Helicone-Target-URL': 'https://generativelanguage.googleapis.com',
         'Helicone-User-Id': userId,
-        'Helicone-Property-Feature': 'chat',
+        'Helicone-Property-Feature': isTitleGen ? 'title-generation' : 'chat',
       },
       body: JSON.stringify({
         model: 'gemini-3.1-flash-lite',

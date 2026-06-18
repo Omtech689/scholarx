@@ -9,9 +9,9 @@ export default {
   async fetch(
     request: Request,
     env: unknown,
-    ctx: ExecutionContext,
+    ctx: any,
   ): Promise<Response> {
-    const response = await (defaultEntry as { fetch: (r: Request, e: unknown, c: ExecutionContext) => Promise<Response> }).fetch(request, env, ctx);
+    const response = await (defaultEntry as { fetch: (r: Request, e: unknown, c: any) => Promise<Response> }).fetch(request, env, ctx);
     const headers = new Headers(response.headers);
     headers.set("Permissions-Policy", "microphone=(self), camera=(), geolocation=()");
     return new Response(response.body, {
