@@ -704,9 +704,9 @@
   align-items: flex-start;
   padding: 0.875rem 1rem;
   border-radius: 0.9rem;
-  border: 1px solid var(--warning-border);
-  background: var(--warning-bg);
-  color: var(--warning-text);
+  border: 1px solid color-mix(in oklab, oklch(0.85 0.18 85) 30%, transparent);
+  background: color-mix(in oklab, oklch(0.85 0.18 85) 7%, transparent);
+  color: oklch(0.9 0.12 85);
   text-align: left;
   font-size: 0.87rem;
   line-height: 1.5;

@@ -163,7 +163,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
         {/* Load Google Fonts without blocking render — preload swaps to stylesheet on load */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){var l=document.createElement('link');l.rel='preload';l.as='style';l.href='https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap';l.onload=function(){this.rel='stylesheet'};document.head.appendChild(l);})()`,
+            __html: `(function(){var l=document.createElement('link');l.rel='preload';l.as='style';l.href='https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap';l.onload=function(){this.rel='stylesheet'};document.head.appendChild(l);})()`,
           }}
         />
       </head>
