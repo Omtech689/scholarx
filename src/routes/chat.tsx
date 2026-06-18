@@ -1242,13 +1242,13 @@ registerProcessor('mic-processor', MicProcessor);`;
         className="hidden shrink-0 flex-col border-r border-border bg-card/40 backdrop-blur md:flex min-w-[240px] max-w-[520px] relative"
         style={{ width: `${sidebarWidth}px` }}
       >
-        <div className="absolute inset-y-0 right-0 flex w-8 cursor-col-resize">
+        <div className="absolute inset-y-0 right-0 flex w-8 cursor-col-resize hover:bg-border/20">
           <div className="pt-4 flex items-start justify-center w-full">
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </div>
           <button
             type="button"
-            className="absolute inset-0 cursor-col-resize"
+            className="absolute inset-0"
             onMouseDown={(e) => {
               e.preventDefault();
               sidebarDraggingRef.current = true;
@@ -1351,7 +1351,7 @@ registerProcessor('mic-processor', MicProcessor);`;
 
       {/* Main */}
       <main className="flex min-w-0 flex-1 flex-col">
-        {/* Top: subject picker */}
+        {/* Top: subject buttons */}
         <header className="flex items-center gap-2 border-b border-border px-4 py-3 md:px-6">
           <button
             className="md:hidden shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-secondary"
@@ -1360,22 +1360,8 @@ registerProcessor('mic-processor', MicProcessor);`;
           >
             <Menu className="h-5 w-5" />
           </button>
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="shrink-0 text-sm text-muted-foreground">Subject:</span>
-            <select
-              value={subject}
-              onChange={(e) => setSubject(e.target.value as Subject)}
-              className="min-w-[10rem] rounded-full border border-border bg-secondary px-3 py-1.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/25"
-            >
-              <option value="general">General</option>
-              {SUBJECTS.map((s) => (
-                <option key={s.id} value={s.id}>{s.label}</option>
-              ))}
-            </select>
-          </div>
-
           {messages.length > 0 && (
-            <div className="ml-auto flex items-center gap-1">
+            <div className="flex shrink-0 items-center gap-1">
               <Button
                 onClick={exportConversation}
                 size="icon"
@@ -1402,13 +1388,12 @@ registerProcessor('mic-processor', MicProcessor);`;
                   size="icon"
                   variant="ghost"
                   className="h-8 w-8"
-                  title="More actions"
-                  aria-label="More chat actions"
+                  title="Create study tools from this chat"
+                  aria-label="Create study tools from this chat"
                   aria-haspopup="menu"
                   aria-expanded={toolsMenuOpen}
                 >
                   <Sparkles className="h-4 w-4" />
-                  <ChevronDown className="h-3.5 w-3.5" />
                 </Button>
                 {toolsMenuOpen && (
                   <>
@@ -1457,6 +1442,37 @@ registerProcessor('mic-processor', MicProcessor);`;
               </div>
             </div>
           )}
+          <div className="flex flex-1 items-center gap-2 overflow-x-auto min-w-0">
+            <span className="shrink-0 text-sm text-muted-foreground">Subject:</span>
+            <button
+              onClick={() => setSubject("general")}
+              className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                subject === "general"
+                  ? "bg-primary text-primary-foreground glow"
+                  : "bg-secondary text-secondary-foreground hover:bg-secondary/70"
+              }`}
+            >
+              General
+            </button>
+            {SUBJECTS.map((s) => {
+              const active = subject === s.id;
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => setSubject(s.id)}
+                  className={`shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                    active
+                      ? "text-background"
+                      : "bg-secondary text-secondary-foreground hover:bg-secondary/70"
+                  }`}
+                  style={active ? { background: s.color, boxShadow: `0 0 24px ${s.color}55` } : {}}
+                >
+                  <s.icon className="h-3.5 w-3.5" style={!active ? { color: s.color } : {}} />
+                  {s.label}
+                </button>
+              );
+            })}
+          </div>
         </header>
 
         {/* Messages */}
