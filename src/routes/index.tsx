@@ -405,7 +405,7 @@ function Landing() {
             Quick answers to common questions. Need more help?{" "}
             <Link to="/support" className="underline hover:opacity-80">Visit the full support page</Link>{" "}
             or email us at{" "}
-            <a href="mailto:support@scholarx.app" className="underline hover:opacity-80">support@scholarx.app</a>.
+            <a href="mailto:support@scholarx.space" className="underline hover:opacity-80">support@scholarx.space</a>.
           </p>
         </div>
 

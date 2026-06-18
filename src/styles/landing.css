@@ -171,18 +171,18 @@
   .nav-links { display: inline-flex; }
 }
 .nav-link {
-  padding: 0.5rem 0.9rem;
-  border-radius: 0.5rem;
+  padding: 0.65rem 1rem;
+  border-radius: 0.75rem;
   color: color-mix(in oklab, var(--foreground) 75%, transparent);
   text-decoration: none;
-  font-size: 0.9rem;
-  font-weight: 500;
+  font-size: 1rem;
+  font-weight: 600;
   transition: color 150ms, background 150ms;
   white-space: nowrap;
 }
 .nav-link:hover {
   color: var(--foreground);
-  background: color-mix(in oklab, var(--card) 50%, transparent);
+  background: color-mix(in oklab, var(--primary) 12%, transparent);
 }
 
 /* Desktop-only CTA buttons in header */
@@ -260,18 +260,18 @@
 .mobile-nav-link {
   display: flex;
   align-items: center;
-  padding: 1rem 0.75rem;
-  font-size: 1.1rem;
-  font-weight: 500;
-  border-radius: 0.75rem;
+  padding: 1.05rem 0.9rem;
+  font-size: 1.12rem;
+  font-weight: 600;
+  border-radius: 0.9rem;
   color: var(--foreground);
   text-decoration: none;
   transition: background 150ms;
-  min-height: 3.25rem;
+  min-height: 3.5rem;
 }
 .mobile-nav-link:active,
 .mobile-nav-link:hover {
-  background: color-mix(in oklab, var(--secondary) 80%, transparent);
+  background: color-mix(in oklab, var(--primary) 12%, transparent);
 }
 .mobile-nav-divider {
   height: 1px;
@@ -293,10 +293,10 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  height: 2.5rem;
-  padding: 0 1.1rem;
-  border-radius: 0.6rem;
-  font-size: 0.93rem;
+  height: 3rem;
+  padding: 0 1.2rem;
+  border-radius: 0.7rem;
+  font-size: 1rem;
   font-weight: 600;
   text-decoration: none;
   border: 1px solid transparent;
@@ -310,7 +310,7 @@
 .btn-primary { background: var(--primary); color: var(--primary-foreground); }
 .btn-primary:hover { box-shadow: var(--shadow-glow); }
 .btn-ghost { background: transparent; color: var(--foreground); }
-.btn-ghost:hover { background: var(--accent); color: var(--accent-foreground); }
+.btn-ghost:hover { background: color-mix(in oklab, var(--primary) 18%, transparent); color: var(--primary-foreground); }
 .btn-outline { background: transparent; color: var(--foreground); border-color: var(--border); }
 .btn-outline:hover { background: color-mix(in oklab, var(--secondary) 80%, transparent); }
 .btn-lg { height: 3rem; padding: 0 1.6rem; font-size: 1rem; border-radius: 0.7rem; }
@@ -403,10 +403,10 @@
 }
 
 .hero-sub {
-  max-width: 36rem;
+  max-width: 40rem;
   margin: 1.25rem auto 0;
-  font-size: clamp(0.95rem, 2vw, 1.15rem);
-  line-height: 1.6;
+  font-size: clamp(1.05rem, 2.2vw, 1.3rem);
+  line-height: 1.7;
   color: color-mix(in oklab, var(--foreground) 70%, transparent);
 }
 
