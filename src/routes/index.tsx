@@ -229,8 +229,7 @@ function Landing() {
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v4" /><path d="m4.93 4.93 2.83 2.83" /><circle cx="12" cy="12" r="4" /></svg>
               </div>
               <h3 className="feature-title">Students</h3>
-              <p className="feature-desc">Step-by-step explanations, practice tests, and flashcards to help students learn at their own pace.</p>
-              <a href="/chat" className="btn btn-outline" style={{ marginTop: "0.6rem" }}>Start tutoring</a>
+              <p className="feature-desc">Step-by-step explanations, practice tests, flashcards, and progress tracking help students learn with confidence.</p>
             </div>
 
             <div className="feature reveal" style={{ textAlign: "left" }}>
@@ -238,8 +237,7 @@ function Landing() {
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12h18" /><path d="M3 6h18" /><path d="M3 18h18" /></svg>
               </div>
               <h3 className="feature-title">Parents</h3>
-              <p className="feature-desc">Get clear explanations you can review with your child, plus progress reports and planner tools to stay on top of assignments.</p>
-              <a href="/support" className="btn btn-outline" style={{ marginTop: "0.6rem" }}>Learn more</a>
+              <p className="feature-desc">Review clear explanations, see study progress, and support homework with built-in planner and analytics tools.</p>
             </div>
 
             <div className="feature reveal" style={{ textAlign: "left" }}>
@@ -247,8 +245,7 @@ function Landing() {
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16" /><path d="M4 12h16" /><path d="M4 18h16" /></svg>
               </div>
               <h3 className="feature-title">Teachers</h3>
-              <p className="feature-desc">Create practice tests and guided examples for lessons, or use ScholarX to generate handouts and quizzes.</p>
-              <a href="/support" className="btn btn-outline" style={{ marginTop: "0.6rem" }}>Learn more</a>
+              <p className="feature-desc">Build practice tests, guided examples, and lesson support materials using the same tools your students use.</p>
             </div>
           </div>
         </div>

@@ -333,21 +333,21 @@
   z-index: 10;
   max-width: 80rem;
   margin: 0 auto;
-  padding: 3rem 1rem;
+  padding: 2.25rem 1rem;
 }
 .section-narrow { max-width: 60rem; }
 @media (min-width: 768px) {
-  .section { padding: 5rem 1.5rem; }
+  .section { padding: 3.75rem 1.5rem; }
 }
 
 /* ---------- Hero ---------- */
 .hero {
   text-align: center;
-  padding-top: 3rem;
-  padding-bottom: 3rem;
+  padding-top: 2.5rem;
+  padding-bottom: 2.5rem;
 }
 @media (min-width: 768px) {
-  .hero { padding-top: 6rem; padding-bottom: 6rem; }
+  .hero { padding-top: 4rem; padding-bottom: 4rem; }
 }
 
 .hero-pill {
