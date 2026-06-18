@@ -5,7 +5,7 @@ import { AppSidebarLinks } from "@/components/app-sidebar-links";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadSupabaseSession } from "@/integrations/supabase/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { askHomework, generateTitle, getLiveToken, callScholarxChatDirect, generateTitleDirect } from "@/api/chat.functions";
+import { askHomework, generateTitle, getLiveToken, callScholarxChatDirect } from "@/api/chat.functions";
 import { useConfirm } from "@/components/ui/confirm";
 import type { TablesInsert } from "@/integrations/supabase/types";
 import { downloadMarkdown, printMarkdownAsPdf } from "@/lib/export";
@@ -203,6 +203,7 @@ export const Route = createFileRoute("/chat")({
 function ChatPage() {
   const navigate = useNavigate();
   const confirm = useConfirm();
+  const { session } = Route.useRouteContext();
   const [toolsMenuOpen, setToolsMenuOpen] = useState(false);
   const [composerExtrasOpen, setComposerExtrasOpen] = useState(false);
   const [conversations, setConversations] = useState<Convo[]>([]);
@@ -211,7 +212,9 @@ function ChatPage() {
   const [subject, setSubject] = useState<Subject>("general");
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [displayName, setDisplayName] = useState<string>("");
+  const [displayName, setDisplayName] = useState<string>(
+    session?.user.email?.split("@")[0] ?? "Student",
+  );
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -780,32 +783,40 @@ registerProcessor('mic-processor', MicProcessor);`;
     }
   }
 
-  // load profile + conversations
+  // load profile + conversations in parallel for faster startup
   useEffect(() => {
+    if (!session) return;
+
+    setDisplayName(session.user.email?.split("@")[0] ?? "Student");
+
+    const profilePromise = supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", session.user.id)
+      .maybeSingle();
+    const conversationsPromise = loadConversations(session.user.id);
+
     (async () => {
-      const { data: u } = await supabase.auth.getUser();
-      if (u.user) {
-        const { data: p } = await supabase
-          .from("profiles")
-          .select("display_name")
-          .eq("id", u.user.id)
-          .maybeSingle();
-        setDisplayName(p?.display_name ?? u.user.email?.split("@")[0] ?? "Student");
+      const profileResult = await profilePromise;
+      if (profileResult.data?.display_name) {
+        setDisplayName(profileResult.data.display_name);
       }
-      await loadConversations();
+      await conversationsPromise;
     })();
-  }, []);
+  }, [session]);
 
   // auto scroll — also follows live voice transcription
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, loading, streamingVoiceContent, streamingUserContent]);
 
-  async function loadConversations() {
-    const { data, error } = await supabase
+  async function loadConversations(userId: string | null = session?.user.id) {
+    const query = supabase
       .from("conversations")
       .select("id,title,subject,updated_at")
       .order("updated_at", { ascending: false });
+    if (userId) query.eq("user_id", userId);
+    const { data, error } = await query;
     if (error) {
       toast.error("Couldn't load history");
       return;
@@ -1097,14 +1108,16 @@ registerProcessor('mic-processor', MicProcessor);`;
       // Auto-title the conversation from its opening exchange.
       if (isFirstExchange) {
         try {
-          const { title } = await generateTitleDirect(
-            [
-              { role: "user", content: text },
-              { role: "assistant", content: fullContent },
-            ],
-            token,
-            convoId,
-          );
+          const { title } = await generateTitle({
+            data: {
+              messages: [
+                { role: "user", content: text },
+                { role: "assistant", content: fullContent },
+              ],
+              conversationId: convoId,
+            },
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          });
           if (title && convoId) {
             await supabase.from("conversations").update({ title }).eq("id", convoId);
           }
@@ -1299,14 +1312,14 @@ registerProcessor('mic-processor', MicProcessor);`;
             )}
             {filteredConversations.map((c) => (
               <li key={c.id}>
-                <div className="flex items-center gap-1 group">
+                <div className="group relative">
                   <button
                     onClick={() => selectConversation(c.id)}
                     onContextMenu={(e) => {
                       e.preventDefault();
                       setContextMenu({ x: e.clientX, y: e.clientY, id: c.id });
                     }}
-                    className={`min-w-0 flex-1 flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                    className={`min-w-0 flex w-full items-center gap-2 rounded-lg px-3 py-2 pr-10 text-left text-sm transition-colors ${
                       activeId === c.id
                         ? "bg-primary/15 text-foreground"
                         : "hover:bg-secondary text-muted-foreground hover:text-foreground"
@@ -1319,7 +1332,7 @@ registerProcessor('mic-processor', MicProcessor);`;
                     variant="ghost"
                     size="icon"
                     onClick={(e) => deleteConversation(c.id, e)}
-                    className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                     title="Delete conversation"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
