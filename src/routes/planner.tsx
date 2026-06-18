@@ -3,6 +3,7 @@ import { FeatureLanding } from "@/components/feature-landing";
 import { AppSidebarLinks } from "@/components/app-sidebar-links";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { loadSupabaseSession } from "@/integrations/supabase/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -94,11 +95,7 @@ export const Route = createFileRoute("/planner")({
       },
     ],
   }),
-  beforeLoad: async () => {
-    if (typeof window === "undefined") return { session: null };
-    const { data } = await supabase.auth.getSession();
-    return { session: data.session ?? null };
-  },
+  beforeLoad: loadSupabaseSession,
   errorComponent: RouteError,
   component: () => {
     const { session } = Route.useRouteContext();

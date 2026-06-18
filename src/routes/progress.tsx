@@ -4,6 +4,7 @@ import { AppSidebarLinks } from "@/components/app-sidebar-links";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { loadSupabaseSession } from "@/integrations/supabase/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { RouteError } from "@/components/ui/route-error";
 import { Button } from "@/components/ui/button";
@@ -77,11 +78,7 @@ export const Route = createFileRoute("/progress")({
       },
     ],
   }),
-  beforeLoad: async () => {
-    if (typeof window === "undefined") return { session: null };
-    const { data } = await supabase.auth.getSession();
-    return { session: data.session ?? null };
-  },
+  beforeLoad: loadSupabaseSession,
   errorComponent: RouteError,
   component: () => {
     const { session } = Route.useRouteContext();

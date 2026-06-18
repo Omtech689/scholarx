@@ -1,6 +1,6 @@
-import { createFileRoute, redirect, Link } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { redirectIfAuthenticated } from "@/integrations/supabase/auth";
 import "@/styles/landing.css";
 
 export const Route = createFileRoute("/")({
@@ -64,11 +64,7 @@ export const Route = createFileRoute("/")({
       },
     ],
   }),
-  beforeLoad: async () => {
-    if (typeof window === "undefined") return;
-    const { data } = await supabase.auth.getSession();
-    if (data.session) throw redirect({ to: "/chat" });
-  },
+  beforeLoad: redirectIfAuthenticated,
   component: Landing,
 });
 

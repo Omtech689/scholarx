@@ -3,6 +3,7 @@ import { FeatureLanding } from "@/components/feature-landing";
 import { RouteError } from "@/components/ui/route-error";
 import { AppSidebarLinks } from "@/components/app-sidebar-links";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { loadSupabaseSession } from "@/integrations/supabase/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { askHomework, generateTitle, getLiveToken, callScholarxChatDirect, generateTitleDirect } from "@/api/chat.functions";
 import { useConfirm } from "@/components/ui/confirm";
@@ -190,11 +191,7 @@ export const Route = createFileRoute("/chat")({
       },
     ],
   }),
-  beforeLoad: async () => {
-    if (typeof window === "undefined") return { session: null };
-    const { data } = await supabase.auth.getSession();
-    return { session: data.session ?? null };
-  },
+  beforeLoad: loadSupabaseSession,
   errorComponent: RouteError,
   component: () => {
     const { session } = Route.useRouteContext();

@@ -3,6 +3,7 @@ import { FeatureLanding } from "@/components/feature-landing";
 import { AppSidebarLinks } from "@/components/app-sidebar-links";
 import { RouteError } from "@/components/ui/route-error";
 import { useEffect, useState } from "react";
+import { loadSupabaseSession } from "@/integrations/supabase/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -61,11 +62,7 @@ export const Route = createFileRoute("/graph")({
       },
     ],
   }),
-  beforeLoad: async () => {
-    if (typeof window === "undefined") return { session: null };
-    const { data } = await supabase.auth.getSession();
-    return { session: data.session ?? null };
-  },
+  beforeLoad: loadSupabaseSession,
   errorComponent: RouteError,
   component: () => {
     const { session } = Route.useRouteContext();

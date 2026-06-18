@@ -3,6 +3,7 @@ import { FeatureLanding } from "@/components/feature-landing";
 import { AppSidebarLinks } from "@/components/app-sidebar-links";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { loadSupabaseSession } from "@/integrations/supabase/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { generateTest, evaluateTest, type Evaluation } from "@/api/tests.functions";
 type GenerateTestResult = {
@@ -109,11 +110,7 @@ export const Route = createFileRoute("/tests")({
     ],
   }),
   errorComponent: RouteError,
-  beforeLoad: async () => {
-    if (typeof window === "undefined") return { session: null };
-    const { data } = await supabase.auth.getSession();
-    return { session: data.session ?? null };
-  },
+  beforeLoad: loadSupabaseSession,
   component: () => {
     const { session } = Route.useRouteContext();
     if (!session) return <FeatureLanding feature="tests" />;

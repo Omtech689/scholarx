@@ -1,4 +1,5 @@
-import { createFileRoute, redirect, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { redirectIfUnauthenticated } from "@/integrations/supabase/auth";
 import { RouteError } from "@/components/ui/route-error";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,11 +48,7 @@ export const Route = createFileRoute("/profile")({
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
-  beforeLoad: async () => {
-    if (typeof window === "undefined") return;
-    const { data } = await supabase.auth.getSession();
-    if (!data.session) throw redirect({ to: "/login", search: { mode: "signin" as const } });
-  },
+  beforeLoad: redirectIfUnauthenticated,
   errorComponent: RouteError,
   component: ProfilePage,
 });
