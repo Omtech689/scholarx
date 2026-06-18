@@ -478,7 +478,7 @@
 .features {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 0.875rem;
+  gap: 1rem;
 }
 @media (min-width: 600px) {
   .features { grid-template-columns: repeat(2, 1fr); }
@@ -489,10 +489,10 @@
 
 .feature {
   position: relative;
-  padding: 1.4rem;
-  border-radius: 1rem;
+  padding: 1.6rem;
+  border-radius: 1.1rem;
   border: 1px solid var(--border);
-  background: color-mix(in oklab, var(--card) 70%, transparent);
+  background: color-mix(in oklab, var(--card) 74%, transparent);
   overflow: hidden;
 }
 @media (min-width: 768px) {
@@ -528,15 +528,15 @@
 }
 .feature-title {
   font-family: var(--font-display);
-  font-size: 1.05rem;
-  font-weight: 600;
+  font-size: 1.125rem;
+  font-weight: 700;
   margin: 0;
 }
 .feature-desc {
-  margin: 0.4rem 0 0;
-  color: color-mix(in oklab, var(--foreground) 65%, transparent);
-  font-size: 0.9rem;
-  line-height: 1.55;
+  margin: 0.45rem 0 0;
+  color: color-mix(in oklab, var(--foreground) 70%, transparent);
+  font-size: 0.98rem;
+  line-height: 1.6;
 }
 
 /* Tinted feature variants */

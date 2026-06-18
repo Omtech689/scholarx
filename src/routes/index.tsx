@@ -153,7 +153,7 @@ function Landing() {
             </div>
             {/* Desktop CTAs */}
             <a href="/login" className="btn btn-ghost nav-cta">Sign in</a>
-            <a href="/login?mode=signup" className="btn btn-gradient nav-cta">Get started</a>
+            <a href="/login?mode=signup" className="btn btn-gradient nav-cta" title="Create a free ScholarX account">Create free account</a>
             {/* Mobile hamburger */}
             <button
               className="mobile-nav-btn"
@@ -212,6 +212,44 @@ function Landing() {
           <div className="stat">
             <div className="stat-num">$0</div>
             <div className="stat-label">To get started</div>
+          </div>
+        </div>
+
+        {/* Who it's for — clearer entry points for parents, teachers, and students */}
+        <div className="section reveal" aria-label="Who is ScholarX for?">
+          <div className="section-head">
+            <span className="section-eyebrow">Who it's for</span>
+            <h2 className="section-title">Simple, clear tools for students, parents and teachers</h2>
+            <p className="section-sub">Large text, clear actions, and guided workflows make ScholarX approachable for learners and supporters of any age.</p>
+          </div>
+
+          <div className="features" style={{ gridTemplateColumns: "repeat(3, 1fr)", gap: "1rem" }}>
+            <div className="feature reveal" style={{ textAlign: "left" }}>
+              <div className="feature-icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v4" /><path d="m4.93 4.93 2.83 2.83" /><circle cx="12" cy="12" r="4" /></svg>
+              </div>
+              <h3 className="feature-title">Students</h3>
+              <p className="feature-desc">Step-by-step explanations, practice tests, and flashcards to help students learn at their own pace.</p>
+              <a href="/chat" className="btn btn-outline" style={{ marginTop: "0.6rem" }}>Start tutoring</a>
+            </div>
+
+            <div className="feature reveal" style={{ textAlign: "left" }}>
+              <div className="feature-icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12h18" /><path d="M3 6h18" /><path d="M3 18h18" /></svg>
+              </div>
+              <h3 className="feature-title">Parents</h3>
+              <p className="feature-desc">Get clear explanations you can review with your child, plus progress reports and planner tools to stay on top of assignments.</p>
+              <a href="/support" className="btn btn-outline" style={{ marginTop: "0.6rem" }}>Learn more</a>
+            </div>
+
+            <div className="feature reveal" style={{ textAlign: "left" }}>
+              <div className="feature-icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16" /><path d="M4 12h16" /><path d="M4 18h16" /></svg>
+              </div>
+              <h3 className="feature-title">Teachers</h3>
+              <p className="feature-desc">Create practice tests and guided examples for lessons, or use ScholarX to generate handouts and quizzes.</p>
+              <a href="/support" className="btn btn-outline" style={{ marginTop: "0.6rem" }}>Learn more</a>
+            </div>
           </div>
         </div>
       </section>
