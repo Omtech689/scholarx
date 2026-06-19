@@ -1352,7 +1352,7 @@ registerProcessor('mic-processor', MicProcessor);`;
       {/* Main */}
       <main className="flex min-w-0 flex-1 flex-col">
         {/* Top: subject buttons */}
-        <header className="flex items-center gap-2 border-b border-border px-4 py-3 md:px-6">
+        <header className="flex items-center gap-2 justify-between border-b border-border px-4 py-3 md:px-6">
           <button
             className="md:hidden shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-secondary"
             onClick={() => setMobileMenuOpen(true)}
