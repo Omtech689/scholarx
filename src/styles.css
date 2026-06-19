@@ -63,7 +63,7 @@
   --muted: oklch(0.94 0.01 240);
   --muted-foreground: oklch(0.50 0.01 240);
 
-  --accent: oklch(82.199% 0.07745 203.104);
+  --accent: oklch(#006ac0);
   /* pleasant violet accent */
   --accent-foreground: oklch(1.0 0.0 0);
 
