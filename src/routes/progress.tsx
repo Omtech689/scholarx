@@ -232,10 +232,21 @@ function ProgressPage() {
       </Sheet>
 
       {/* Sidebar */}
-      <aside className="hidden w-72 shrink-0 flex-col border-r border-border bg-card/40 backdrop-blur md:flex">
+      <aside className="hidden w-72 shrink-0 flex-col border-r border-border bg-card/40 backdrop-blur md:flex" id="sidebar-progress" style={{ display: 'flex' }}
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest('[data-no-close="true"]') || (e.target as HTMLElement).closest('[onclick]')) {
+            e.stopPropagation();
+          }
+        }}>
         <div className="flex items-center gap-2 px-5 py-5 font-display text-lg font-semibold">
           <img src="/logo-removebg-preview.png" className="h-8 w-8 object-contain" alt="ScholarX" />
           ScholarX
+        </div>
+        <div className="px-5 pb-2">
+          <div className="flex items-center gap-2 rounded-md px-2 py-2 bg-primary/10 border-l-4 border-primary/50">
+            <TrendingUp className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">Progress</span>
+          </div>
         </div>
         <AppSidebarLinks
           currentPage="progress"

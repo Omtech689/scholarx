@@ -662,13 +662,16 @@ function TestCreatorPage() {
                         </p>
                       </div>
                     </button>
-                    <button
-                      onClick={(e) => deleteTest(test.id, e)}
-                      className="h-8 w-8 flex items-center justify-center shrink-0 rounded-full text-muted-foreground hover:text-destructive"
-                      title="Delete test"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                      <div className="flex flex-col items-center gap-1">
+                        <button
+                          onClick={(e) => deleteTest(test.id, e)}
+                          title="Delete test"
+                          className="h-8 w-8 flex items-center justify-center shrink-0 rounded-full text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                        <span className="text-[10px] text-muted-foreground">Delete</span>
+                      </div>
                   </div>
                 </li>
               ))}

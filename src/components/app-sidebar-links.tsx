@@ -47,6 +47,7 @@ export function AppSidebarLinks({
   onClose,
 }: AppSidebarLinksProps) {
   const [extrasOpen, setExtrasOpen] = useState(EXTRAS.includes(currentPage));
+  const [showSupport, setShowSupport] = useState(false);
 
   const navCls = (page: AppPage) => `${BASE} ${currentPage === page ? ACTIVE : MUTED}`;
   const subCls = (page: AppPage) => `${BASE_SUB} ${currentPage === page ? ACTIVE : MUTED}`;
@@ -94,18 +95,23 @@ export function AppSidebarLinks({
         </div>
       )}
 
-      <Link
-        to="/support"
-        onClick={onClose}
-        className={`${BASE} ${MUTED}`}
-      >
-        <LifeBuoy className="h-4 w-4" /> Help &amp; Support
-      </Link>
+      {showSupport && (
+        <Link
+          to="/support"
+          onClick={onClose}
+          className={`${BASE} ${MUTED}`}
+        >
+          <LifeBuoy className="h-4 w-4" /> Help &amp; Support
+        </Link>
+      )}
 
       <div className="flex items-center justify-between gap-2 px-2 pt-1 text-sm">
         <Link
           to="/profile"
-          onClick={onClose}
+          onClick={() => {
+            setShowSupport(true);
+            onClose();
+          }}
           className="min-w-0 truncate text-muted-foreground hover:text-foreground transition"
         >
           {displayName}
