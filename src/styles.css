@@ -156,8 +156,8 @@
     h1, h2, h3, h4 {
       font-family: var(--font-display);
       letter-spacing: -0.02em;
+    }
   }
-
 
   @layer components {
     .glass {
@@ -184,6 +184,6 @@
     
     .support-button {
       @apply rounded-md px-2 py-1.5 text-sm font-medium text-primary-foreground bg-accent/5 hover:bg-accent transition-colors;
+    }
   }
-
 }
