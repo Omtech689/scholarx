@@ -20,7 +20,12 @@ import {
   MessageSquare,
   LifeBuoy,
   ArrowUpFromLine,
+  GitGraph,
+  ChartBarBig,
+  ChartBarIncreasing,
+  LucideChartBar,
 } from "lucide-react";
+import { EnvironmentModuleGraph, ModuleGraph } from "vite";
 
 const LEARNING_STYLES = [
   "Visual",
@@ -340,13 +345,13 @@ function ProfilePage() {
               </button>
               <Button variant="ghost" asChild className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground">
                 <Link to="/progress">
-                  <MessageSquare className="h-4 w-4" />
+                  <LucideChartBar className="h-4 w-4" />
                   Progress
                 </Link>
               </Button>
               <Button variant="ghost" asChild className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground">
                 <Link to="/chat">
-                  <ArrowUpFromLine className="h-4 w-4" />
+                  <MessageSquare className="h-4 w-4" />
                   Back to app
                 </Link>
               </Button>
