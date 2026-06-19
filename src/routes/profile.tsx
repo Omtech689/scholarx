@@ -19,6 +19,7 @@ import {
   GraduationCap,
   MessageSquare,
   LifeBuoy,
+  ArrowUpFromLine,
 } from "lucide-react";
 
 const LEARNING_STYLES = [
@@ -310,8 +311,8 @@ function ProfilePage() {
               <button
                 onClick={() => setActiveTab("profile")}
                 className={`w-full flex items-center gap-3 rounded-lg px-4 py-3 text-left transition-colors ${activeTab === "profile"
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:bg-secondary text-muted-foreground hover:text-foreground"
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-secondary text-muted-foreground hover:text-foreground"
                   }`}
               >
                 <User className="h-4 w-4" />
@@ -320,8 +321,8 @@ function ProfilePage() {
               <button
                 onClick={() => setActiveTab("learning")}
                 className={`w-full flex items-center gap-3 rounded-lg px-4 py-3 text-left transition-colors ${activeTab === "learning"
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:bg-secondary text-muted-foreground hover:text-foreground"
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-secondary text-muted-foreground hover:text-foreground"
                   }`}
               >
                 <GraduationCap className="h-4 w-4" />
@@ -330,8 +331,8 @@ function ProfilePage() {
               <button
                 onClick={() => setActiveTab("security")}
                 className={`w-full flex items-center gap-3 rounded-lg px-4 py-3 text-left transition-colors ${activeTab === "security"
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:bg-secondary text-muted-foreground hover:text-foreground"
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-secondary text-muted-foreground hover:text-foreground"
                   }`}
               >
                 <Shield className="h-4 w-4" />
@@ -345,7 +346,7 @@ function ProfilePage() {
               </Button>
               <Button variant="ghost" asChild className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground">
                 <Link to="/chat">
-                  <MessageSquare className="h-4 w-4" />
+                  <ArrowUpFromLine className="h-4 w-4" />
                   Back to app
                 </Link>
               </Button>
