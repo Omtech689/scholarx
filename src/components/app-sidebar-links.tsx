@@ -59,9 +59,9 @@ export function AppSidebarLinks({
       <Link to="/planner" onClick={onClose} className={navCls("planner")}>
         <ListTodo className="h-4 w-4" /> Study planner
       </Link>
-      <Link to="/progress" onClick={onClose} className={navCls("progress")}>
+      {/* <Link to="/progress" onClick={onClose} className={navCls("progress")}>
         <TrendingUp className="h-4 w-4" /> Progress
-      </Link>
+      </Link> */}
 
       <button
         onClick={() => setExtrasOpen((v) => !v)}
