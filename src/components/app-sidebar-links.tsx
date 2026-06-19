@@ -94,13 +94,13 @@ export function AppSidebarLinks({
         </div>
       )}
 
-      <Link
+      {/* <Link
         to="/support"
         onClick={onClose}
         className={`${BASE} ${MUTED}`}
       >
         <LifeBuoy className="h-4 w-4" /> Help &amp; Support
-      </Link>
+      </Link> */}
 
       <div className="flex items-center justify-between gap-2 px-2 pt-1 text-sm">
         <Link
